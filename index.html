@@ -60,8 +60,8 @@ function status(m,e){const s=$('#st');s.textContent=m;s.className=e?'err':''}
 async function findRepo(){
   const r=await fetch(API+'/user/repos?per_page=100',{headers:hdr()});
   if(!r.ok)throw new Error('トークンが正しくないか、期限が切れています');
-  const x=(await r.json()).find(a=>/^sosaku-matome\d+$/.test(a.name));
-  if(!x)throw new Error('sosaku-matome01 などのデータ用リポジトリが見つかりません');
+  const x=(await r.json()).find(a=>/^sosaku-matome.+$/.test(a.name));
+  if(!x)throw new Error('sosaku-matome で始まるデータ用リポジトリが見つかりません(トークンの対象リポジトリを確認してください)');
   return x.full_name;
 }
 async function load(f){
