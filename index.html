@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>創作まとめ</title>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('sm_theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light')}catch(e){}</script>
+<style>
+:root,[data-theme=light]{--bg:#f3f4f8;--fg:#1f2230;--mut:#767b8f;--card:#fff;--line:#dcdfe8;--ink:#2d3350;color-scheme:light}
+[data-theme=dark]{--bg:#171923;--fg:#eceef6;--mut:#979cb3;--card:#222534;--line:#33374b;--ink:#aab3e8;color-scheme:dark}
+[data-theme=sepia]{--bg:#f1e6d0;--fg:#4a3b2a;--mut:#8c7757;--card:#f8f0df;--line:#dccdb0;--ink:#6b4a2b;color-scheme:light}
+.themes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 "Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif;padding-top:env(safe-area-inset-top)}
+header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
+header h1{font-size:17px;margin:0;flex:1;letter-spacing:.08em}
+#st{font-size:12px;color:var(--mut)}#st.err{color:#d2455a}
+main{max-width:760px;margin:0 auto;padding:16px 16px calc(40px + env(safe-area-inset-bottom))}
+button,input,select,textarea{font:inherit;color:inherit}
+.btn{border:1px solid var(--ink);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:6px;cursor:pointer}
+.btn.sub{background:none;color:var(--fg);border-color:var(--line)}
+.btn.del{background:none;color:#d2455a;border-color:#d2455a}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.card:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card)}
+input[type=color]{padding:2px;height:40px}
+label{display:block;font-size:13px;color:var(--mut);margin:12px 0 4px}
+.bar{display:flex;gap:8px;align-items:center;margin-bottom:16px}
+.mut{color:var(--mut);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:22px 14px}
+.folder{position:relative;margin-top:10px;background:var(--card);border:1px solid var(--line);border-top:5px solid var(--c);border-radius:0 8px 8px 8px;padding:16px 12px 12px;min-height:96px;cursor:pointer;text-align:left}
+.folder::before{content:"";position:absolute;left:-1px;top:-15px;width:56px;height:10px;background:var(--c);border-radius:6px 6px 0 0}
+.folder b{display:block;word-break:break-all}
+.folder.add{border-style:dashed;border-top-style:dashed;border-top-color:var(--line);color:var(--mut)}
+.folder.add::before{display:none}
+.list{display:grid;gap:10px}
+.card{display:flex;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;cursor:pointer;text-align:left;width:100%}
+.dot{flex:none;width:44px;height:44px;border-radius:50%;background:var(--c);border:1px solid rgba(128,128,128,.35)}
+.card b{display:block}
+.empty{padding:28px 12px;text-align:center;color:var(--mut);border:1px dashed var(--line);border-radius:8px}
+dialog{border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);width:min(420px,92vw);padding:18px}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+.row{display:flex;gap:8px;margin-top:18px}.row .sp{flex:1}
+.box{max-width:420px;margin:12vh auto 0}
+</style>
+</head>
+<body>
+<header><h1>創作まとめ</h1><span id="st"></span><button class="btn sub" onclick="themeDlg()">テーマ</button><button class="btn sub" id="out" onclick="logout()" hidden>切断</button></header>
+<main id="app"></main>
+<dialog id="dlg"></dialog>
+<script>
+const $=s=>document.querySelector(s),API='https://api.github.com';
+const S={token:localStorage.getItem('sm_token')||'',repo:null,works:[],chars:[],sha:{},workId:null,q:''};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+const hdr=()=>({Authorization:'Bearer '+S.token,Accept:'application/vnd.github+json'});
+const b64d=s=>new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\n/g,'')),c=>c.charCodeAt(0)));
+const b64e=s=>{let t='';new TextEncoder().encode(s).forEach(c=>t+=String.fromCharCode(c));return btoa(t)};
+function status(m,e){const s=$('#st');s.textContent=m;s.className=e?'err':''}
+
+async function findRepo(){
+  const r=await fetch(API+'/user/repos?per_page=100',{headers:hdr()});
+  if(!r.ok)throw new Error('トークンが正しくないか、期限が切れています');
+  const x=(await r.json()).find(a=>/^sosaku-matome\d+$/.test(a.name));
+  if(!x)throw new Error('sosaku-matome01 などのデータ用リポジトリが見つかりません');
+  return x.full_name;
+}
+async function load(f){
+  const r=await fetch(`${API}/repos/${S.repo}/contents/${f}`,{headers:hdr()});
+  if(r.status==404){S.sha[f]=null;return[]}
+  if(!r.ok)throw new Error(f+' を読み込めません');
+  const j=await r.json();S.sha[f]=j.sha;return JSON.parse(b64d(j.content)||'[]');
+}
+async function put(f,data,retry){
+  const body={message:'update '+f,content:b64e(JSON.stringify(data,null,1))};
+  if(S.sha[f])body.sha=S.sha[f];
+  const r=await fetch(`${API}/repos/${S.repo}/contents/${f}`,{method:'PUT',headers:hdr(),body:JSON.stringify(body)});
+  if((r.status==409||r.status==422)&&!retry){
+    const g=await fetch(`${API}/repos/${S.repo}/contents/${f}`,{headers:hdr()});
+    if(g.ok)S.sha[f]=(await g.json()).sha;
+    return put(f,data,1);
+  }
+  if(!r.ok)throw new Error('保存できませんでした。もう一度操作してください');
+  S.sha[f]=(await r.json()).content.sha;
+}
+let timer,dirty={};
+function save(f){dirty[f]=1;status('保存待ち…');clearTimeout(timer);timer=setTimeout(flush,1200)}
+async function flush(){
+  try{status('保存中…');
+    for(const f of Object.keys(dirty)){delete dirty[f];await put(f,f=='works.json'?S.works:S.chars)}
+    status('保存済み');
+  }catch(e){status(e.message,1)}
+}
+
+async function connect(){
+  S.repo=await findRepo();
+  localStorage.setItem('sm_token',S.token);
+  [S.works,S.chars]=await Promise.all([load('works.json'),load('characters.json')]);
+  $('#out').hidden=false;status('接続中: '+S.repo.split('/')[1]);render();
+}
+async function login(){
+  S.token=$('#tk').value.trim();if(!S.token)return;
+  $('#err').textContent='接続しています…';
+  try{await connect()}catch(e){S.repo=null;$('#err').textContent=e.message}
+}
+function logout(){
+  if(!confirm('このブラウザに保存したトークンを消して切断します。よろしいですか?'))return;
+  localStorage.removeItem('sm_token');S.token='';S.repo=null;$('#out').hidden=true;status('');render();
+}
+
+const tagStr=c=>(c.tags||[]).map(t=>'#'+esc(t)).join(' ');
+const charCard=c=>`<button class="card" style="--c:${esc(c.color)}" onclick="editChar('${c.id}')"><span class="dot"></span><span><b>${esc(c.name)}</b><span class="mut">${esc(c.color)} ${tagStr(c)}</span><br>${esc(c.memo)}</span></button>`;
+
+function render(){
+  const app=$('#app');
+  if(!S.repo){
+    app.innerHTML=`<div class="box"><h2>トークンを入力</h2><p class="mut">渡されたトークンを入れると、自分のデータに接続します。トークンはこのブラウザにだけ保存されます。</p><input id="tk" type="password" autocomplete="off" placeholder="github_pat_..."><div class="row"><button class="btn" onclick="login()">接続する</button></div><p class="mut" id="err"></p></div>`;
+    return;
+  }
+  const q=S.q.trim().toLowerCase();
+  const search=`<input id="q" placeholder="名前・タグ・メモで探す" value="${esc(S.q)}" oninput="S.q=this.value;render();const e=$('#q');e.focus();e.setSelectionRange(99,99)">`;
+  if(q){
+    const hit=S.chars.filter(c=>[c.name,c.memo,...(c.tags||[])].join(' ').toLowerCase().includes(q));
+    app.innerHTML=`<div class="bar">${search}</div><div class="list">${hit.map(charCard).join('')||'<div class="empty">見つかりませんでした</div>'}</div>`;
+    return;
+  }
+  if(S.workId){
+    const w=S.works.find(x=>x.id==S.workId);
+    if(!w){S.workId=null;return render()}
+    const cs=S.chars.filter(c=>c.workId==w.id);
+    app.innerHTML=`<div class="bar">${search}</div>
+    <div class="bar"><button class="btn sub" onclick="S.workId=null;render()">戻る</button><h2 style="margin:0;flex:1;border-left:6px solid ${esc(w.color)};padding-left:10px">${esc(w.title)}</h2><button class="btn sub" onclick="editWork('${w.id}')">作品を編集</button></div>
+    <div class="list">${cs.map(charCard).join('')||'<div class="empty">まだキャラがいません。追加してみましょう</div>'}</div>
+    <div class="row"><button class="btn" onclick="editChar()">キャラを追加</button></div>`;
+    return;
+  }
+  app.innerHTML=`<div class="bar">${search}</div>
+  <div class="grid">${S.works.map(w=>`<button class="folder" style="--c:${esc(w.color)}" onclick="S.workId='${w.id}';render()"><b>${esc(w.title)}</b><span class="mut">${S.chars.filter(c=>c.workId==w.id).length} キャラ</span></button>`).join('')}
+  <button class="folder add" onclick="editWork()"><b>作品を追加</b></button></div>`;
+}
+
+function open(html){const d=$('#dlg');d.innerHTML=html;if(!d.open)d.showModal()}
+function editWork(id){
+  const w=S.works.find(x=>x.id==id)||{title:'',color:'#8fb8de'};
+  open(`<h3 style="margin:0">${id?'作品を編集':'作品を追加'}</h3>
+  <label>作品名</label><input id="wt" value="${esc(w.title)}">
+  <label>フォルダの色</label><input id="wc" type="color" value="${esc(w.color)}">
+  <div class="row">${id?'<button class="btn del" onclick="delWork(\''+id+'\')">削除</button>':''}<span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="saveWork('${id||''}')">保存</button></div>`);
+}
+function saveWork(id){
+  const title=$('#wt').value.trim();if(!title){$('#wt').focus();return}
+  const color=$('#wc').value;
+  if(id){Object.assign(S.works.find(x=>x.id==id),{title,color})}else S.works.push({id:uid('w'),title,color});
+  save('works.json');$('#dlg').close();render();
+}
+function delWork(id){
+  const n=S.chars.filter(c=>c.workId==id).length;
+  if(!confirm(`この作品と、中のキャラ${n}人を削除します。よろしいですか?`))return;
+  S.works=S.works.filter(x=>x.id!=id);S.chars=S.chars.filter(c=>c.workId!=id);
+  if(S.workId==id)S.workId=null;
+  save('works.json');save('characters.json');$('#dlg').close();render();
+}
+function editChar(id){
+  const c=S.chars.find(x=>x.id==id)||{name:'',color:'#ff8fa3',tags:[],memo:'',workId:S.workId};
+  open(`<h3 style="margin:0">${id?'キャラを編集':'キャラを追加'}</h3>
+  <label>名前</label><input id="cn" value="${esc(c.name)}">
+  <label>イメージカラー</label><input id="cc" type="color" value="${esc(c.color)}">
+  <label>タグ(空白かカンマ区切り)</label><input id="ct" value="${esc((c.tags||[]).join(' '))}">
+  <label>一言メモ</label><textarea id="cm" rows="3">${esc(c.memo)}</textarea>
+  <label>作品</label><select id="cw">${S.works.map(w=>`<option value="${w.id}" ${w.id==c.workId?'selected':''}>${esc(w.title)}</option>`).join('')}</select>
+  <div class="row">${id?'<button class="btn del" onclick="delChar(\''+id+'\')">削除</button>':''}<span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="saveChar('${id||''}')">保存</button></div>`);
+}
+function saveChar(id){
+  const name=$('#cn').value.trim();if(!name){$('#cn').focus();return}
+  const d={name,color:$('#cc').value,tags:$('#ct').value.split(/[\s,、]+/).map(t=>t.replace(/^#/,'')).filter(Boolean),memo:$('#cm').value.trim(),workId:$('#cw').value};
+  if(!d.workId){alert('先に作品を追加してください');return}
+  if(id)Object.assign(S.chars.find(x=>x.id==id),d);else S.chars.push({id:uid('c'),...d});
+  save('characters.json');$('#dlg').close();render();
+}
+function delChar(id){
+  if(!confirm('このキャラを削除します。よろしいですか?'))return;
+  S.chars=S.chars.filter(x=>x.id!=id);save('characters.json');$('#dlg').close();render();
+}
+
+const TH={light:'ライト',dark:'ダーク',sepia:'セピア',custom:'カスタム'};
+const CD={bg:'#20242e',fg:'#e9e4d8',card:'#2b303c',ink:'#7fd1b9'};
+const CL={bg:'背景',fg:'文字',card:'カード',ink:'アクセント'};
+function getCustom(){try{return{...CD,...JSON.parse(localStorage.getItem('sm_custom')||'{}')}}catch(e){return{...CD}}}
+function applyTheme(t){
+  const r=document.documentElement;
+  ['--bg','--fg','--card','--ink','--mut','--line','color-scheme'].forEach(k=>r.style.removeProperty(k));
+  r.dataset.theme=t;
+  if(t!='custom')return;
+  const c=getCustom(),p=(k,v)=>r.style.setProperty(k,v);
+  p('--bg',c.bg);p('--fg',c.fg);p('--card',c.card);p('--ink',c.ink);
+  p('--mut',`color-mix(in srgb,${c.fg} 55%,${c.bg})`);
+  p('--line',`color-mix(in srgb,${c.fg} 18%,${c.bg})`);
+  const n=parseInt(c.bg.slice(1),16);
+  p('color-scheme',((n>>16)*.299+((n>>8)&255)*.587+(n&255)*.114)<128?'dark':'light');
+}
+function setTheme(t){localStorage.setItem('sm_theme',t);applyTheme(t);themeDlg()}
+function setCustom(k,v){const c=getCustom();c[k]=v;localStorage.setItem('sm_custom',JSON.stringify(c));applyTheme('custom')}
+function resetCustom(){localStorage.removeItem('sm_custom');applyTheme('custom');themeDlg()}
+function themeDlg(){
+  const t=document.documentElement.dataset.theme,c=getCustom();
+  open(`<h3 style="margin:0">テーマ</h3>
+  <div class="themes">${Object.entries(TH).map(([k,v])=>`<button class="btn ${k==t?'':'sub'}" onclick="setTheme('${k}')">${v}</button>`).join('')}</div>
+  ${t=='custom'?Object.keys(CL).map(k=>`<label>${CL[k]}</label><input type="color" value="${c[k]}" oninput="setCustom('${k}',this.value)">`).join('')+'<div class="row"><button class="btn sub" onclick="resetCustom()">初期色に戻す</button></div>':''}
+  <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`);
+}
+applyTheme(document.documentElement.dataset.theme||'light');
+render();
+if(S.token){status('接続しています…');connect().catch(e=>{S.repo=null;status(e.message,1);render()})}
+</script>
+</body>
+</html>
