@@ -111,6 +111,8 @@ details.fold>.fb{padding:2px 0 4px 1.3em}
 .ge .gh2 b{flex:1;min-width:0;word-break:break-all}
 .ge .gimgs{padding:8px 8px 0}
 .ge .gvid{margin:0;border-radius:0}
+.ge .gte{cursor:pointer}
+.ge .gn2{white-space:pre-line;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .ge .gnv{padding:2px 12px 12px;font-size:13px;line-height:1.6;color:var(--mut);word-break:break-all;cursor:pointer}
 .gpl{display:grid;gap:8px;margin-top:10px;max-height:50vh;overflow:auto}
 .gpi{display:flex;align-items:center;gap:10px;text-align:left;padding:6px 8px}
@@ -138,8 +140,21 @@ sup.fr{font-size:.7em;line-height:0;color:var(--ink);cursor:pointer;margin-left:
 .fr1 input{flex:1;min-width:0;padding:5px 8px}
 .fr1 .btn{padding:5px 12px;white-space:nowrap}
 .fr1 .mut{white-space:nowrap}
-details.hint{margin-top:10px;font-size:13px;color:var(--mut)}
-details.hint div{margin-top:4px;line-height:1.7}
+details.hint{margin-top:10px;font-size:13px;color:var(--fg)}
+details.hint>summary{cursor:pointer;padding:6px 0;font-size:14px;color:var(--mut)}
+details.hint .hxb{border:1px solid var(--line);border-radius:10px;background:var(--card);padding:2px 14px 8px;margin-top:4px}
+details.hint .hxt{margin:14px 0 2px;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--ink)}
+details.hint .hxr{display:grid;grid-template-columns:minmax(0,42%) minmax(0,1fr);gap:4px 14px;align-items:start;padding:8px 0;border-top:1px solid var(--line);line-height:1.7}
+details.hint .hxt+.hxr{border-top:0}
+details.hint .hxk{display:flex;flex-wrap:wrap;gap:4px}
+details.hint code{display:inline-block;max-width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.5;padding:1px 7px;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--fg);white-space:pre-wrap;word-break:break-all}
+details.hint .hxd{min-width:0;word-break:break-word}
+details.hint .hxs{display:block;margin-top:2px;font-size:12px;line-height:1.6;color:var(--mut)}
+@media(max-width:520px){
+details.hint .hxr{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+details.hint .hxk{flex:none;max-width:100%}
+details.hint .hxd{flex:1 1 9em}
+}
 .et{font-size:17px;font-weight:700}
 .menu{display:grid;gap:8px;margin-top:14px}
 .th img{width:96px;aspect-ratio:16/9;object-fit:cover;border-radius:6px;border:1px solid var(--line);background:var(--card)}
@@ -168,6 +183,14 @@ label{display:block;font-size:13px;color:var(--mut);margin:12px 0 4px}
 .empty{padding:28px 12px;text-align:center;color:var(--mut);border:1px dashed var(--line);border-radius:8px}
 dialog{border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);width:min(420px,92vw);padding:18px;max-height:88vh;overflow:auto}
 dialog::backdrop{background:rgba(0,0,0,.45)}
+#cfdlg{width:min(560px,94vw)}
+#cfdlg .cf{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:12px}
+#cfdlg .cft{font-weight:600;word-break:break-all}
+#cfdlg label.cfo{display:flex;gap:8px;align-items:flex-start;margin:8px 0 0;font-size:13px;color:var(--fg);cursor:pointer}
+#cfdlg label.cfo input{margin-top:4px}
+#cfdlg label.cfo span{min-width:0;flex:1}
+#cfdlg pre{margin:2px 0 0;white-space:pre-wrap;word-break:break-all;max-height:7.5em;overflow:auto;font:inherit;font-size:13px;color:var(--fg);background:var(--zebra,rgba(128,128,128,.12));padding:4px 6px;border-radius:4px}
+#cfdlg .cfbar{position:sticky;bottom:0;background:var(--bg);padding:10px 0 0;margin-top:14px}
 .row{display:flex;gap:8px;margin-top:18px}.row .sp{flex:1}
 .box{max-width:420px;margin:12vh auto 0}
 .dot.s{width:20px;height:20px}
@@ -718,6 +741,7 @@ dialog:has(.gv){width:min(900px,96vw)}
 <div id="fab" hidden><button id="fabi" type="button" aria-label="見出しの索引" title="見出しの索引" onclick="idxDlg()" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button><button id="fabt" type="button" aria-label="いちばん上へ" title="いちばん上へ" onclick="toTop()" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></div>
 <main id="app"></main>
 <dialog id="dlg"></dialog>
+<dialog id="cfdlg"></dialog>
 <script>
 const $=s=>document.querySelector(s),API='https://api.github.com';
 const S={token:localStorage.getItem('sm_token')||'',repo:null,works:[],chars:[],gal:[],sha:{},workId:null,tab:'chars',q:'',pend:{},rev:0};
@@ -779,37 +803,95 @@ function lsave(now){
 }
 addEventListener('pagehide',()=>lsave(1));
 document.addEventListener('visibilitychange',()=>{if(document.hidden)lsave(1)});
-function paintOff(){const ob=$('#offb');if(!ob)return;ob.hidden=!(S.off&&S.repo);ob.textContent=Object.keys(S.pend).length?'オフライン(未送信の変更あり)':'オフライン'}
-/* 3-way マージ(base=最後に同期した状態 / l=この端末 / r=GitHub上の最新)。同じ項目の同じ箇所を両方で変えた場合は端末側を優先 */
+function paintOff(){const ob=$('#offb');if(!ob)return;ob.hidden=!(S.off&&S.repo);ob.textContent=Object.keys(S.pend).length?(S.cfHold?'競合の確認待ち(未送信の変更あり)':'オフライン(未送信の変更あり)'):'オフライン'}
+/* 3-way マージ(base=最後に同期した状態 / l=この端末 / r=GitHub上の最新)。
+   同じ項目の同じ欄を両方で変えた(または片方が削除・片方が変更した)場合は競合として st.cf に集め、
+   ポップアップでどちらを残すか選んでもらう(選択結果は st.dec[キー]='l'|'r')。 */
 function deq(a,b){if(a===b)return true;if(!a||!b||typeof a!='object'||typeof b!='object'||Array.isArray(a)!=Array.isArray(b))return false;const ka=Object.keys(a),kb=Object.keys(b);return ka.length==kb.length&&ka.every(k=>deq(a[k],b[k]))}
 const isObj=x=>!!x&&typeof x=='object'&&!Array.isArray(x);
 const idArr=a=>Array.isArray(a)&&a.every(x=>isObj(x)&&x.id!=null);
-function mg(b,l,r,st){
+const FLAB={'works.json':'作品','characters.json':'キャラクター','gallery.json':'ギャラリー'};
+const KLAB={title:'タイトル',name:'名前',body:'本文',ruby:'ふりがな',memo:'メモ',tags:'タグ',color:'色',icon:'アイコン',info:'情報',voice:'セリフ',stands:'立ち絵',ts:'作成日',o:'並び順',p:'フォルダ',workId:'作品',chars:'キャラ',url:'動画URL',imgs:'画像',type:'種類',notes:'設定',memos:'メモ',covers:'カバー'};
+/* 競合を1件記録する。選択済みなら true(GitHub側を採用)/false(この端末を採用)を返す。未選択のあいだは仮に端末側 */
+function cf(st,key,item,field,lv,rv){
+  st.c++;
+  const d=st.dec?st.dec[key]:undefined;
+  if(d===undefined){st.cf.push({key,item,field,lv,rv});return false}
+  return d=='r';
+}
+function mg(b,l,r,st,p,t,fl){
   if(deq(l,r))return r;
   if(deq(b,l))return r;
   if(deq(b,r))return l;
-  if(idArr(l)&&idArr(r)&&(b==null||idArr(b)))return mgArr(b||[],l,r,st);
+  if(idArr(l)&&idArr(r)&&(b==null||idArr(b)))return mgArr(b||[],l,r,st,p,t);
   if(isObj(l)&&isObj(r)){
     const bb=isObj(b)?b:{},o={};
-    for(const k of new Set([...Object.keys(bb),...Object.keys(l),...Object.keys(r)])){const v=mg(bb[k],l[k],r[k],st);if(v!==undefined)o[k]=v}
+    for(const k of new Set([...Object.keys(bb),...Object.keys(l),...Object.keys(r)])){
+      let v;
+      if(k=='up'&&typeof l[k]=='number'&&typeof r[k]=='number')v=Math.max(l[k],r[k]); /* 最終更新日は、新しい方にするだけ(選んでもらう必要はない) */
+      else v=mg(bb[k],l[k],r[k],st,p+'/'+k,t,(fl?fl+' › ':'')+(KLAB[k]||k));
+      if(v!==undefined)o[k]=v;
+    }
     return o;
   }
-  st.c++;return l;
+  return cf(st,p,t,fl,l,r)?r:l;
 }
-function mgArr(b,l,r,st){
+function mgArr(b,l,r,st,p,t){
   const bm=new Map(b.map(x=>[x.id,x])),lm=new Map(l.map(x=>[x.id,x])),rm=new Map(r.map(x=>[x.id,x])),out=[];
+  const tt=x=>(t?t+' › ':'')+(x.title||x.name||'(無題)');
   for(const x of r){
     const id=x.id;
-    if(lm.has(id))out.push(mg(bm.get(id)||{},lm.get(id),x,st));
-    else if(bm.has(id)){if(!deq(bm.get(id),x))st.c++} /* 端末で削除。相手が変更していたら削除を優先 */
+    if(lm.has(id))out.push(mg(bm.get(id)||{},lm.get(id),x,st,p+'/'+id,tt(lm.get(id)),''));
+    else if(bm.has(id)){ /* この端末で削除。GitHub側で変更されていたら、どちらにするか選ぶ */
+      if(!deq(bm.get(id),x)&&cf(st,p+'/'+id,tt(x),'この端末では削除/GitHub側では変更','(削除したまま)','(GitHub側で変更された内容を残す)'))out.push(x);
+    }
     else out.push(x); /* GitHub側で追加された */
   }
   for(const x of l){
     if(rm.has(x.id))continue;
-    if(bm.has(x.id)){if(!deq(bm.get(x.id),x)){st.c++;out.push(x)}} /* 相手が削除・端末で変更 → 残す */
-    else out.push(x); /* 端末で追加 */
+    if(bm.has(x.id)){ /* GitHub側で削除。この端末で変更されていたら、どちらにするか選ぶ */
+      if(!deq(bm.get(x.id),x)&&!cf(st,p+'/'+x.id,tt(x),'GitHub側では削除/この端末では変更','(この端末で変更した内容を残す)','(削除する)'))out.push(x);
+    }
+    else out.push(x); /* この端末で追加 */
   }
   return out;
+}
+/* 競合の選択ポップアップ(別のダイアログ。ほかの画面の戻る操作には触れない)。list=[{key,file,item,field,lv,rv}] → {key:'l'|'r'} / あとで=null */
+const cfv=(v,fl)=>{
+  if(v===undefined)return'(なし)';
+  let t=typeof v=='string'?(v||'(空)'):typeof v=='number'&&fl=='作成日'?fD(v):JSON.stringify(v);
+  return t.length>400?t.slice(0,400)+'…':t;
+};
+let cfQ=Promise.resolve();
+const askConflicts=list=>cfQ=cfQ.then(()=>cfShow(list),()=>cfShow(list));
+function cfShow(list){
+  return new Promise(res=>{
+    const d=$('#cfdlg');let fin=false;
+    const sel=i=>{const x=d.querySelector(`input[name="cf${i}"]:checked`);return x?x.value:'l'};
+    d.innerHTML=`<h3 style="margin:0">競合しています(${list.length}件)</h3><p class="mut">同じ欄を、この端末とGitHub側の両方で変えています。残す方を選んでください。</p>
+    <div class="row" style="margin-top:8px"><button class="btn sub" id="cfl" type="button">すべてこの端末</button><button class="btn sub" id="cfr" type="button">すべてGitHub側</button></div>
+    ${list.map((c,i)=>`<div class="cf"><div class="cft">${esc(c.file)} › ${esc(c.item)}</div>${c.field?`<div class="mut">${esc(c.field)}</div>`:''}
+      <label class="cfo"><input type="radio" name="cf${i}" value="l" checked><span><b>この端末</b><pre>${esc(cfv(c.lv,c.field))}</pre></span></label>
+      <label class="cfo"><input type="radio" name="cf${i}" value="r"><span><b>GitHub側</b><pre>${esc(cfv(c.rv,c.field))}</pre></span></label></div>`).join('')}
+    <div class="row cfbar"><button class="btn sub" id="cfx" type="button">あとで</button><span class="sp"></span><button class="btn" id="cfok" type="button">この内容で保存</button></div>`;
+    const done=v=>{if(fin)return;fin=true;if(d.open)d.close();res(v)};
+    d.querySelector('#cfok').onclick=()=>{const o={};list.forEach((c,i)=>{o[c.key]=sel(i)});done(o)};
+    d.querySelector('#cfl').onclick=()=>d.querySelectorAll('input[value=l]').forEach(x=>x.checked=true);
+    d.querySelector('#cfr').onclick=()=>d.querySelectorAll('input[value=r]').forEach(x=>x.checked=true);
+    d.querySelector('#cfx').onclick=()=>done(null);
+    d.addEventListener('close',()=>done(null),{once:true}); /* Esc・戻るで閉じた場合も「あとで」 */
+    d.showModal();d.scrollTop=0;
+  });
+}
+/* base・端末・GitHub側を合わせる。競合があれば選んでもらう。あとで(中止)なら null、決まれば {m:合わせた結果, c:競合の件数} */
+async function mergeAsk(f,base,loc,rem){
+  const run=dec=>{const st={c:0,cf:[],dec};return{m:mg(base,loc,rem,st,f,'',''),st}};
+  let a=run(null);
+  if(!a.st.cf.length)return{m:a.m,c:0};
+  const dec=await askConflicts(a.st.cf.map(c=>({...c,file:FLAB[f]||f})));
+  if(!dec)return null;
+  a=run(dec);
+  return{m:a.m,c:a.st.c};
 }
 const tmo=()=>typeof AbortSignal!='undefined'&&AbortSignal.timeout?AbortSignal.timeout(15000):undefined;
 async function findRepo(){
@@ -837,9 +919,22 @@ async function put(f,data,retry){
   if(S.sha[f])body.sha=S.sha[f];
   const r=await fetch(`${API}/repos/${S.repo}/contents/${f}`,{method:'PUT',headers:hdr(),body:JSON.stringify(body)});
   if((r.status==409||r.status==422)&&!retry){
-    const g=await fetch(`${API}/repos/${S.repo}/contents/${f}`,{headers:hdr()});
-    if(g.ok)S.sha[f]=(await g.json()).sha;
-    return put(f,data,1);
+    /* 保存の前に、ほかの端末がGitHubを更新していた:最新を取り込んで合わせ、同じ欄の競合は選んでもらう */
+    let nd=data;
+    try{
+      const rem=await load(f),bc=await DB.get('kv','data').catch(()=>null),base=bc&&bc.repo===S.repo?bc[FK[f]]:null;
+      if(base){
+        const mr=await mergeAsk(f,base,data,rem);
+        if(!mr){const e=new Error('競合の確認を後にしました。設定の「再接続」で、もう一度確認できます');e.cancel=true;throw e}
+        nd=mr.m;
+        if(!deq(nd,data)){S[FK[f]]=nd;if(!S.ed)setTimeout(render,0)}
+      }
+    }catch(e){
+      if(e.cancel)throw e;
+      const g=await fetch(`${API}/repos/${S.repo}/contents/${f}`,{headers:hdr()});
+      if(g.ok)S.sha[f]=(await g.json()).sha;
+    }
+    return put(f,nd,1);
   }
   if(!r.ok)throw new Error('保存できませんでした。もう一度操作してください');
   S.sha[f]=(await r.json()).content.sha;
@@ -857,7 +952,11 @@ async function flush(){
     cacheData(done);status('保存済み');
   }catch(e){
     if(done.length)cacheData(done);
-    if(e instanceof TypeError||e.name=='AbortError'||e.name=='TimeoutError'){ /* 通信できない:端末に控えて、つながったら送る */
+    if(e.cancel){ /* 競合の確認を「あとで」にした:変更は端末に控えて、再接続で確認 */
+      if(cur)S.pend[cur]=1;
+      Object.keys(dirty).forEach(f=>{S.pend[f]=1});dirty={};
+      S.off=true;S.cfHold=true;lsave(1);paintOff();status(e.message,1);
+    }else if(e instanceof TypeError||e.name=='AbortError'||e.name=='TimeoutError'){ /* 通信できない:端末に控えて、つながったら送る */
       if(cur)S.pend[cur]=1;
       Object.keys(dirty).forEach(f=>{S.pend[f]=1});dirty={};
       S.off=true;lsave(1);paintOff();
@@ -898,21 +997,24 @@ async function connect(){
   const ok=FILES.slice();
   if(loc){
     const bc=await DB.get('kv','data').catch(()=>null),base=bc&&bc.repo===repo?bc:{},st={c:0};
-    let sent=0;
+    let sent=0,held=false;
     for(const f of loc.files){
-      const k=FK[f],i=FILES.indexOf(f),m=mg(base[k],loc[k]||[],rem[i],st);
+      const k=FK[f],i=FILES.indexOf(f);
+      const mr=await mergeAsk(f,base[k],loc[k]||[],rem[i]); /* 同じ欄の競合があれば、ここでポップアップ */
+      if(!mr){S[k]=loc[k]||[];S.pend[f]=1;failed=held=true;ok.splice(ok.indexOf(f),1);continue}
+      const m=mr.m;st.c+=mr.c;
       try{
         if(!deq(m,rem[i])){S[k]=m;await put(f,m);sent++}
         delete S.pend[f];
-      }catch(e){S[k]=loc[k]||[];S.pend[f]=1;failed=true;ok.splice(ok.indexOf(f),1)}
+      }catch(e){S[k]=loc[k]||[];S.pend[f]=1;failed=true;if(e.cancel)held=true;ok.splice(ok.indexOf(f),1)}
     }
-    if(failed){S.off=true;lsave(1);msg='オフライン中の変更を送れませんでした。あとで自動でもう一度送ります'}
+    if(failed){S.off=true;S.cfHold=held;lsave(1);msg=held?'競合の確認を後にしました。設定の「再接続」で、もう一度確認できます':'オフライン中の変更を送れませんでした。あとで自動でもう一度送ります'}
     else{
       DB.del('kv','local').catch(()=>{});S.pend={};
-      msg='オフライン中の変更を送りました'+(st.c?`(両方で変更された${st.c}件は、こちらの変更を優先しました)`:'');
+      msg='オフライン中の変更を送りました'+(st.c?`(両方で変更された${st.c}件は、選んだ内容にしました)`:'');
     }
   }
-  if(!failed)S.off=false;
+  if(!failed){S.off=false;S.cfHold=false}
   cacheData(ok);
   fin(msg,failed);
 }
@@ -920,13 +1022,14 @@ let resyncing=false;
 async function reconnect(quiet){
   if(resyncing)return;
   if(S.ed&&edDirty()){if(!quiet)status('編集中の内容があるので、編集を終えてから再接続してください',1);return}
+  if(!quiet)S.cfHold=false;
   resyncing=true;if(!quiet)status('接続しています…');
   try{await connect()}catch(e){if(!quiet)status(e.message,1)}
   finally{resyncing=false}
   if(!quiet){const d=$('#dlg');if(d.open)d.close()}
 }
-addEventListener('online',()=>{if(S.off&&S.token&&!S.ed)reconnect(1)});
-setInterval(()=>{if(S.off&&S.token&&!S.ed&&navigator.onLine!==false)reconnect(1)},30000);
+addEventListener('online',()=>{if(S.off&&S.token&&!S.ed&&!S.cfHold)reconnect(1)});
+setInterval(()=>{if(S.off&&S.token&&!S.ed&&!S.cfHold&&navigator.onLine!==false)reconnect(1)},30000);
 /* 画像をまとめて端末に保存(まだ見ていない画像も、オフラインで見られるように) */
 function allImgPaths(){
   const s=new Set(),note=b=>imgIds(b).forEach(i=>s.add(`pic/note/${i}.webp`));
@@ -1631,6 +1734,18 @@ function readView(w,x){
 }
 /* ---- 長いページ用: 見出しの索引(≡)と、いちばん上へ戻る(↑) ---- */
 const FAB={n:false};
+/* キーボードが出ると、ブラウザが見える範囲(visualViewport)だけを上下にずらすことがある。そのぶん編集ツールバー(.edh)も下げて、常に見える位置に保つ */
+(()=>{
+  const vv=window.visualViewport;if(!vv)return;
+  let raf=0;
+  const fix=()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{
+    const y=Math.max(0,Math.round(vv.offsetTop)),t=y?`translateY(${y}px)`:'';
+    document.querySelectorAll('.edh').forEach(e=>{if(e.style.transform!=t)e.style.transform=t});
+  })};
+  vv.addEventListener('resize',fix);vv.addEventListener('scroll',fix);
+  addEventListener('scroll',fix,{passive:true});
+  new MutationObserver(fix).observe(document.getElementById('app'),{childList:true,subtree:true});
+})();
 function idxList(){
   if(S.ed||S.tab=='shed')return[];
   return [...document.querySelectorAll('#app .hd,#app .pc>h4')].map(el=>{
@@ -1849,19 +1964,9 @@ function editView(w,x){
   <div class="eli2"><span class="tl">三人称</span><input id="ev3" value="${esc((x.voice||{}).three||'')}"></div>
   <label for="evo">セリフ</label><div class="edw"><textarea id="evo" class="rd ed" rows="1" onfocus="S.tx=this" oninput="grow(this)" placeholder="セリフを書く">${esc((x.voice||{}).text||'')}</textarea></div>`:''}
   <label for="eb">${C?'詳細情報':'内容'}</label><div class="edw"><div id="hl" class="rd hl" aria-hidden="true"></div><textarea id="eb" class="rd ed" rows="1" onfocus="S.tx=this" oninput="grow(this);fhl()" placeholder="本文を書く">${esc(x.body||'')}</textarea></div>
-  <details class="hint"><summary>書き方の一覧</summary>
-  <div># 大見出し / ## 中見出し / ### 小見出し(行頭に書く)</div>
-  <div>**太字** / *斜体* / ｜漢字《かんじ》 / 《《傍点》》</div>
-  <div>((注意書き)) …小さく薄い文字</div>
-  <div>[^1] を本文に、[^1]: 内容 を別の行に …脚注</div>
-  <div>行頭の全角スペース …字下げ(ボタンで増減。通常の文章は最初から少し字下げされます)。見出し・引用・カード・折りたたみ・画像・動画・ギャラリー作品の前に付けても、そのまとまりごと字下げされます</div>
-  <div>装飾は重ねがけできます(例: **《《太字の傍点》》** / *斜体の中の **太字*** / ((注意書きの｜漢字《かんじ》)) )</div>
-  <div>&gt; を行頭に …引用線(続く行にも付けると繋がる)</div>
-  <div>\`\`\` だけの行で挟む …カード表示</div>
-  <div>~~~ タイトル 〜 ~~~ で挟む …折りたたみ(最初は閉じている)。~~~+ タイトル にすると最初から開いている。入れ子もOK</div>
-  <div>[文字](https://…) …リンク。URLをそのまま書いても自動でリンクになる</div>
-  <div>URLだけの行 …YouTube・Vimeo・ニコニコ・mp4 は本文でそのまま再生(文字付きのリンクにしたいときは [文字](URL))</div>
-  <div>[[gal:…]] …ギャラリー作品の貼り付け(イラスト・動画・小説。ボタンから選べます)</div></details>
+  <details class="hint"><summary>書き方の一覧</summary><div class="hxb">
+<div class="hxt">見出し・文字の装飾</div><div class="hxr"><div class="hxk"><code># 大見出し</code><code>## 中見出し</code><code>### 小見出し</code></div><div class="hxd">行頭に書きます</div></div><div class="hxr"><div class="hxk"><code>**太字**</code></div><div class="hxd">太字</div></div><div class="hxr"><div class="hxk"><code>*斜体*</code></div><div class="hxd">斜体</div></div><div class="hxr"><div class="hxk"><code>｜漢字《かんじ》</code></div><div class="hxd">ルビ(ふりがな)</div></div><div class="hxr"><div class="hxk"><code>《《傍点》》</code></div><div class="hxd">傍点</div></div><div class="hxr"><div class="hxk"><code>((注意書き))</code></div><div class="hxd">小さく薄い文字</div></div><div class="hxr"><div class="hxk"><code>[^1]</code><code>[^1]: 内容</code></div><div class="hxd">脚注。<span class="hxs">[^1] を本文に、[^1]: 内容 を別の行に書きます</span></div></div><div class="hxr"><div class="hxk"><code>**《《太字の傍点》》**</code><code>*斜体の中の **太字***</code><code>((注意書きの｜漢字《かんじ》))</code></div><div class="hxd">装飾は重ねがけできます</div></div><div class="hxt">字下げ・ブロック</div><div class="hxr"><div class="hxk"><code>行頭の全角スペース</code></div><div class="hxd">字下げ。<span class="hxs">ボタンで増減できます。通常の文章は最初から少し字下げされます。見出し・引用・カード・折りたたみ・画像・動画・ギャラリー作品の前に付けても、そのまとまりごと字下げされます</span></div></div><div class="hxr"><div class="hxk"><code>&gt; 引用の文</code></div><div class="hxd">引用線。<span class="hxs">続く行にも &gt; を付けると繋がります</span></div></div><div class="hxr"><div class="hxk"><code>\`\`\`</code></div><div class="hxd">この行で挟むとカード表示</div></div><div class="hxr"><div class="hxk"><code>~~~ タイトル</code><code>~~~</code></div><div class="hxd">折りたたみ(最初は閉じている)。<span class="hxs">開始を <code>~~~+ タイトル</code> にすると最初から開いています。入れ子もOK</span></div></div><div class="hxt">リンク・埋め込み</div><div class="hxr"><div class="hxk"><code>[文字](https://…)</code></div><div class="hxd">リンク。<span class="hxs">URLをそのまま書いても自動でリンクになります</span></div></div><div class="hxr"><div class="hxk"><code>URLだけの行</code></div><div class="hxd">YouTube・Vimeo・ニコニコ・mp4 は本文でそのまま再生。<span class="hxs">文字付きのリンクにしたいときは [文字](URL)</span></div></div><div class="hxr"><div class="hxk"><code>[[gal:…]]</code></div><div class="hxd">ギャラリー作品の貼り付け(イラスト・動画・小説)。<span class="hxs">ツールバーのボタンから選べます</span></div></div>
+  </div></details>
   ${C?'<div id="cswh" class="shed"><div class="hw"></div></div>':''}`;
   grow($('#eb'));fhl();
   if(C){
@@ -2055,9 +2160,12 @@ function galEmbed(id){
   const g=S.gal.find(x=>x.id==id&&!gIsF(x));
   if(!g)return `<div class="ge"><div class="gh2 mut">貼り付けたギャラリー作品が見つかりません(削除された可能性があります)</div></div>`;
   let b='';
-  if(g.type=='image')b=`<div class="gimgs">${(g.imgs||[]).map(i=>`<img data-p="${esc(i.p)}" alt="${esc(g.title)}" onclick="coverZoom(this)">`).join('')}</div>`;
+  if(g.type=='image'){const im=g.imgs||[],n=im.length;b=`<div class="gt gte" onclick="galJump('${g.id}')">${n?`<img data-p="${esc(im[0].t||im[0].p)}" alt="${esc(g.title)}">`:''}${n>1?`<span class="gbadge gcnt">${n}枚</span>`:''}</div>`}
   else if(g.type=='video')b=vidEmbed(g.url)||`<div class="gnv"><a href="${esc(g.url)}" target="_blank" rel="noopener noreferrer">動画のページを開く ↗</a></div>`;
-  else b=`<div class="gnv" onclick="galJump('${g.id}')">${esc(String(g.body||'').replace(/\s+/g,' ').slice(0,160))}${String(g.body||'').length>160?'…':''}</div>`;
+  else{ /* 小説: 空行をとばして最初の2行まで(長い行は見た目も2行で切る) */
+    const ls=String(g.body||'').replace(/\[\[(?:img|gal):[\w-]+\]\]/g,'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+    b=`<div class="gnv" onclick="galJump('${g.id}')"><div class="gn2">${esc(ls.slice(0,2).join('\n'))}${ls.length>2?'…':''}</div></div>`;
+  }
   return `<div class="ge"><div class="gh2"><b>${esc(g.title)}</b><span class="mut">${GT[g.type]||''}</span><button class="ic" aria-label="ギャラリーで開く" title="ギャラリーで開く" onclick="galJump('${g.id}')">${ico('<path d="M9 5l7 7-7 7"/>')}</button></div>${b}</div>`;
 }
 function startEdit(id){
@@ -2308,8 +2416,20 @@ let installEv=null;
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEv=e});
 addEventListener('appinstalled',()=>{installEv=null;status('アプリとしてインストールしました')});
 const isApp=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const isIOS=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform=='MacIntel'&&navigator.maxTouchPoints>1);
+/* Safariなどは、ボタン1つでのインストールをブラウザが許していないので、追加のしかたを案内する */
+function installGuide(){
+  const sh=ico('<path d="M12 15V4M8 8l4-4 4 4"/><path d="M6 11v8h12v-8"/>');
+  open(`<h3 style="margin:0">アプリとして追加</h3>${isIOS()?`
+  <ol style="line-height:1.9;padding-left:1.3em;margin:12px 0 0"><li>Safariの共有ボタン <span style="display:inline-block;width:18px;vertical-align:-4px">${sh}</span> を押す(iPhoneは画面下、iPadは画面上)</li><li>メニューを下へスクロールして「ホーム画面に追加」を選ぶ</li><li>右上の「追加」を押す</li></ol>
+  <p class="mut" style="margin:12px 0 0">Safariの仕様で、このボタンだけで自動では追加できません。下のボタンで共有メニューを開けます。</p>
+  ${navigator.share?'<div class="row"><button class="btn" onclick="shareApp()">共有メニューを開く</button></div>':''}`:`
+  <p style="margin:12px 0 0;line-height:1.8">ブラウザのメニュー(︙・…・共有)から、「アプリをインストール」または「ホーム画面に追加」を選びます。Mac版Safariは「ファイル」→「Dockに追加」です。</p>`}
+  <div class="row"><span class="sp"></span><button class="btn sub" onclick="themeDlg()">戻る</button></div>`);
+}
+function shareApp(){try{navigator.share({title:'創作まとめ',url:location.href.split('#')[0]}).catch(()=>{})}catch(e){}}
 async function installApp(){
-  if(!installEv)return;
+  if(!installEv){installGuide();return}
   installEv.prompt();
   try{await installEv.userChoice}catch(e){}
   installEv=null;themeDlg();
@@ -2336,8 +2456,8 @@ function themeDlg(){
   <div class="themes">${Object.entries(TH).map(([k,v])=>`<button class="btn ${k==t?'':'sub'}" onclick="setTheme('${k}')">${v}</button>`).join('')}</div>
   ${t=='custom'?`<div class="chips">${Object.keys(CL).map(k=>`<button class="btn ${k==S.ck?'':'sub'}" onclick="S.ck='${k}';themeDlg()"><i class="sw" data-sw="${k}" style="background:${c[k]}"></i>${CL[k]}</button>`).join('')}</div>${pickerHTML('cpt',c[S.ck],S.ck)}<div class="row"><button class="btn sub" onclick="resetCustom()">初期色に戻す</button></div>`:''}
   ${S.repo?'<div class="row"><button class="btn sub" onclick="goShed()">チェックシートの編集</button></div>':''}
-  ${S.repo?`<label>オフライン</label><p class="mut" style="margin:0">${S.off?'いまオフラインです。前回読み込んだデータを表示しています。編集はこの端末に保存され、つながると自動でGitHubに送られます(画像の追加・削除はオンラインのときだけ)。':'読み込んだデータと、いちど表示した画像は、オフラインでも見られ、編集もできます(つながると自動で送ります)。まだ見ていない画像もまとめて保存できます。'}</p><div class="row">${S.off?'<button class="btn sub" onclick="reconnect()">再接続</button>':'<button class="btn sub" onclick="offlineAll()">画像をすべてオフライン用に保存</button>'}</div>`:''}
-  ${isApp()?'':installEv?'<div class="row"><button class="btn sub" onclick="installApp()">アプリとしてインストール</button></div>':'<p class="mut" style="margin:14px 0 0">アプリとして使うには、ブラウザの共有・メニューから「ホーム画面に追加」(Chromeは「アプリをインストール」)を選びます。</p>'}
+  ${S.repo?`<label>オフライン</label><p class="mut" style="margin:0">${S.off?(S.cfHold?'競合の確認待ちです。「再接続」を押すと、競合している箇所を選べます。選ぶまでの編集は、この端末に保存されます。':'いまオフラインです。前回読み込んだデータを表示しています。編集はこの端末に保存され、つながると自動でGitHubに送られます(画像の追加・削除はオンラインのときだけ)。'):'読み込んだデータと、いちど表示した画像は、オフラインでも見られ、編集もできます(つながると自動で送ります)。まだ見ていない画像もまとめて保存できます。'}</p><div class="row">${S.off?'<button class="btn sub" onclick="reconnect()">再接続</button>':'<button class="btn sub" onclick="offlineAll()">画像をすべてオフライン用に保存</button>'}</div>`:''}
+  ${isApp()?'':'<div class="row"><button class="btn sub" onclick="installApp()">アプリとしてインストール</button></div>'}
   <div class="row">${S.repo?'<button class="btn del" onclick="logout()">切断</button>':''}<span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`,el=>{
     setCustom(el.dataset.k,el.dataset.v);
     const w=document.querySelector(`[data-sw="${el.dataset.k}"]`);if(w)w.style.background=el.dataset.v;
