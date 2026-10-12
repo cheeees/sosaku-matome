@@ -73,7 +73,7 @@ nav svg{width:24px;height:24px}
 .rt{flex:1;min-width:0;font-size:17px;font-weight:700;word-break:break-all}
 .rd{word-break:break-word;line-height:1.7em;font-size:15px}
 /* 小説の縦書き表示: 右から左へ読み、横にスクロールする */
-.rd.tate{writing-mode:vertical-rl;-webkit-writing-mode:vertical-rl;text-orientation:mixed;text-combine-upright:digits 2;height:calc(100vh - 230px);height:calc(100dvh - 230px - env(safe-area-inset-bottom,0px));min-height:280px;overflow-x:auto;overflow-y:hidden;line-height:1.9;font-size:17px;padding:4px 2px 14px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);-webkit-overflow-scrolling:touch}
+.rd.tate{writing-mode:vertical-rl;-webkit-writing-mode:vertical-rl;text-orientation:mixed;text-combine-upright:digits 2;height:calc(100vh - 290px);height:calc(100dvh - 290px - env(safe-area-inset-bottom,0px));min-height:260px;overflow:hidden;line-height:1.9;font-size:17px;padding:4px 0 6px;margin:0 auto;touch-action:pan-y;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .rd.tate .ln{margin:.6em 0 0;min-height:0;min-width:1.9em}
 .rd.tate .hd{margin:0 .3em 0 .7em!important;padding:0;border:0}
 .rd.tate .hd.h1{padding-left:.3em;border-left:1px solid var(--line)}
@@ -81,8 +81,20 @@ nav svg{width:24px;height:24px}
 .rd.tate .ind{padding-left:0;padding-top:calc(var(--n) * 1em)}
 .rd.tate .qt{margin:0 .6em;padding:10px 0 0;border-left:0;border-top:3px solid var(--mut)}
 .rd.tate .cd{margin:0 .6em}
-.rd.tate .im{margin:0 .6em}.rd.tate .im img{max-width:none;width:auto;max-height:calc(100vh - 260px);margin:0}
+.rd.tate .im{margin:0 .6em}.rd.tate .im img{max-width:var(--pw,100%);width:auto;max-height:calc(100vh - 330px);max-height:calc(100dvh - 330px);margin:0}
 .rd.tate details.fold>.fb{padding:0 1.3em 0 0}
+/* 小説の文字設定・ページ送り */
+.nv{font-family:var(--nvff,inherit)}
+.rd.nv:not(.tate){font-size:var(--nvfs,15px)}
+.rd.tate.nv{font-size:var(--nvfs,17px)}
+.pgb{display:flex;align-items:center;gap:10px;margin-top:8px}
+.pgb .btn{padding:6px 14px}
+.pgb input[type=range]{flex:1;min-width:0;direction:rtl;padding:0;border:0;background:none}
+.pgn{font-size:13px;color:var(--mut);min-width:4.5em;text-align:center}
+.nvo{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
+.nvsz{display:flex;align-items:center;gap:10px;margin-top:8px}
+.nvsz input{flex:1;padding:0;border:0;background:none}
+.nvpv{margin-top:14px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-family:var(--nvff,inherit);font-size:var(--nvfs,17px);line-height:1.8}
 .edw{position:relative;overflow:hidden;border:1px solid var(--line);border-bottom:0;border-radius:8px;background:var(--card) repeating-linear-gradient(to bottom,transparent 0,transparent calc(1.7em - 1px),var(--line) calc(1.7em - 1px),var(--line) 1.7em)}
 .edw:focus-within{outline:2px solid var(--ink)}
 .rd.ed{position:relative;z-index:1;display:block;width:100%;margin:0;padding:0 8px;border:0;border-radius:0;outline:0;background:transparent;-webkit-appearance:none;appearance:none;white-space:pre-wrap;min-height:1.7em;resize:none;overflow:hidden}
@@ -772,6 +784,8 @@ const uid=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 /* 作成日: ts があればそれ、なければ id(接頭辞+時刻+乱数)から割り出す。最終更新日: 編集したときに up を記録(未編集なら作成日と同じ) */
 const idTime=id=>{const n=parseInt(String(id||'').slice(1,-3),36);return n>1.4e12&&n<4.1e12?n:0};
 const cTime=x=>x.ts||idTime(x.id);
+/* 作成順: 作成日(ts または id の時刻)の古い順。同じなら登録した順。作成日が分からないものは一番古い扱い */
+const cOrd=(p,q)=>(cTime(p.x)||0)-(cTime(q.x)||0)||p.i-q.i;
 const fD=t=>{const d=new Date(t);return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`};
 const isoD=t=>{if(!t)return'';const d=new Date(t),p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`};
 const dateIn=(id,t)=>`<label for="${id}">作成日</label><input id="${id}" type="date" value="${isoD(t)}">`;
@@ -1527,7 +1541,7 @@ function toggleCat(id){
 }
 function sortBy(a,name,mode){
   const nm=(p,q)=>name(p.x).localeCompare(name(q.x),'ja');
-  const f={'reg-asc':(p,q)=>p.i-q.i,'reg-desc':(p,q)=>q.i-p.i,'name-asc':nm,'name-desc':(p,q)=>nm(q,p),custom:(p,q)=>(p.x.o??p.i)-(q.x.o??q.i)}[mode||'reg-asc'];
+  const f={'reg-asc':cOrd,'reg-desc':(p,q)=>cOrd(q,p),'name-asc':nm,'name-desc':(p,q)=>nm(q,p),custom:(p,q)=>(p.x.o??p.i)-(q.x.o??q.i)}[mode||'reg-asc'];
   return a.sort(f).map(o=>o.x);
 }
 const nextCO=w=>Math.max(-1,...S.chars.map((c,i)=>c.workId==w.id?(c.o??i):-1))+1;
@@ -1834,14 +1848,14 @@ function covCount(el){
 function coverZoom(el){const u=el.currentSrc||el.src;if(!u)return;open(`<img class="full" src="${esc(u)}" alt="" onclick="$('#dlg').close()">`)}
 function covInit(){document.querySelectorAll('.slides[data-loop]').forEach(s=>s.scrollTo({left:s.clientWidth,behavior:'auto'}))}
 function covGo(b,d){const s=b.parentNode.querySelector('.slides'),w=s.clientWidth,i=Math.round(s.scrollLeft/w);s.scrollTo({left:(i+d)*w,behavior:'smooth'})}
-const SORTS=[['reg-asc','登録順(▲)'],['reg-desc','登録順(▼)'],['name-asc','名前順(▲)'],['name-desc','名前順(▼)'],['custom','カスタム']];
+const SORTS=[['reg-asc','作成順(▲)'],['reg-desc','作成順(▼)'],['name-asc','名前順(▲)'],['name-desc','名前順(▼)'],['custom','カスタム']];
 const isF=x=>x.t=='f',par=x=>x.p||null;
 const ico=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const nextO=w=>Math.max(-1,...(w.notes||[]).map((x,i)=>x.o??i))+1;
 function items(w,p){
   const a=(w.notes||[]).map((x,i)=>({x,i})).filter(o=>par(o.x)==p);
   const nm=(a,b)=>a.x.title.localeCompare(b.x.title,'ja');
-  const cmp={'reg-asc':(a,b)=>a.i-b.i,'reg-desc':(a,b)=>b.i-a.i,'name-asc':nm,'name-desc':(a,b)=>nm(b,a),custom:(a,b)=>(a.x.o??a.i)-(b.x.o??b.i)}[w.sort||'reg-asc'];
+  const cmp={'reg-asc':cOrd,'reg-desc':(a,b)=>cOrd(b,a),'name-asc':nm,'name-desc':(a,b)=>nm(b,a),custom:(a,b)=>(a.x.o??a.i)-(b.x.o??b.i)}[w.sort||'reg-asc'];
   return[...a.filter(o=>isF(o.x)).sort(cmp),...a.filter(o=>!isF(o.x)).sort(cmp)].map(o=>o.x);
 }
 function crumb(w){const r=[];let c=w.notes.find(x=>x.id==S.nf);while(c){r.unshift(c);c=w.notes.find(x=>x.id==par(c))}return r}
@@ -2838,7 +2852,7 @@ function galVideoHtml(u){
 function galSortBy(a,so){
   const ix=new Map(S.gal.map((x,i)=>[x,i])),m=a.map(x=>({x,i:ix.get(x)}));
   const nm=(p,q)=>String(p.x.title).localeCompare(String(q.x.title),'ja');
-  const cmp={'reg-asc':(p,q)=>p.i-q.i,'reg-desc':(p,q)=>q.i-p.i,'name-asc':nm,'name-desc':(p,q)=>nm(q,p),custom:(p,q)=>(p.x.o??p.i)-(q.x.o??q.i)}[so]||((p,q)=>q.i-p.i);
+  const cmp={'reg-asc':cOrd,'reg-desc':(p,q)=>cOrd(q,p),'name-asc':nm,'name-desc':(p,q)=>nm(q,p),custom:(p,q)=>(p.x.o??p.i)-(q.x.o??q.i)}[so]||((p,q)=>q.i-p.i);
   return m.sort(cmp).map(o=>o.x);
 }
 /* 本日のピックアップ: 日付ごとに固定のランダムで2作品(作品フィルター中はその作品の中から) */
@@ -2952,14 +2966,103 @@ const galW=x=>S.works.find(w=>w.id==x.workId)||{title:'ギャラリー',color:'#
 function galRd(id){navTo(()=>{S.rd=id})}
 const tateOn=()=>{try{return localStorage.getItem('sm_tate')=='1'}catch(e){return false}};
 function toggleTate(){try{localStorage.setItem('sm_tate',tateOn()?'0':'1')}catch(e){}render()}
+/* ---- 小説の文字設定(サイズ・フォント) ---- */
+const NVF={std:['標準',''],min:['明朝',"'Hiragino Mincho ProN','Yu Mincho','Noto Serif JP',serif"],got:['ゴシック',"'Hiragino Sans','Yu Gothic','Noto Sans JP',sans-serif"],mar:['丸ゴシック',"'Hiragino Maru Gothic ProN','Yu Gothic','Noto Sans JP',sans-serif"]};
+const nvFs=()=>{const n=+cGet('sm_nvfs','17');return n>=12&&n<=32?n:17};
+const nvFf=()=>{const v=cGet('sm_nvff','std');return NVF[v]?v:'std'};
+const nvStyle=()=>`--nvfs:${nvFs()}px;${NVF[nvFf()][1]?`--nvff:${NVF[nvFf()][1]};`:''}`;
+function nvApply(){
+  const f=NVF[nvFf()][1],set=el=>{if(!el)return;el.style.setProperty('--nvfs',nvFs()+'px');if(f)el.style.setProperty('--nvff',f);else el.style.removeProperty('--nvff')};
+  const el=$('#app .rd.nv');set(el);set($('#nvpv'));
+  if(el&&el.classList.contains('tate'))pgLayout();
+}
+function nvSet(n){n=Math.max(12,Math.min(32,n));cSet('sm_nvfs',n);const v=$('#nvfsv'),r=$('#nvr');if(v)v.textContent=n;if(r)r.value=n;nvApply()}
+function nvSz(d){nvSet(nvFs()+d)}
+function nvFont(k){cSet('sm_nvff',k);document.querySelectorAll('.nvo .btn').forEach(b=>b.classList.toggle('sub',b.dataset.k!=k));nvApply()}
+function nvDlg(){
+  const fs=nvFs(),ff=nvFf();
+  open(`<h3 style="margin:0">文字の設定</h3>
+  <label>文字サイズ <b id="nvfsv">${fs}</b>px</label>
+  <div class="nvsz"><button class="btn sub" onclick="nvSz(-1)">A−</button><input type="range" id="nvr" min="12" max="32" step="1" value="${fs}" oninput="nvSet(+this.value)"><button class="btn sub" onclick="nvSz(1)">A＋</button></div>
+  <label>フォント</label>
+  <div class="nvo">${Object.entries(NVF).map(([k,v])=>`<button class="btn ${k==ff?'':'sub'}" data-k="${k}" style="${v[1]?`font-family:${v[1]}`:''}" onclick="nvFont('${k}')">${v[0]}</button>`).join('')}</div>
+  <div class="nvpv" id="nvpv" style="${nvStyle()}">吾輩は猫である。名前はまだ無い。</div>
+  <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`);
+}
+/* ---- 縦書きのページ送り(画面の大きさは固定。右から左へ読む) ---- */
+const PG={i:0,n:1,step:0,t:0,wt:0};
+const pgBox=()=>$('#app .rd.tate');
+function pgPaint(){
+  const n=$('#pgn'),r=$('#pgr'),a=$('#pgnx'),b=$('#pgpv');
+  if(n)n.textContent=`${PG.i+1} / ${PG.n}`;
+  if(r){r.max=Math.max(0,PG.n-1);r.value=PG.i}
+  if(a)a.disabled=PG.i>=PG.n-1;
+  if(b)b.disabled=PG.i<=0;
+}
+function pgCalc(){
+  const el=pgBox();if(!el)return;
+  const st=el.clientWidth;if(!st)return;
+  const sp=el.querySelector('#pgsp');if(sp)sp.style.width='0px';
+  const cw=el.scrollWidth;
+  PG.step=st;PG.n=Math.max(1,Math.ceil((cw-2)/st));
+  if(sp)sp.style.width=(PG.n*st-cw)+'px'; /* 最後のページも1画面ぶんになるよう余白を足す */
+  PG.i=Math.max(0,Math.min(PG.i,PG.n-1));
+  el.scrollTo({left:-PG.i*st,behavior:'auto'});
+  pgPaint();
+}
+function pgLayout(){
+  const el=pgBox();if(!el)return;
+  const pitch=nvFs()*1.9,avail=$('#app').clientWidth-32;
+  const w=avail<pitch*3?avail:Math.floor(avail/pitch)*pitch; /* 行の幅の整数倍にして、行が途中で切れないように */
+  el.style.width=w+'px';el.style.setProperty('--pw',w+'px');
+  pgCalc();
+}
+function pgTo(i){
+  const el=pgBox();if(!el)return;
+  PG.i=Math.max(0,Math.min(PG.n-1,i));
+  el.scrollTo({left:-PG.i*PG.step,behavior:'auto'});pgPaint();
+}
+const pgGo=d=>pgTo(PG.i+d);
+function pgSetup(){
+  const el=pgBox();if(!el)return;
+  PG.i=0;pgLayout();
+  let sx=0,sy=0,ok=false;
+  el.addEventListener('pointerdown',e=>{sx=e.clientX;sy=e.clientY;ok=true});
+  el.addEventListener('pointercancel',()=>{ok=false});
+  el.addEventListener('pointerup',e=>{
+    if(!ok)return;ok=false;
+    const dx=e.clientX-sx,dy=e.clientY-sy;
+    if(e.pointerType!='mouse'&&Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.5){pgGo(dx>0?1:-1);return} /* 右へスワイプ = 次のページ(左側へ進む) */
+    if(Math.abs(dx)<8&&Math.abs(dy)<8&&!e.target.closest('a,summary,button,img,iframe,video,sup')&&!String(getSelection()).length){
+      const r=el.getBoundingClientRect();pgGo(e.clientX<r.left+r.width/2?1:-1); /* 左側タップ = 次、右側タップ = 前 */
+    }
+  });
+  el.addEventListener('wheel',e=>{e.preventDefault();if(Date.now()-PG.wt<250)return;PG.wt=Date.now();pgGo(e.deltaY>0||e.deltaX>0?1:-1)},{passive:false});
+  el.addEventListener('toggle',()=>setTimeout(pgCalc,0),true);
+  el.addEventListener('load',()=>pgCalc(),true); /* 画像・動画の読み込み後にページ数を数え直す */
+  el.addEventListener('scroll',()=>{
+    clearTimeout(PG.t);
+    PG.t=setTimeout(()=>{
+      const a=Math.abs(el.scrollLeft),k=Math.max(0,Math.min(PG.n-1,Math.round(a/PG.step)));
+      if(k!=PG.i||Math.abs(a-k*PG.step)>2){PG.i=k;el.scrollTo({left:-k*PG.step,behavior:'auto'});pgPaint()}
+    },120);
+  });
+}
+addEventListener('resize',()=>{if(pgBox())pgLayout()});
+addEventListener('keydown',e=>{
+  if(!pgBox()||$('#dlg').open||/INPUT|TEXTAREA|SELECT/.test((e.target||{}).tagName))return;
+  if(e.key=='ArrowLeft'){pgGo(1);e.preventDefault()}else if(e.key=='ArrowRight'){pgGo(-1);e.preventDefault()}
+});
 function galRead(x){
-  const tt=tateOn();
+  const tt=tateOn(),body=x.body?rich(x.body):'<span class="mut">本文がありません。✎から書けます。</span>';
   $('#app').innerHTML=`${workBar(galW(x))}
-  <div class="bar"><button class="ic bk" aria-label="戻る" onclick="backRd()">${ico(P_BACK)}</button><span class="rt">${esc(x.title)}</span><button class="ic" aria-label="${tt?'横書きにする':'縦書きにする'}" title="${tt?'横書きにする':'縦書きにする'}" onclick="toggleTate()" style="font-size:15px;font-weight:700;min-width:36px">${tt?'横':'縦'}</button><button class="ic" aria-label="編集" onclick="startEdit('${x.id}')">${ico(P_PEN)}</button><button class="ic" aria-label="メニュー" onclick="galMenu('${x.id}')">${ico(DOTS)}</button></div>
-  ${dBoth(x)}<div class="rd${tt?' tate':''}">${x.body?rich(x.body):'<span class="mut">本文がありません。✎から書けます。</span>'}</div>`;
+  <div class="bar"><button class="ic bk" aria-label="戻る" onclick="backRd()">${ico(P_BACK)}</button><span class="rt">${esc(x.title)}</span><button class="ic" aria-label="文字の設定" title="文字サイズ・フォント" onclick="nvDlg()" style="font-size:14px;font-weight:700;min-width:36px">Aa</button><button class="ic" aria-label="${tt?'横書きにする':'縦書きにする'}" title="${tt?'横書きにする':'縦書きにする'}" onclick="toggleTate()" style="font-size:15px;font-weight:700;min-width:36px">${tt?'横':'縦'}</button><button class="ic" aria-label="編集" onclick="startEdit('${x.id}')">${ico(P_PEN)}</button><button class="ic" aria-label="メニュー" onclick="galMenu('${x.id}')">${ico(DOTS)}</button></div>
+  ${dBoth(x)}${tt
+    ?`<div class="rd tate nv" style="${nvStyle()}">${body}<div id="pgsp" style="width:0;height:1px"></div></div>
+  <div class="pgb"><button class="btn sub" id="pgnx" aria-label="次のページ" onclick="pgGo(1)">◀</button><input type="range" id="pgr" min="0" max="0" value="0" aria-label="ページ" oninput="pgTo(+this.value)"><span class="pgn" id="pgn"></span><button class="btn sub" id="pgpv" aria-label="前のページ" onclick="pgGo(-1)">▶</button></div>`
+    :`<div class="rd nv" style="${nvStyle()}">${body}</div>`}`;
   hydrate($('#app'));
-  const tv=$('#app .rd.tate'); /* 縦書き: マウスのホイールで横に進む */
-  if(tv)tv.addEventListener('wheel',e=>{if(e.deltaX||!e.deltaY)return;tv.scrollLeft-=e.deltaY;e.preventDefault()},{passive:false});
+  if(tt)pgSetup();
 }
 function galMenu(id){
   const g=S.gal.find(x=>x.id==id&&!gIsF(x));if(!g)return;
