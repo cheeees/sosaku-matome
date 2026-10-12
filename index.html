@@ -21,7 +21,7 @@
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 "Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif;padding-top:env(safe-area-inset-top)}
-nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--bg);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:5}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--bg);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);padding-left:calc(14px + env(safe-area-inset-left));padding-right:calc(14px + env(safe-area-inset-right));z-index:5}
 nav button{flex:1;background:none;border:0;color:var(--mut);padding:9px 0 7px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-size:11px}
 nav button.on{color:var(--ink)}
 nav svg{width:24px;height:24px}
@@ -33,9 +33,10 @@ nav svg{width:24px;height:24px}
 .wheel{position:relative;width:min(200px,100%);aspect-ratio:1;border-radius:50%;touch-action:none;cursor:crosshair;-webkit-user-select:none;user-select:none}
 .ring{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00);-webkit-mask:radial-gradient(circle closest-side,transparent 65.5%,#000 66.5%);mask:radial-gradient(circle closest-side,transparent 65.5%,#000 66.5%)}
 .sv{position:absolute;left:27.5%;top:27.5%;width:45%;height:45%;border-radius:4px;box-shadow:0 0 0 1px var(--line);background:linear-gradient(to top,#000,#0000),linear-gradient(to right,#fff,hsl(var(--h,0),100%,50%))}
-.hh,.hs{position:absolute;border-radius:50%;background:transparent;border:3px solid #fff;box-shadow:0 0 0 1px #0008,0 1px 4px #0006;pointer-events:none}
-.hh{width:22px;height:22px;margin:-11px 0 0 -11px}
-.hs{width:18px;height:18px;margin:-9px 0 0 -9px}
+.hh,.hs{position:absolute;border-radius:50%;background:transparent;border:3px solid #fff;box-shadow:0 0 0 1.5px #000a,0 1px 5px #0008;pointer-events:none}
+.hh{width:26px;height:26px;margin:-13px 0 0 -13px}
+.hs{width:22px;height:22px;margin:-11px 0 0 -11px}
+.cpbar{width:100%;max-width:260px;height:18px;border-radius:9px;border:1px solid rgba(128,128,128,.5);box-shadow:0 0 0 1px var(--bg)}
 .chips{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .chips .btn{display:flex;align-items:center;justify-content:center;gap:8px}
 .sw{width:16px;height:16px;border-radius:50%;border:1px solid var(--line);display:inline-block}
@@ -91,7 +92,7 @@ nav svg{width:24px;height:24px}
 .idxb{text-align:left;word-break:break-all}
 .idxb.l1{padding-left:30px}.idxb.l2{padding-left:44px}
 .hd.h1{font-size:1.5em;margin:1em 0 .4em;padding-bottom:.2em;border-bottom:1px solid var(--line)}
-.hd.h2{font-size:1.12em;line-height:1.4;margin:.9em 0 .3em;padding-left:.5em;border-left:.3em solid var(--ink)}
+.hd.h2{font-size:1.12em;line-height:1.4;margin:.9em 0 .7em;padding-left:.5em;border-left:.3em solid var(--ink)}
 .hd.h3{font-size:1.05em;margin:.8em 0 .2em}
 .hd:first-child{margin-top:0}
 .im{margin:8px 0}.im img{display:block;max-width:100%;height:auto;margin:0 auto;border-radius:6px}
@@ -104,6 +105,9 @@ details.fold>summary::-webkit-details-marker{display:none}
 details.fold>summary::before{content:"";flex:none;width:6px;height:6px;margin:0 6px 0 3px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(-45deg);transition:transform .15s}
 details.fold[open]>summary::before{transform:rotate(45deg)}
 details.fold>.fb{padding:2px 0 4px 1.3em}
+details.fold>summary.fh{align-items:center}
+details.fold>summary.fh .hd{flex:1;min-width:0;margin-top:.25em;margin-bottom:.15em}
+details.fold>summary.fh .hd.h2{margin-bottom:.5em}
 .ind{padding-left:calc(var(--n) * 1em)}
 .vb{margin:10px 0}.vb .gvid{margin:0 auto}.vb .gvf{margin:0 auto}
 .ge{margin:10px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
@@ -1700,10 +1704,10 @@ function hsv2rgb(h,s,v){const f=n=>{const k=(n+h/60)%6;return v-v*s*Math.max(0,M
 function rgb2hsv(a,ph){const[r,g,b]=a.map(x=>x/255),mx=Math.max(r,g,b),d=mx-Math.min(r,g,b);let h=ph;if(d>0)h=mx==r?60*(((g-b)/d+6)%6):mx==g?60*((b-r)/d+2):60*((r-g)/d+4);return[h,mx?d/mx:0,mx]}
 const toHex=a=>'#'+a.map(n=>n.toString(16).padStart(2,'0')).join('');
 const fromHex=t=>{t=t.trim().replace(/^#/,'');if(/^[0-9a-f]{3}$/i.test(t))t=t.replace(/./g,'$&$&');return/^[0-9a-f]{6}$/i.test(t)?[0,2,4].map(i=>parseInt(t.substr(i,2),16)):null};
-function pickerHTML(id,v,k){return `<div class="cpk" id="${id}" data-v="${esc(v)}"${k?` data-k="${k}"`:''}><div class="wheel"><div class="ring"></div><div class="sv"><div class="hs" tabindex="0" aria-label="彩度と明るさ(矢印キーで調整)"></div></div><div class="hh" tabindex="0" aria-label="色相(左右の矢印キーで調整)"></div></div><input class="hex" maxlength="7" spellcheck="false" autocomplete="off" aria-label="16進数のカラーコード"></div>`}
+function pickerHTML(id,v,k){return `<div class="cpk" id="${id}" data-v="${esc(v)}"${k?` data-k="${k}"`:''}><div class="wheel"><div class="ring"></div><div class="sv"><div class="hs" tabindex="0" aria-label="彩度と明るさ(矢印キーで調整)"></div></div><div class="hh" tabindex="0" aria-label="色相(左右の矢印キーで調整)"></div></div><div class="cpbar" style="background:${esc(v)}" aria-label="いま選んでいる色"></div><input class="hex" maxlength="7" spellcheck="false" autocomplete="off" aria-label="16進数のカラーコード"></div>`}
 function mountPickers(cb,root='#dlg'){
   document.querySelectorAll(root+' .cpk').forEach(el=>{
-    const wheel=el.querySelector('.wheel'),sv=el.querySelector('.sv'),hs=el.querySelector('.hs'),hh=el.querySelector('.hh'),hx=el.querySelector('.hex');
+    const wheel=el.querySelector('.wheel'),sv=el.querySelector('.sv'),hs=el.querySelector('.hs'),hh=el.querySelector('.hh'),hx=el.querySelector('.hex'),pn=el.querySelector('.cpbar');
     const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
     let c=fromHex(el.dataset.v)||[255,255,255],[H,Sa,V]=rgb2hsv(c,0),mode=null;
     const paint=(emit,keep)=>{
@@ -1711,6 +1715,7 @@ function mountPickers(cb,root='#dlg'){
       const a=H*Math.PI/180;
       hh.style.left=(50+41.5*Math.sin(a))+'%';hh.style.top=(50-41.5*Math.cos(a))+'%';
       hs.style.left=Sa*100+'%';hs.style.top=(1-V)*100+'%';
+      hh.style.background='hsl('+H.toFixed(1)+',100%,50%)';hs.style.background=v;if(pn)pn.style.background=v; /* 目印と見本を、いま選んでいる色で塗る */
       if(!keep)hx.value=v.toUpperCase();
       if(emit&&cb)cb(el);
     };
@@ -1866,7 +1871,7 @@ function idxList(){
   if(S.tab=='shed')return[];
   if(S.ed){ /* 編集中: 本文欄の「# 見出し」行から索引を作る(キャラは詳細情報の中なので1段下げる) */
     const t=$('#eb'),x=edItem();if(!t||!x)return[];
-    const out=[],re=/^[\u3000\t]*(#{1,3}) (.*)$/,add=isChar(x)?1:0;let pos=0;
+    const out=[],re=/^[\u3000\t]*(?:~~~\+?[ \u3000]+)?(#{1,3}) (.*)$/,add=isChar(x)?1:0;let pos=0;
     t.value.split('\n').forEach(ln=>{
       const m=re.exec(ln);
       if(m){const s=m[2].replace(/《《(.+?)》》/g,'$1').replace(/《[^》]*》/g,'').replace(/[｜|]/g,'').replace(/\*+/g,'').trim();if(s)out.push({pos,t:s,l:Math.min(2,m[1].length-1+add)})}
@@ -1911,7 +1916,7 @@ function idxGo(i){
   if(h.pos!==undefined){$('#dlg').close();setTimeout(()=>edJump(h.pos),50);return}
   if(!document.body.contains(h.el))return;
   $('#dlg').close();
-  for(let p=h.el.parentElement;p;p=p.parentElement)if(p.tagName=='DETAILS')p.open=true; /* 閉じた折りたたみの中の見出しは開いてから飛ぶ */
+  for(let p=h.el.parentElement;p;p=p.parentElement)if(p.tagName=='DETAILS'&&!(p.firstElementChild&&p.firstElementChild.contains(h.el)))p.open=true; /* 閉じた折りたたみの中の見出しは開いてから飛ぶ */
   setTimeout(()=>h.el.scrollIntoView({behavior:'smooth',block:'start'}),50);
 }
 /* ---- 本文の記法 ---- */
@@ -1951,6 +1956,7 @@ function deco(T,i,stops){
   while(i<T.length){
     const st=stops.find(s=>T.startsWith(s,i));
     if(st){
+      if((st=='))'||st=='））')&&T[i+2]==st[0]){buf+=T[i];i++;continue} /* )))のように続くときは、先頭の ) は文字として扱い、最後の2つで閉じる */
       /* 斜体の中で ** が来たら、まず太字の開始として読んでみる(*斜体 **太字** 斜体* の重ねがけ) */
       if(st=='*'&&T.startsWith('**',i)&&sub('**',['**'],strong))continue;
       fl();return [h,i+st.length,true];
@@ -1999,6 +2005,12 @@ function one(line,out){
   const tx=line.slice(last);if(tx.trim())ln(tx);
 }
 const FOLD=/^~~~(\+?)(?:[ 　]+(.*))?$/;
+/* 折りたたみの見出し行: タイトルが「# 」「## 」「### 」で始まるときは見出しの見た目にする(折りたたみマークは見出しの横) */
+function foldSum(t){
+  const h=/^(#{1,3}) (.*)$/.exec(t);
+  if(h&&h[2].trim())return `<summary class="fh"><span class="hd h${h[1].length}">${inl(h[2])}</span></summary>`;
+  return `<summary>${inl(t)||'折りたたみ'}</summary>`;
+}
 function blocks(lines,out,inCard){
   let i=0;
   while(i<lines.length){
@@ -2008,7 +2020,7 @@ function blocks(lines,out,inCard){
       let j=i+1,d=1;
       while(j<lines.length){const m=FOLD.exec(bare(lines[j]));if(m){if(m[1]||(m[2]||'').trim())d++;else d--;if(!d)break}j++}
       const sub=[];blocks(lines.slice(i+1,j),sub,inCard);
-      out.push(indW(`<details class="fold"${fm[1]?' open':''}><summary>${inl((fm[2]||'').trim())||'折りたたみ'}</summary><div class="fb">${sub.join('')}</div></details>`,n));
+      out.push(indW(`<details class="fold"${fm[1]?' open':''}>${foldSum((fm[2]||'').trim())}<div class="fb">${sub.join('')}</div></details>`,n));
       i=j+1;continue;
     }
     const f=!inCard&&/^```\s*$/.test(bl);
@@ -2179,7 +2191,7 @@ function editView(w,x){
   <label for="evo">セリフ</label><div class="edw"><textarea id="evo" class="rd ed" rows="1" onfocus="S.tx=this" oninput="grow(this)" placeholder="セリフを書く">${esc((x.voice||{}).text||'')}</textarea></div>`:''}
   <label for="eb">${C?'詳細情報':'内容'}</label><div class="edw"><div id="hl" class="rd hl" aria-hidden="true"></div><textarea id="eb" class="rd ed" rows="1" onfocus="S.tx=this" oninput="grow(this);fhl()" placeholder="本文を書く">${esc(x.body||'')}</textarea></div>
   <details class="hint"><summary>書き方の一覧</summary><div class="hxb">
-<div class="hxt">見出し・文字の装飾</div><div class="hxr"><div class="hxk"><code># 大見出し</code><code>## 中見出し</code><code>### 小見出し</code></div><div class="hxd">行頭に書きます</div></div><div class="hxr"><div class="hxk"><code>**太字**</code></div><div class="hxd">太字</div></div><div class="hxr"><div class="hxk"><code>*斜体*</code></div><div class="hxd">斜体</div></div><div class="hxr"><div class="hxk"><code>｜漢字《かんじ》</code></div><div class="hxd">ルビ(ふりがな)</div></div><div class="hxr"><div class="hxk"><code>《《傍点》》</code></div><div class="hxd">傍点</div></div><div class="hxr"><div class="hxk"><code>((注意書き))</code></div><div class="hxd">小さく薄い文字</div></div><div class="hxr"><div class="hxk"><code>[^1]</code><code>[^1]: 内容</code></div><div class="hxd">脚注。<span class="hxs">[^1] を本文に、[^1]: 内容 を別の行に書きます</span></div></div><div class="hxr"><div class="hxk"><code>**《《太字の傍点》》**</code><code>*斜体の中の **太字***</code><code>((注意書きの｜漢字《かんじ》))</code></div><div class="hxd">装飾は重ねがけできます</div></div><div class="hxt">字下げ・ブロック</div><div class="hxr"><div class="hxk"><code>行頭の全角スペース</code></div><div class="hxd">字下げ。<span class="hxs">ボタンで増減できます。通常の文章は最初から少し字下げされます。見出し・引用・カード・折りたたみ・画像・動画・ギャラリー作品の前に付けても、そのまとまりごと字下げされます</span></div></div><div class="hxr"><div class="hxk"><code>&gt; 引用の文</code></div><div class="hxd">引用線。<span class="hxs">続く行にも &gt; を付けると繋がります</span></div></div><div class="hxr"><div class="hxk"><code>\`\`\`</code></div><div class="hxd">この行で挟むとカード表示</div></div><div class="hxr"><div class="hxk"><code>~~~ タイトル</code><code>~~~</code></div><div class="hxd">折りたたみ(最初は閉じている)。<span class="hxs">開始を <code>~~~+ タイトル</code> にすると最初から開いています。入れ子もOK</span></div></div><div class="hxt">リンク・埋め込み</div><div class="hxr"><div class="hxk"><code>[文字](https://…)</code></div><div class="hxd">リンク。<span class="hxs">URLをそのまま書いても自動でリンクになります</span></div></div><div class="hxr"><div class="hxk"><code>URLだけの行</code></div><div class="hxd">YouTube・Vimeo・ニコニコ・mp4 は本文でそのまま再生。<span class="hxs">文字付きのリンクにしたいときは [文字](URL)</span></div></div><div class="hxr"><div class="hxk"><code>[[gal:…]]</code></div><div class="hxd">ギャラリー作品の貼り付け(イラスト・動画・小説)。<span class="hxs">ツールバーのボタンから選べます</span></div></div>
+<div class="hxt">見出し・文字の装飾</div><div class="hxr"><div class="hxk"><code># 大見出し</code><code>## 中見出し</code><code>### 小見出し</code></div><div class="hxd">行頭に書きます</div></div><div class="hxr"><div class="hxk"><code>**太字**</code></div><div class="hxd">太字</div></div><div class="hxr"><div class="hxk"><code>*斜体*</code></div><div class="hxd">斜体</div></div><div class="hxr"><div class="hxk"><code>｜漢字《かんじ》</code></div><div class="hxd">ルビ(ふりがな)</div></div><div class="hxr"><div class="hxk"><code>《《傍点》》</code></div><div class="hxd">傍点</div></div><div class="hxr"><div class="hxk"><code>((注意書き))</code></div><div class="hxd">小さく薄い文字</div></div><div class="hxr"><div class="hxk"><code>[^1]</code><code>[^1]: 内容</code></div><div class="hxd">脚注。<span class="hxs">[^1] を本文に、[^1]: 内容 を別の行に書きます</span></div></div><div class="hxr"><div class="hxk"><code>**《《太字の傍点》》**</code><code>*斜体の中の **太字***</code><code>((注意書きの｜漢字《かんじ》))</code></div><div class="hxd">装飾は重ねがけできます</div></div><div class="hxt">字下げ・ブロック</div><div class="hxr"><div class="hxk"><code>行頭の全角スペース</code></div><div class="hxd">字下げ。<span class="hxs">ボタンで増減できます。通常の文章は最初から少し字下げされます。見出し・引用・カード・折りたたみ・画像・動画・ギャラリー作品の前に付けても、そのまとまりごと字下げされます</span></div></div><div class="hxr"><div class="hxk"><code>&gt; 引用の文</code></div><div class="hxd">引用線。<span class="hxs">続く行にも &gt; を付けると繋がります</span></div></div><div class="hxr"><div class="hxk"><code>\`\`\`</code></div><div class="hxd">この行で挟むとカード表示</div></div><div class="hxr"><div class="hxk"><code>~~~ タイトル</code><code>~~~</code></div><div class="hxd">折りたたみ(最初は閉じている)。<span class="hxs">開始を <code>~~~+ タイトル</code> にすると最初から開いています。入れ子もOK</span></div></div><div class="hxr"><div class="hxk"><code>~~~ # 見出し</code><code>~~~ ## 見出し</code><code>~~~ ### 見出し</code></div><div class="hxd">見出しの折りたたみ。<span class="hxs">タイトルを見出しの見た目にして、横に折りたたみマークが付きます。<code>~~~+ # 見出し</code> で最初から開きます</span></div></div><div class="hxt">リンク・埋め込み</div><div class="hxr"><div class="hxk"><code>[文字](https://…)</code></div><div class="hxd">リンク。<span class="hxs">URLをそのまま書いても自動でリンクになります</span></div></div><div class="hxr"><div class="hxk"><code>URLだけの行</code></div><div class="hxd">YouTube・Vimeo・ニコニコ・mp4 は本文でそのまま再生。<span class="hxs">文字付きのリンクにしたいときは [文字](URL)</span></div></div><div class="hxr"><div class="hxk"><code>[[gal:…]]</code></div><div class="hxd">ギャラリー作品の貼り付け(イラスト・動画・小説)。<span class="hxs">ツールバーのボタンから選べます</span></div></div>
   </div></details>
   ${C?'<div id="cswh" class="shed"><div class="hw"></div></div>':''}`;
   grow($('#eb'));fhl();
