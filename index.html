@@ -2975,7 +2975,7 @@ function galView(){
   <div class="ctabs">${[['all','すべて'],...Object.entries(GT)].map(([k,l])=>`<button class="btn ${k==ty?'':'sub'}" onclick="setGalT('${k}')">${l} ${cnt(k)}</button>`).join('')}</div>
   <div class="bar"><button class="btn ibtn" aria-label="ギャラリーに追加" title="追加" onclick="galEdit()">${ico(P_PLUS)}</button><button class="btn sub ibtn" aria-label="フォルダを追加" title="フォルダを追加" onclick="galFolderDlg()">${ico(P_FADD)}</button><select aria-label="並び替え" onchange="setGalS(this.value)">${SORTS.map(([k,v])=>`<option value="${k}"${k==so?' selected':''}>${v}</option>`).join('')}</select></div>
   ${fl.length?`<div class="list" style="margin-top:4px;margin-bottom:14px">${fl.map(x=>galFolderRow(x,so=='custom')).join('')}</div>`:''}
-  ${a.length?`<div class="gg">${a.map(g=>galCard(g,so=='custom')).join('')}</div>`:fl.length?'':`<div class="empty">${inWk.length?'条件に合うものがありません':S.nf?'このフォルダはまだ空です':galHere().length||S.gal.length?'条件に合うものがありません':'まだありません。➕からイラスト・小説・動画を追加できます'}</div>`}`;
+  ${a.length?`<div class="gg">${a.map(g=>galCard(g,so=='custom')).join('')}</div>`:fl.length?'':`<div class="empty">${inWk.length?'条件に合うものがありません':S.nf?'このフォルダはまだ空です':galHere().length||S.gal.length?'条件に合うものがありません':'まだありません。<br>＋からイラスト・小説・動画を追加できます'}</div>`}`;
   hydrate(app);
 }
 function galOpen(id){
