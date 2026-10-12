@@ -2757,17 +2757,98 @@ function exJson(kind,id){
 function exportDlg(kind,id){
   const f=exFind(kind,id);if(!f)return;
   open(`<h3 style="margin:0">書き出し</h3><p class="mut" style="word-break:break-all">「${esc(f.title)}」${kind=='note'&&isF(f.x)?'の中の設定をまとめて':'を'}書き出します。</p>
-  <div class="menu"><button class="btn" onclick="doExport('${kind}','${id}','txt')">テキスト(.txt)</button><button class="btn sub" onclick="doExport('${kind}','${id}','json')">JSON(.json・バックアップ向け)</button></div>
-  <p class="mut" style="margin:8px 0 0">画像は含まれません(テキストでは画像の行を取り除きます)。ルビ・傍点の書き方はそのまま残ります。</p>
+  <div class="menu"><button class="btn" onclick="doExport('${kind}','${id}','html')">HTML(.html・画像つき)</button><button class="btn sub" onclick="doExport('${kind}','${id}','txt')">テキスト(.txt)</button><button class="btn sub" onclick="doExport('${kind}','${id}','json')">JSON(.json・バックアップ向け)</button></div>
+  <label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input id="exim" type="checkbox" checked style="width:auto">HTMLには画像を埋め込む(ファイルが大きくなります)</label>
+  <p class="mut" style="margin:8px 0 0">テキスト・JSONには画像は含まれません(テキストでは画像の行を取り除きます)。ルビ・傍点の書き方はそのまま残ります。</p>
   <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`);
 }
 function doExport(kind,id,fmt){
   const f=exFind(kind,id);if(!f)return;
+  if(fmt=='html')return exHtmlRun(kind,id,f);
   const out=fmt=='json'?exJson(kind,id):exText(kind,id);
   const a=document.createElement('a'),u=URL.createObjectURL(new Blob([out],{type:(fmt=='json'?'application/json':'text/plain')+';charset=utf-8'}));
   a.href=u;a.download=`${(f.title||'無題').replace(/[\\/:*?"<>|]/g,'_')}.${fmt}`;document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(u),4000);
   $('#dlg').close();status('書き出しました');
+}
+/* ===== HTML書き出し: 本文を画面と同じ描画(rich)でHTMLにして、画像は base64 で埋め込む(1ファイルで完結) ===== */
+const exURL=new Map();
+function exData(p){
+  if(!exURL.has(p))exURL.set(p,(async()=>{
+    try{
+      const b=await(await fetch(await imgURL(p))).blob();
+      return await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(b)});
+    }catch(e){return null}
+  })());
+  return exURL.get(p);
+}
+async function exImg(p,embed,st){
+  if(!p)return '';
+  if(embed){const d=await exData(p);if(d){st.ok++;status(`画像を埋め込み中… ${st.ok}`);return d}st.ng++}
+  return isURL(p)?p:'';
+}
+async function exPost(html,pf,embed,st){
+  const t=document.createElement('template');t.innerHTML=html;const r=t.content;
+  for(const i of [...r.querySelectorAll('img[data-p]')]){
+    const u=await exImg(i.dataset.p,embed,st);
+    if(u){i.src=u;i.removeAttribute('data-p')}else i.remove();
+  }
+  r.querySelectorAll('.im,.gte').forEach(e=>{if(!e.querySelector('img'))e.remove()});
+  r.querySelectorAll('.ge button.ic').forEach(e=>e.remove());
+  r.querySelectorAll('iframe').forEach(f=>{
+    const a=document.createElement('a');a.href=f.src;a.target='_blank';a.rel='noopener noreferrer';a.textContent='動画を開く ↗';
+    const p=document.createElement('p');p.className='mut';p.appendChild(a);(f.closest('.gvid')||f).replaceWith(p);
+  });
+  r.querySelectorAll('sup.fr').forEach(e=>{const n=e.textContent;if(e.id)e.id=`r-${pf}-${n}`;e.innerHTML=`<a href="#f-${pf}-${n}">${esc(n)}</a>`});
+  r.querySelectorAll('.fi').forEach(e=>{const n=(e.id||'').replace(/^f-/,'');e.id=`f-${pf}-${n}`;const k=e.querySelector('.fnum');if(k)k.innerHTML=`<a href="#r-${pf}-${n}">${esc(n)}</a>`});
+  r.querySelectorAll('*').forEach(e=>[...e.attributes].forEach(a=>{if(/^on/i.test(a.name))e.removeAttribute(a.name)}));
+  const d=document.createElement('div');d.appendChild(r);return d.innerHTML;
+}
+const EX_CSS=`*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 "Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif}main{max-width:760px;margin:0 auto;padding:24px 16px 64px}h1{font-size:1.6em;line-height:1.4;margin:.2em 0 .3em;word-break:break-word}h2{font-size:1.1em;margin:1.8em 0 .6em;padding-bottom:.25em;border-bottom:1px solid var(--line)}.dt{color:var(--mut);font-size:12.5px;margin-bottom:12px}.mut{color:var(--mut);font-size:13px}.tg{float:right;margin-left:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:6px;padding:4px 12px;cursor:pointer}.ch{display:flex;gap:14px;align-items:center}.ico{width:72px;height:72px;border-radius:50%;object-fit:cover;flex:none;border:1px solid var(--line)}.info{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:14px 0;padding:12px;background:var(--card);border:1px solid var(--line);border-radius:8px}.info dt{color:var(--mut)}.info dd{margin:0;white-space:pre-wrap;word-break:break-word}.stands{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}.stands figure{margin:0;text-align:center}.stands img{max-height:320px;max-width:100%;border-radius:6px}.rd{word-break:break-word;line-height:1.7em;font-size:15px}.ln{white-space:pre-wrap;word-break:break-word;min-height:1.7em;margin-left:.6em}.qt .ln,.cd .ln{margin-left:0}.hd{font-weight:700;line-height:1.5;word-break:break-word}.hd.h1{font-size:1.5em;margin:1em 0 .4em;padding-bottom:.2em;border-bottom:1px solid var(--line)}.hd.h2{font-size:1.12em;line-height:1.4;margin:.9em 0 .7em;padding-left:.5em;border-left:.3em solid var(--ink)}.hd.h3{font-size:1.05em;margin:.8em 0 .2em}.hd:first-child{margin-top:0}.im{margin:8px 0}.im img{display:block;max-width:100%;height:auto;margin:0 auto;border-radius:6px}.bt{-webkit-text-emphasis:"・";text-emphasis:"・";-webkit-text-emphasis-position:over right;text-emphasis-position:over right}ruby{ruby-position:over}rt{font-size:.5em}.rd a,.fns a{color:var(--ink);text-decoration:underline;word-break:break-all}details.fold{margin:6px 0}details.fold>summary{display:flex;align-items:center;gap:6px;padding:3px 0;font-weight:600;cursor:pointer;list-style:none}details.fold>summary::-webkit-details-marker{display:none}details.fold>summary::before{content:"";flex:none;width:6px;height:6px;margin:0 6px 0 3px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(-45deg);transition:transform .15s}details.fold[open]>summary::before{transform:rotate(45deg)}details.fold>.fb{padding:2px 0 4px 1.3em}details.fold>summary.fh::before{display:none}details.fold>summary.fh .hd{flex:1;min-width:0}.ind{padding-left:calc(var(--n)*1em)}.vb{margin:10px 0}.vb video,.gvf{max-width:100%}.ge{margin:10px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}.ge .gh2{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:13px}.ge .gh2 b{flex:1;min-width:0;word-break:break-all}.ge .gnv{padding:2px 12px 12px;font-size:13px;line-height:1.6;color:var(--mut);word-break:break-all}.gn2{white-space:pre-line}.gt{position:relative;aspect-ratio:16/9;background:var(--bg);overflow:hidden;display:grid;place-items:center}.gt img{width:100%;height:100%;object-fit:cover;display:block}.gbadge{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;line-height:1.5;padding:0 8px;border-radius:10px}.sm{font-size:.8em;color:var(--mut)}.qt{margin:6px 0 6px .6em;padding:2px 0 2px 12px;border-left:3px solid var(--mut)}.qt .qt,.cd .qt{margin-left:0}.cd{margin:10px 0;padding:10px 12px;background:var(--card);border:1px solid var(--line);border-radius:8px}sup.fr{font-size:.7em;line-height:0;margin-left:.3em;padding:0 2px}sup.fr a,.fnum a{text-decoration:none}.fns{margin-top:22px;padding-top:10px;border-top:1px solid var(--line);font-size:.85em;color:var(--mut)}.fi{display:flex;gap:6px;margin:2px 0;word-break:break-word}.fnum{flex:none;min-width:1.4em}.rd.tate{writing-mode:vertical-rl;text-orientation:mixed;text-combine-upright:digits 2;height:75vh;min-height:320px;overflow-x:auto;overflow-y:hidden;line-height:1.9;font-size:17px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.rd.tate .ln{margin:.6em 0 0;min-height:0;min-width:1.9em}.rd.tate .hd{margin:0 .3em 0 .7em!important;padding:0;border:0}.rd.tate .ind{padding-left:0;padding-top:calc(var(--n)*1em)}.rd.tate .qt{margin:0 .6em;padding:10px 0 0;border-left:0;border-top:3px solid var(--mut)}.rd.tate .im{margin:0 .6em}.rd.tate .im img{width:auto;max-height:65vh;margin:0}`;
+const EX_TG='<script>var b=document.getElementById("tg");b.onclick=function(){var t=document.querySelectorAll(".rd");for(var i=0;i<t.length;i++)t[i].classList.toggle("tate");b.textContent=t[0].classList.contains("tate")?"横書き":"縦書き"}<\/script>';
+async function exHtml(kind,id,embed,st){
+  const f=exFind(kind,id),x=f.x,w=f.w||{};let cnt=0,o='',title=f.title||'無題';
+  const sec=async(h,b,lv)=>{
+    const t=String(b||'');
+    const body=t.trim()?await exPost(rich(t),'s'+(cnt++),embed,st):'<span class="mut">(本文なし)</span>';
+    return `<section>${h?`<h${lv}>${esc(h)}</h${lv}>`:''}<div class="rd">${body}</div></section>`;
+  };
+  const dt=dBoth(x);
+  if(kind=='char'){
+    const cat=((w.cats||[]).find(k=>k.id==x.cat)||{}).title,v=x.voice||{},ic=await exImg(x.icon,embed,st),rows=[];
+    if(cat)rows.push(['カテゴリ',cat]);
+    if(x.memo)rows.push(['一言メモ',x.memo]);
+    if((x.tags||[]).length)rows.push(['タグ',x.tags.map(t=>'#'+t).join(' ')]);
+    (x.info||[]).filter(r=>r.v).forEach(r=>rows.push([r.k,r.v]));
+    if(v.one||v.two||v.three)rows.push(['サンプルボイス',`一人称「${v.one||''}」 二人称「${v.two||''}」 三人称「${v.three||''}」`]);
+    o=`<header class="ch">${ic?`<img class="ico" src="${esc(ic)}" alt="">`:''}<div><h1>${esc(x.name)}</h1>${x.ruby?`<div class="mut">${esc(x.ruby)}</div>`:''}</div></header>${dt}`
+      +(rows.length?`<dl class="info">${rows.map(r=>`<dt>${esc(r[0])}</dt><dd>${esc(r[1])}</dd>`).join('')}</dl>`:'');
+    let sh='';
+    for(const t of (x.stands||[])){const u=await exImg(t.path,embed,st);if(u)sh+=`<figure><img src="${esc(u)}" alt=""><figcaption class="mut">${esc(t.name||'')}</figcaption></figure>`}
+    if(sh)o+=`<div class="stands">${sh}</div>`;
+    if(String(v.text||'').trim())o+=await sec('セリフ',v.text,2);
+    if(String(x.body||'').trim())o+=await sec('詳細情報',x.body,2);
+    title=x.name;
+  }else if(kind=='note'&&isF(x)){
+    o=`<h1>${esc(x.title)}</h1>${dt}`;
+    const tree=async(pid,path)=>{for(const m of items(w,pid)){if(isF(m))await tree(m.id,path.concat(m.title));else o+=await sec(path.concat(m.title).join(' › '),m.body,2)}};
+    await tree(x.id,[]);
+  }else o=`<h1>${esc(x.title)}</h1>${dt}`+await sec('',x.body,2);
+  const nv=kind=='gal',cs=getComputedStyle(document.documentElement);
+  const pal=[['--bg','#f3f4f8'],['--fg','#1f2230'],['--mut','#767b8f'],['--card','#fff'],['--line','#dcdfe8'],['--ink','#2d3350']].map(([k,d])=>`${k}:${cs.getPropertyValue(k).trim()||d}`).join(';');
+  return `<!DOCTYPE html>\n<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>:root{${pal};color-scheme:${cs.colorScheme||'light'}}${EX_CSS}</style></head><body><main>${nv?'<button id="tg" class="tg">縦書き</button>':''}${o}</main>${nv?EX_TG:''}</body></html>\n`;
+}
+async function exHtmlRun(kind,id,f){
+  const cb=$('#exim'),embed=!cb||cb.checked,st={ok:0,ng:0};
+  $('#dlg').close();status('HTMLを作成中…');
+  try{
+    const out=await exHtml(kind,id,embed,st);
+    const a=document.createElement('a'),u=URL.createObjectURL(new Blob([out],{type:'text/html;charset=utf-8'}));
+    a.href=u;a.download=`${(f.title||'無題').replace(/[\\/:*?"<>|]/g,'_')}.html`;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u),4000);
+    status(st.ng?`書き出しました(画像${st.ng}枚は読み込めず、含まれていません)`:'書き出しました');
+  }catch(e){status(e.message||'書き出せませんでした',1)}
+  exURL.clear();
 }
 function themeDlg(){
   const t=document.documentElement.dataset.theme,c=getCustom();S.ck=S.ck||'bg';
