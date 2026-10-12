@@ -72,6 +72,17 @@ nav svg{width:24px;height:24px}
 .note b{flex:1;min-width:0;word-break:break-all}
 .rt{flex:1;min-width:0;font-size:17px;font-weight:700;word-break:break-all}
 .rd{word-break:break-word;line-height:1.7em;font-size:15px}
+/* 小説の縦書き表示: 右から左へ読み、横にスクロールする */
+.rd.tate{writing-mode:vertical-rl;-webkit-writing-mode:vertical-rl;text-orientation:mixed;text-combine-upright:digits 2;-webkit-text-combine:horizontal;height:calc(100vh - 230px);height:calc(100dvh - 230px - env(safe-area-inset-bottom,0px));min-height:280px;overflow-x:auto;overflow-y:hidden;line-height:1.9;font-size:17px;padding:4px 2px 14px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);-webkit-overflow-scrolling:touch}
+.rd.tate .ln{margin:.6em 0 0;min-height:0;min-width:1.9em}
+.rd.tate .hd{margin:0 .3em 0 .7em!important;padding:0;border:0}
+.rd.tate .hd.h1{padding-left:.3em;border-left:1px solid var(--line)}
+.rd.tate .hd.h2{padding-top:.5em;border-top:.3em solid var(--ink)}
+.rd.tate .ind{padding-left:0;padding-top:calc(var(--n) * 1em)}
+.rd.tate .qt{margin:0 .6em;padding:10px 0 0;border-left:0;border-top:3px solid var(--mut)}
+.rd.tate .cd{margin:0 .6em}
+.rd.tate .im{margin:0 .6em}.rd.tate .im img{max-width:none;width:auto;max-height:calc(100vh - 260px);margin:0}
+.rd.tate details.fold>.fb{padding:0 1.3em 0 0}
 .edw{position:relative;overflow:hidden;border:1px solid var(--line);border-bottom:0;border-radius:8px;background:var(--card) repeating-linear-gradient(to bottom,transparent 0,transparent calc(1.7em - 1px),var(--line) calc(1.7em - 1px),var(--line) 1.7em)}
 .edw:focus-within{outline:2px solid var(--ink)}
 .rd.ed{position:relative;z-index:1;display:block;width:100%;margin:0;padding:0 8px;border:0;border-radius:0;outline:0;background:transparent;-webkit-appearance:none;appearance:none;white-space:pre-wrap;min-height:1.7em;resize:none;overflow:hidden}
@@ -1274,13 +1285,13 @@ function open(html,cb){
 function editWork(id){
   const w=S.works.find(x=>x.id==id)||{title:'',color:'#8fb8de'};
   open(`<h3 style="margin:0">${id?'作品を編集':'作品を追加'}</h3>
-  <label>作品名</label><input id="wt" value="${esc(w.title)}">
+  <label>作品名</label><input id="wtd" value="${esc(w.title)}">
   ${dateIn('wcd',id?cTime(w):Date.now())}
   <label>フォルダの色</label>${pickerHTML('wc',w.color)}
   <div class="row">${id?'<button class="btn del" onclick="delWork(\''+id+'\')">削除</button>':''}<span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="saveWork('${id||''}')">保存</button></div>`);
 }
 function saveWork(id){
-  const title=$('#wt').value.trim();if(!title){$('#wt').focus();return}
+  const title=$('#wtd').value.trim();if(!title){$('#wtd').focus();return}
   const color=$('#wc').dataset.v;
   if(id){const wk=S.works.find(x=>x.id==id);Object.assign(wk,{title,color});const nt=dateTs('wcd',cTime(wk));if(nt&&nt!=cTime(wk))wk.ts=nt}
   else{const wk={id:uid('w'),title,color,o:Math.max(-1,...S.works.map((x,i)=>x.o??i))+1},nt=dateTs('wcd',Date.now());if(isoD(nt)!=isoD(Date.now()))wk.ts=nt;S.works.push(wk)}
@@ -2939,11 +2950,16 @@ function galCard(g,cust){
 }
 const galW=x=>S.works.find(w=>w.id==x.workId)||{title:'ギャラリー',color:'#9aa0a6'};
 function galRd(id){navTo(()=>{S.rd=id})}
+const tateOn=()=>{try{return localStorage.getItem('sm_tate')=='1'}catch(e){return false}};
+function toggleTate(){try{localStorage.setItem('sm_tate',tateOn()?'0':'1')}catch(e){}render()}
 function galRead(x){
+  const tt=tateOn();
   $('#app').innerHTML=`${workBar(galW(x))}
-  <div class="bar"><button class="ic bk" aria-label="戻る" onclick="backRd()">${ico(P_BACK)}</button><span class="rt">${esc(x.title)}</span><button class="ic" aria-label="編集" onclick="startEdit('${x.id}')">${ico(P_PEN)}</button><button class="ic" aria-label="メニュー" onclick="galMenu('${x.id}')">${ico(DOTS)}</button></div>
-  ${dBoth(x)}<div class="rd">${x.body?rich(x.body):'<span class="mut">本文がありません。✎から書けます。</span>'}</div>`;
+  <div class="bar"><button class="ic bk" aria-label="戻る" onclick="backRd()">${ico(P_BACK)}</button><span class="rt">${esc(x.title)}</span><button class="ic" aria-label="${tt?'横書きにする':'縦書きにする'}" title="${tt?'横書きにする':'縦書きにする'}" onclick="toggleTate()" style="font-size:15px;font-weight:700;min-width:36px">${tt?'横':'縦'}</button><button class="ic" aria-label="編集" onclick="startEdit('${x.id}')">${ico(P_PEN)}</button><button class="ic" aria-label="メニュー" onclick="galMenu('${x.id}')">${ico(DOTS)}</button></div>
+  ${dBoth(x)}<div class="rd${tt?' tate':''}">${x.body?rich(x.body):'<span class="mut">本文がありません。✎から書けます。</span>'}</div>`;
   hydrate($('#app'));
+  const tv=$('#app .rd.tate'); /* 縦書き: マウスのホイールで横に進む */
+  if(tv)tv.addEventListener('wheel',e=>{if(e.deltaX||!e.deltaY)return;tv.scrollLeft-=e.deltaY;e.preventDefault()},{passive:false});
 }
 function galMenu(id){
   const g=S.gal.find(x=>x.id==id&&!gIsF(x));if(!g)return;
