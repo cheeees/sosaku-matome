@@ -73,16 +73,16 @@ nav svg{width:24px;height:24px}
 .rt{flex:1;min-width:0;font-size:17px;font-weight:700;word-break:break-all}
 .rd{word-break:break-word;line-height:1.7em;font-size:15px}
 /* 小説の縦書き表示: 右から左へ読み、横にスクロールする */
-.rd.tate{writing-mode:vertical-rl;-webkit-writing-mode:vertical-rl;text-orientation:mixed;text-combine-upright:digits 2;height:calc(100vh - 290px);height:calc(100dvh - 290px - env(safe-area-inset-bottom,0px));min-height:260px;overflow:hidden;line-height:1.9;font-size:17px;padding:4px 0 6px;margin:0 auto;touch-action:pan-y;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.rd.tate .ln{margin:.6em 0 0;min-height:0;min-width:1.9em}
-.rd.tate .hd{margin:0 .3em 0 .7em!important;padding:0;border:0}
-.rd.tate .hd.h1{padding-left:.3em;border-left:1px solid var(--line)}
-.rd.tate .hd.h2{padding-top:.5em;border-top:.3em solid var(--ink)}
+.rd.tate{writing-mode:vertical-rl;-webkit-writing-mode:vertical-rl;text-orientation:mixed;text-combine-upright:digits 2;height:calc(100vh - 290px);height:calc(100dvh - 290px - env(safe-area-inset-bottom,0px));min-height:260px;overflow:hidden;--p:calc(var(--nvfs,17px)*1.9);line-height:var(--p);font-size:17px;padding:4px 0 6px;margin:0 auto;touch-action:pan-y;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.rd.tate .ln{margin:.6em 0 0;min-height:0;min-width:var(--p)}
+.rd.tate rt{line-height:1}
+.rd.tate .hd{margin:0 var(--p) 0 0!important;padding:0;border:0;position:relative;line-height:var(--p)}
+.rd.tate .hd.h1::after{content:"";position:absolute;top:0;bottom:0;left:calc(var(--p)*-.15);border-left:1px solid var(--line)}
 .rd.tate .ind{padding-left:0;padding-top:calc(var(--n) * 1em)}
-.rd.tate .qt{margin:0 .6em;padding:10px 0 0;border-left:0;border-top:3px solid var(--mut)}
-.rd.tate .cd{margin:0 .6em}
-.rd.tate .im{margin:0 .6em}.rd.tate .im img{max-width:var(--pw,100%);width:auto;max-height:calc(100vh - 330px);max-height:calc(100dvh - 330px);margin:0}
-.rd.tate details.fold>.fb{padding:0 1.3em 0 0}
+.rd.tate .qt{margin:0 calc(var(--p)/2);padding:10px 0 0;border-left:0;border-top:3px solid var(--mut)}
+.rd.tate .cd{margin:0 calc(var(--p)/2);padding:10px calc(var(--p)/2 - 1px)}
+.rd.tate .im{margin:0}.rd.tate .im img{max-width:var(--pw,100%);width:auto;max-height:calc(100vh - 330px);max-height:calc(100dvh - 330px);margin:0}
+.rd.tate details.fold>.fb{padding:0}
 /* 小説の文字設定・ページ送り */
 .nv{font-family:var(--nvff,inherit)}
 .rd.nv:not(.tate){font-size:var(--nvfs,15px)}
@@ -1916,7 +1916,7 @@ function idxList(){
   if(S.tab=='shed')return[];
   if(S.ed){ /* 編集中: 本文欄の「# 見出し」行から索引を作る(キャラは詳細情報の中なので1段下げる) */
     const t=$('#eb'),x=edItem();if(!t||!x)return[];
-    const out=[],re=/^[\u3000\t]*(?:~~~\+?[ \u3000]+)?(#{1,3}) (.*)$/,add=isChar(x)?1:0;let pos=0;
+    const out=[],re=/^(?:(?:::)+[ \u3000]?)?(?:~~~\+?[ \u3000]+)?(#{1,3}) (.*)$/,add=isChar(x)?1:0;let pos=0;
     t.value.split('\n').forEach(ln=>{
       const m=re.exec(ln);
       if(m){const s=m[2].replace(/《《(.+?)》》/g,'$1').replace(/《[^》]*》/g,'').replace(/[｜|]/g,'').replace(/\*+/g,'').trim();if(s)out.push({pos,t:s,l:Math.min(2,m[1].length-1+add)})}
@@ -2030,24 +2030,27 @@ function deco(T,i,stops){
   }
   fl();return [h,i,false];
 }
-/* 行頭の全角スペース(・タブ)の数ぶん、見出し・引用・カード・折りたたみ・画像・動画・ギャラリー作品も字下げする */
-const bare=l=>l.replace(/^[　\t]+/,'');
+/* 行頭の字下げ記号「::」(2文字で1字ぶん。::::で2字ぶん)の数だけ、文・見出し・引用・カード・折りたたみ・画像・動画・ギャラリー作品を字下げする。行頭の空白は、ただの空白として扱う */
+const INDM=/^((?:::)+)[ 　]?/;
+const bare=l=>l.replace(INDM,'');
+const dedent=l=>{const m=INDM.exec(l);return !m?l:m[1].length>2?l.slice(2):l.slice(m[0].length)};
+const indN=l=>{const m=INDM.exec(l);return m?m[1].length/2:0};
 const indW=(h,n)=>n?`<div class="ind" style="--n:${n}">${h}</div>`:h;
 function one(line,out){
-  const rest=bare(line),n=line.length-rest.length;
+  const rest=bare(line),n=indN(line);
   const h=/^(#{1,3}) (.*)$/.exec(rest);
   if(h){out.push(`<div class="hd h${h[1].length}"${n?` style="margin-left:${n}em"`:''}>${inl(h[2])}</div>`);return}
-  const ln=t=>out.push(`<div class="ln">${t?inl(t):'<br>'}</div>`);
+  const ln=t=>out.push(`<div class="ln${n?' ind':''}"${n?` style="--n:${n}"`:''}>${t?inl(t):'<br>'}</div>`);
   /* URLだけの行: YouTube・Vimeo・ニコニコ・mp4 はそのまま再生できる形で表示 */
   const u=rest.trim();
   if(/^https?:\/\/\S+$/i.test(u)){const v=vidEmbed(u);if(v){out.push(indW(`<div class="vb">${v}</div>`,n));return}}
-  if(!/\[\[(?:img|gal):/.test(line)){ln(line);return}
+  if(!/\[\[(?:img|gal):/.test(rest)){ln(rest);return}
   const re=/\[\[(img|gal):([\w-]+)\]\]/g;let last=0,m;
-  while((m=re.exec(line))){
-    const tx=line.slice(last,m.index);if(tx.trim())ln(tx);
+  while((m=re.exec(rest))){
+    const tx=rest.slice(last,m.index);if(tx.trim())ln(tx);
     out.push(indW(m[1]=='gal'?galEmbed(m[2]):`<div class="im"><img data-p="${esc(nPath(m[2]))}" alt="画像"></div>`,n));last=m.index+m[0].length;
   }
-  const tx=line.slice(last);if(tx.trim())ln(tx);
+  const tx=rest.slice(last);if(tx.trim())ln(tx);
 }
 const FOLD=/^~~~(\+?)(?:[ 　]+(.*))?$/;
 /* 折りたたみの見出し行: タイトルが「# 」「## 」「### 」で始まるときは見出しの見た目にする(折りたたみマークは見出しの横) */
@@ -2059,7 +2062,7 @@ function foldSum(t){
 function blocks(lines,out,inCard){
   let i=0;
   while(i<lines.length){
-    const line=lines[i],bl=bare(line),n=line.length-bl.length,fm=FOLD.exec(bl);
+    const line=lines[i],bl=bare(line),n=indN(line),fm=FOLD.exec(bl);
     /* 折りたたみ: 「~~~ タイトル」(最初は閉じる) / 「~~~+ タイトル」(最初から開く) 〜 「~~~」 */
     if(fm&&(fm[1]||(fm[2]||'').trim())){
       let j=i+1,d=1;
@@ -2234,7 +2237,7 @@ function editView(w,x){
   <label for="evo">セリフ</label><div class="edw"><textarea id="evo" class="rd ed" rows="1" onfocus="S.tx=this" oninput="grow(this)" placeholder="セリフを書く">${esc((x.voice||{}).text||'')}</textarea></div>`:''}
   <label for="eb">${C?'詳細情報':'内容'}</label><div class="edw"><div id="hl" class="rd hl" aria-hidden="true"></div><textarea id="eb" class="rd ed" rows="1" onfocus="S.tx=this" oninput="grow(this);fhl()" placeholder="本文を書く">${esc(x.body||'')}</textarea></div>
   <details class="hint"><summary>書き方の一覧</summary><div class="hxb">
-<div class="hxt">見出し・文字の装飾</div><div class="hxr"><div class="hxk"><code># 大見出し</code><code>## 中見出し</code><code>### 小見出し</code></div><div class="hxd">行頭に書きます</div></div><div class="hxr"><div class="hxk"><code>**太字**</code></div><div class="hxd">太字</div></div><div class="hxr"><div class="hxk"><code>*斜体*</code></div><div class="hxd">斜体</div></div><div class="hxr"><div class="hxk"><code>｜漢字《かんじ》</code></div><div class="hxd">ルビ(ふりがな)</div></div><div class="hxr"><div class="hxk"><code>《《傍点》》</code></div><div class="hxd">傍点</div></div><div class="hxr"><div class="hxk"><code>((注意書き))</code></div><div class="hxd">小さく薄い文字</div></div><div class="hxr"><div class="hxk"><code>[^1]</code><code>[^1]: 内容</code></div><div class="hxd">脚注。<span class="hxs">[^1] を本文に、[^1]: 内容 を別の行に書きます</span></div></div><div class="hxr"><div class="hxk"><code>**《《太字の傍点》》**</code><code>*斜体の中の **太字***</code><code>((注意書きの｜漢字《かんじ》))</code></div><div class="hxd">装飾は重ねがけできます</div></div><div class="hxt">字下げ・ブロック</div><div class="hxr"><div class="hxk"><code>行頭の全角スペース</code></div><div class="hxd">字下げ。<span class="hxs">ボタンで増減できます。通常の文章は最初から少し字下げされます。見出し・引用・カード・折りたたみ・画像・動画・ギャラリー作品の前に付けても、そのまとまりごと字下げされます</span></div></div><div class="hxr"><div class="hxk"><code>&gt; 引用の文</code></div><div class="hxd">引用線。<span class="hxs">続く行にも &gt; を付けると繋がります</span></div></div><div class="hxr"><div class="hxk"><code>\`\`\`</code></div><div class="hxd">この行で挟むとカード表示</div></div><div class="hxr"><div class="hxk"><code>~~~ タイトル</code><code>~~~</code></div><div class="hxd">折りたたみ(最初は閉じている)。<span class="hxs">開始を <code>~~~+ タイトル</code> にすると最初から開いています。入れ子もOK</span></div></div><div class="hxr"><div class="hxk"><code>~~~ # 見出し</code><code>~~~ ## 見出し</code><code>~~~ ### 見出し</code></div><div class="hxd">見出しの折りたたみ。<span class="hxs">タイトルを見出しの見た目にして、横に折りたたみマークが付きます。<code>~~~+ # 見出し</code> で最初から開きます</span></div></div><div class="hxt">リンク・埋め込み</div><div class="hxr"><div class="hxk"><code>[文字](https://…)</code></div><div class="hxd">リンク。<span class="hxs">URLをそのまま書いても自動でリンクになります</span></div></div><div class="hxr"><div class="hxk"><code>URLだけの行</code></div><div class="hxd">YouTube・Vimeo・ニコニコ・mp4 は本文でそのまま再生。<span class="hxs">文字付きのリンクにしたいときは [文字](URL)</span></div></div><div class="hxr"><div class="hxk"><code>[[gal:…]]</code></div><div class="hxd">ギャラリー作品の貼り付け(イラスト・動画・小説)。<span class="hxs">ツールバーのボタンから選べます</span></div></div>
+<div class="hxt">見出し・文字の装飾</div><div class="hxr"><div class="hxk"><code># 大見出し</code><code>## 中見出し</code><code>### 小見出し</code></div><div class="hxd">行頭に書きます</div></div><div class="hxr"><div class="hxk"><code>**太字**</code></div><div class="hxd">太字</div></div><div class="hxr"><div class="hxk"><code>*斜体*</code></div><div class="hxd">斜体</div></div><div class="hxr"><div class="hxk"><code>｜漢字《かんじ》</code></div><div class="hxd">ルビ(ふりがな)</div></div><div class="hxr"><div class="hxk"><code>《《傍点》》</code></div><div class="hxd">傍点</div></div><div class="hxr"><div class="hxk"><code>((注意書き))</code></div><div class="hxd">小さく薄い文字</div></div><div class="hxr"><div class="hxk"><code>[^1]</code><code>[^1]: 内容</code></div><div class="hxd">脚注。<span class="hxs">[^1] を本文に、[^1]: 内容 を別の行に書きます</span></div></div><div class="hxr"><div class="hxk"><code>**《《太字の傍点》》**</code><code>*斜体の中の **太字***</code><code>((注意書きの｜漢字《かんじ》))</code></div><div class="hxd">装飾は重ねがけできます</div></div><div class="hxt">字下げ・ブロック</div><div class="hxr"><div class="hxk"><code>:: 文</code><code>:::: 文</code></div><div class="hxd">字下げ。<span class="hxs">:: が1字ぶん、:::: が2字ぶん。ボタンで増減できます。行頭の空白は字下げにならず、そのままの空白です。折り返した行も字下げの位置にそろいます。見出し・引用・カード・折りたたみ・画像・動画・ギャラリー作品の前に付けても、そのまとまりごと字下げされます</span></div></div><div class="hxr"><div class="hxk"><code>&gt; 引用の文</code></div><div class="hxd">引用線。<span class="hxs">続く行にも &gt; を付けると繋がります</span></div></div><div class="hxr"><div class="hxk"><code>\`\`\`</code></div><div class="hxd">この行で挟むとカード表示</div></div><div class="hxr"><div class="hxk"><code>~~~ タイトル</code><code>~~~</code></div><div class="hxd">折りたたみ(最初は閉じている)。<span class="hxs">開始を <code>~~~+ タイトル</code> にすると最初から開いています。入れ子もOK</span></div></div><div class="hxr"><div class="hxk"><code>~~~ # 見出し</code><code>~~~ ## 見出し</code><code>~~~ ### 見出し</code></div><div class="hxd">見出しの折りたたみ。<span class="hxs">タイトルを見出しの見た目にして、横に折りたたみマークが付きます。<code>~~~+ # 見出し</code> で最初から開きます</span></div></div><div class="hxt">リンク・埋め込み</div><div class="hxr"><div class="hxk"><code>[文字](https://…)</code></div><div class="hxd">リンク。<span class="hxs">URLをそのまま書いても自動でリンクになります</span></div></div><div class="hxr"><div class="hxk"><code>URLだけの行</code></div><div class="hxd">YouTube・Vimeo・ニコニコ・mp4 は本文でそのまま再生。<span class="hxs">文字付きのリンクにしたいときは [文字](URL)</span></div></div><div class="hxr"><div class="hxk"><code>[[gal:…]]</code></div><div class="hxd">ギャラリー作品の貼り付け(イラスト・動画・小説)。<span class="hxs">ツールバーのボタンから選べます</span></div></div>
   </div></details>
   ${C?'<div id="cswh" class="shed"><div class="hw"></div></div>':''}`;
   grow($('#eb'));fhl();
@@ -2312,7 +2315,7 @@ function fmt(k){
   if(k=='ti'||k=='to'){
     const ls=a?v.lastIndexOf('\n',a-1)+1:0,e=b>a&&v[b-1]=='\n'?b-1:b;
     let le=v.indexOf('\n',e);if(le<0)le=v.length;
-    const old=v.slice(ls,le),nw=old.split('\n').map(l=>k=='ti'?'　'+l:l.replace(/^(　|\t| )/,'')).join('\n');
+    const old=v.slice(ls,le),nw=old.split('\n').map(l=>k=='ti'?(INDM.test(l)?'::'+l:':: '+l):dedent(l)).join('\n');
     if(nw==old)return;
     insText(t,ls,le,nw);
     if(a==b){const c=Math.max(ls,a+nw.length-old.length);t.setSelectionRange(c,c)}else t.setSelectionRange(ls,ls+nw.length);
@@ -2804,8 +2807,8 @@ async function exPost(html,pf,embed,st){
   r.querySelectorAll('*').forEach(e=>[...e.attributes].forEach(a=>{if(/^on/i.test(a.name))e.removeAttribute(a.name)}));
   const d=document.createElement('div');d.appendChild(r);return d.innerHTML;
 }
-const EX_CSS=`*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 "Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif}main{max-width:760px;margin:0 auto;padding:24px 16px 64px}h1{font-size:1.6em;line-height:1.4;margin:.2em 0 .3em;word-break:break-word}h2{font-size:1.1em;margin:1.8em 0 .6em;padding-bottom:.25em;border-bottom:1px solid var(--line)}.dt{color:var(--mut);font-size:12.5px;margin-bottom:12px}.mut{color:var(--mut);font-size:13px}.tg{float:right;margin-left:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:6px;padding:4px 12px;cursor:pointer}.ch{display:flex;gap:14px;align-items:center}.ico{width:72px;height:72px;border-radius:50%;object-fit:cover;flex:none;border:1px solid var(--line)}.info{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:14px 0;padding:12px;background:var(--card);border:1px solid var(--line);border-radius:8px}.info dt{color:var(--mut)}.info dd{margin:0;white-space:pre-wrap;word-break:break-word}.stands{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}.stands figure{margin:0;text-align:center}.stands img{max-height:320px;max-width:100%;border-radius:6px}.rd{word-break:break-word;line-height:1.7em;font-size:15px}.ln{white-space:pre-wrap;word-break:break-word;min-height:1.7em;margin-left:.6em}.qt .ln,.cd .ln{margin-left:0}.hd{font-weight:700;line-height:1.5;word-break:break-word}.hd.h1{font-size:1.5em;margin:1em 0 .4em;padding-bottom:.2em;border-bottom:1px solid var(--line)}.hd.h2{font-size:1.12em;line-height:1.4;margin:.9em 0 .7em;padding-left:.5em;border-left:.3em solid var(--ink)}.hd.h3{font-size:1.05em;margin:.8em 0 .2em}.hd:first-child{margin-top:0}.im{margin:8px 0}.im img{display:block;max-width:100%;height:auto;margin:0 auto;border-radius:6px}.bt{-webkit-text-emphasis:"・";text-emphasis:"・";-webkit-text-emphasis-position:over right;text-emphasis-position:over right}ruby{ruby-position:over}rt{font-size:.5em}.rd a,.fns a{color:var(--ink);text-decoration:underline;word-break:break-all}details.fold{margin:6px 0}details.fold>summary{display:flex;align-items:center;gap:6px;padding:3px 0;font-weight:600;cursor:pointer;list-style:none}details.fold>summary::-webkit-details-marker{display:none}details.fold>summary::before{content:"";flex:none;width:6px;height:6px;margin:0 6px 0 3px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(-45deg);transition:transform .15s}details.fold[open]>summary::before{transform:rotate(45deg)}details.fold>.fb{padding:2px 0 4px 1.3em}details.fold>summary.fh::before{display:none}details.fold>summary.fh .hd{flex:1;min-width:0}.ind{padding-left:calc(var(--n)*1em)}.vb{margin:10px 0}.vb video,.gvf{max-width:100%}.ge{margin:10px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}.ge .gh2{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:13px}.ge .gh2 b{flex:1;min-width:0;word-break:break-all}.ge .gnv{padding:2px 12px 12px;font-size:13px;line-height:1.6;color:var(--mut);word-break:break-all}.gn2{white-space:pre-line}.gt{position:relative;aspect-ratio:16/9;background:var(--bg);overflow:hidden;display:grid;place-items:center}.gt img{width:100%;height:100%;object-fit:cover;display:block}.gbadge{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;line-height:1.5;padding:0 8px;border-radius:10px}.sm{font-size:.8em;color:var(--mut)}.qt{margin:6px 0 6px .6em;padding:2px 0 2px 12px;border-left:3px solid var(--mut)}.qt .qt,.cd .qt{margin-left:0}.cd{margin:10px 0;padding:10px 12px;background:var(--card);border:1px solid var(--line);border-radius:8px}sup.fr{font-size:.7em;line-height:0;margin-left:.3em;padding:0 2px}sup.fr a,.fnum a{text-decoration:none}.fns{margin-top:22px;padding-top:10px;border-top:1px solid var(--line);font-size:.85em;color:var(--mut)}.fi{display:flex;gap:6px;margin:2px 0;word-break:break-word}.fnum{flex:none;min-width:1.4em}.rd.tate{writing-mode:vertical-rl;text-orientation:mixed;text-combine-upright:digits 2;font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho","Noto Serif JP","MS PMincho",serif;touch-action:pan-y;min-height:320px;overflow:hidden;line-height:1.9;font-size:17px;margin:0 auto;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.pgb{display:flex;align-items:center;gap:10px;margin-top:8px}.pgb button{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:6px;padding:6px 14px;cursor:pointer}.pgb button:disabled{opacity:.4}.pgb input{flex:1;min-width:0;direction:rtl}.pgn{font-size:13px;color:var(--mut);min-width:4.5em;text-align:center}.rd.tate .ln{margin:.6em 0 0;min-height:0;min-width:1.9em}.rd.tate .hd{margin:0 .3em 0 .7em!important;padding:0;border:0}.rd.tate .ind{padding-left:0;padding-top:calc(var(--n)*1em)}.rd.tate .qt{margin:0 .6em;padding:10px 0 0;border-left:0;border-top:3px solid var(--mut)}.rd.tate .im{margin:0 .6em}.rd.tate .im img{width:auto;max-width:var(--pw,100%);max-height:65vh;margin:0}`;
-const EX_TG='<script>var b=document.getElementById("tg"),on=0,C=[],cur=null;function mk(el){var o={el:el,i:0,n:1,st:0,wt:0,t:0};var sp=document.createElement("div");sp.style.cssText="width:0;height:1px";el.appendChild(sp);o.sp=sp;var bar=document.createElement("div");bar.className="pgb";bar.innerHTML="<button type=button class=nx aria-label=次のページ>◀</button><input type=range class=rg min=0 max=0 value=0><span class=pgn></span><button type=button class=pv aria-label=前のページ>▶</button>";el.parentNode.insertBefore(bar,el.nextSibling);o.bar=bar;o.nx=bar.querySelector(".nx");o.pv=bar.querySelector(".pv");o.rg=bar.querySelector(".rg");o.lb=bar.querySelector(".pgn");function paint(){o.lb.textContent=(o.i+1)+" / "+o.n;o.rg.max=Math.max(0,o.n-1);o.rg.value=o.i;o.nx.disabled=o.i>=o.n-1;o.pv.disabled=o.i<=0}o.calc=function(){var st=el.clientWidth;if(!st)return;sp.style.width="0px";var cw=el.scrollWidth;o.st=st;o.n=Math.max(1,Math.ceil((cw-2)/st));sp.style.width=(o.n*st-cw)+"px";o.i=Math.max(0,Math.min(o.i,o.n-1));el.scrollTo({left:-o.i*st,behavior:"auto"});paint()};o.lay=function(){var fs=parseFloat(getComputedStyle(el).fontSize)||17,pitch=fs*1.9,avail=el.parentNode.clientWidth;var w=avail<pitch*3?avail:Math.floor(avail/pitch)*pitch;el.style.width=w+"px";el.style.setProperty("--pw",w+"px");el.style.height=Math.max(320,innerHeight-200)+"px";o.calc()};o.to=function(i){o.i=Math.max(0,Math.min(o.n-1,i));el.scrollTo({left:-o.i*o.st,behavior:"auto"});paint()};o.go=function(d){o.to(o.i+d)};o.nx.onclick=function(){cur=o;o.go(1)};o.pv.onclick=function(){cur=o;o.go(-1)};o.rg.oninput=function(){cur=o;o.to(+o.rg.value)};var sx=0,sy=0,ok=false;el.addEventListener("pointerdown",function(e){cur=o;sx=e.clientX;sy=e.clientY;ok=true});el.addEventListener("pointercancel",function(){ok=false});el.addEventListener("pointerup",function(e){if(!ok)return;ok=false;var dx=e.clientX-sx,dy=e.clientY-sy;if(e.pointerType!="mouse"&&Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.5){o.go(dx>0?1:-1);return}if(Math.abs(dx)<8&&Math.abs(dy)<8&&!e.target.closest("a,summary,button,img,iframe,video,sup")&&!String(getSelection()).length){var r=el.getBoundingClientRect();o.go(e.clientX<r.left+r.width/2?1:-1)}});el.addEventListener("wheel",function(e){e.preventDefault();if(Date.now()-o.wt<250)return;o.wt=Date.now();o.go(e.deltaY>0||e.deltaX>0?1:-1)},{passive:false});el.addEventListener("toggle",function(){setTimeout(o.calc,0)},true);el.addEventListener("load",o.calc,true);el.addEventListener("scroll",function(){clearTimeout(o.t);o.t=setTimeout(function(){var a=Math.abs(el.scrollLeft),k=Math.max(0,Math.min(o.n-1,Math.round(a/o.st)));if(k!=o.i||Math.abs(a-k*o.st)>2){o.i=k;el.scrollTo({left:-k*o.st,behavior:"auto"});paint()}},120)});o.lay();return o}function off(){C.forEach(function(o){o.sp.remove();o.bar.remove();o.el.style.width="";o.el.style.height="";o.el.style.removeProperty("--pw");o.el.scrollLeft=0});C=[];cur=null}b.onclick=function(){on=!on;var t=document.querySelectorAll(".rd");for(var i=0;i<t.length;i++)t[i].classList.toggle("tate",on);if(on){C=[].map.call(t,mk);cur=C[0]}else off();scrollTo(0,0);b.textContent=on?"横書き":"縦書き"};addEventListener("resize",function(){C.forEach(function(o){o.lay()})});addEventListener("keydown",function(e){if(!on||!cur)return;if(e.key=="ArrowLeft"){cur.go(1);e.preventDefault()}else if(e.key=="ArrowRight"){cur.go(-1);e.preventDefault()}});<\/script>';
+const EX_CSS=`*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 "Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif}main{max-width:760px;margin:0 auto;padding:24px 16px 64px}h1{font-size:1.6em;line-height:1.4;margin:.2em 0 .3em;word-break:break-word}h2{font-size:1.1em;margin:1.8em 0 .6em;padding-bottom:.25em;border-bottom:1px solid var(--line)}.dt{color:var(--mut);font-size:12.5px;margin-bottom:12px}.mut{color:var(--mut);font-size:13px}.tg{float:right;margin-left:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:6px;padding:4px 12px;cursor:pointer}.ch{display:flex;gap:14px;align-items:center}.ico{width:72px;height:72px;border-radius:50%;object-fit:cover;flex:none;border:1px solid var(--line)}.info{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:14px 0;padding:12px;background:var(--card);border:1px solid var(--line);border-radius:8px}.info dt{color:var(--mut)}.info dd{margin:0;white-space:pre-wrap;word-break:break-word}.stands{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}.stands figure{margin:0;text-align:center}.stands img{max-height:320px;max-width:100%;border-radius:6px}.rd{word-break:break-word;line-height:1.7em;font-size:var(--fs,15px)}.ln{white-space:pre-wrap;word-break:break-word;min-height:1.7em;margin-left:.6em}.qt .ln,.cd .ln{margin-left:0}.hd{font-weight:700;line-height:1.5;word-break:break-word}.hd.h1{font-size:1.5em;margin:1em 0 .4em;padding-bottom:.2em;border-bottom:1px solid var(--line)}.hd.h2{font-size:1.12em;line-height:1.4;margin:.9em 0 .7em;padding-left:.5em;border-left:.3em solid var(--ink)}.hd.h3{font-size:1.05em;margin:.8em 0 .2em}.hd:first-child{margin-top:0}.im{margin:8px 0}.im img{display:block;max-width:100%;height:auto;margin:0 auto;border-radius:6px}.bt{-webkit-text-emphasis:"・";text-emphasis:"・";-webkit-text-emphasis-position:over right;text-emphasis-position:over right}ruby{ruby-position:over}rt{font-size:.5em}.rd a,.fns a{color:var(--ink);text-decoration:underline;word-break:break-all}details.fold{margin:6px 0}details.fold>summary{display:flex;align-items:center;gap:6px;padding:3px 0;font-weight:600;cursor:pointer;list-style:none}details.fold>summary::-webkit-details-marker{display:none}details.fold>summary::before{content:"";flex:none;width:6px;height:6px;margin:0 6px 0 3px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(-45deg);transition:transform .15s}details.fold[open]>summary::before{transform:rotate(45deg)}details.fold>.fb{padding:2px 0 4px 1.3em}details.fold>summary.fh::before{display:none}details.fold>summary.fh .hd{flex:1;min-width:0}.ind{padding-left:calc(var(--n)*1em)}.vb{margin:10px 0}.vb video,.gvf{max-width:100%}.ge{margin:10px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}.ge .gh2{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:13px}.ge .gh2 b{flex:1;min-width:0;word-break:break-all}.ge .gnv{padding:2px 12px 12px;font-size:13px;line-height:1.6;color:var(--mut);word-break:break-all}.gn2{white-space:pre-line}.gt{position:relative;aspect-ratio:16/9;background:var(--bg);overflow:hidden;display:grid;place-items:center}.gt img{width:100%;height:100%;object-fit:cover;display:block}.gbadge{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;line-height:1.5;padding:0 8px;border-radius:10px}.sm{font-size:.8em;color:var(--mut)}.qt{margin:6px 0 6px .6em;padding:2px 0 2px 12px;border-left:3px solid var(--mut)}.qt .qt,.cd .qt{margin-left:0}.cd{margin:10px 0;padding:10px 12px;background:var(--card);border:1px solid var(--line);border-radius:8px}sup.fr{font-size:.7em;line-height:0;margin-left:.3em;padding:0 2px}sup.fr a,.fnum a{text-decoration:none}.fns{margin-top:22px;padding-top:10px;border-top:1px solid var(--line);font-size:.85em;color:var(--mut)}.fi{display:flex;gap:6px;margin:2px 0;word-break:break-word}.fnum{flex:none;min-width:1.4em}.rd.tate{writing-mode:vertical-rl;text-orientation:mixed;text-combine-upright:digits 2;font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho","Noto Serif JP","MS PMincho",serif;touch-action:pan-y;min-height:320px;overflow:hidden;--p:calc(var(--fs,17px)*1.9);line-height:var(--p);font-size:var(--fs,17px);margin:0 auto;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.pgb{display:flex;align-items:center;gap:10px;margin-top:8px}.pgb button{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:6px;padding:6px 14px;cursor:pointer}.pgb button:disabled{opacity:.4}.pgb input{flex:1;min-width:0;direction:rtl}.pgn{font-size:13px;color:var(--mut);min-width:4.5em;text-align:center}.rd.tate rt{line-height:1}.rd.tate .ln{margin:.6em 0 0;min-height:0;min-width:var(--p)}.rd.tate .hd{margin:0 var(--p) 0 0!important;padding:0;border:0;position:relative;line-height:var(--p)}.rd.tate .hd.h1::after{content:"";position:absolute;top:0;bottom:0;left:calc(var(--p)*-.15);border-left:1px solid var(--line)}.rd.tate .ind{padding-left:0;padding-top:calc(var(--n)*1em)}.rd.tate .qt{margin:0 calc(var(--p)/2);padding:10px 0 0;border-left:0;border-top:3px solid var(--mut)}.rd.tate .cd{margin:0 calc(var(--p)/2);padding:10px calc(var(--p)/2 - 1px)}.rd.tate .im{margin:0}.rd.tate .im img{width:auto;max-width:var(--pw,100%);max-height:65vh;margin:0}.rd.tate details.fold>.fb{padding:0}.tb{float:right;display:flex;gap:6px;margin-left:8px}.tb .tg{float:none;margin:0}`;
+const EX_TG='<script>var b=document.getElementById("tg"),on=0,C=[],cur=null,fs=0;try{fs=+localStorage.getItem("exfs")||0}catch(e){}function offs(el,st,cw){var pitch=parseFloat(getComputedStyle(el).lineHeight)||0,R=el.getBoundingClientRect().right,L=[],rg=document.createRange(),w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);while(w.nextNode()){var n=w.currentNode;if(!n.nodeValue.trim())continue;var pe=n.parentElement;if(!pe||pe.closest("rt"))continue;rg.selectNodeContents(n);var rs=rg.getClientRects();for(var i=0;i<rs.length;i++){var r=rs[i];if(r.width<.5||r.height<.5)continue;var c=R-(r.left+r.right)/2,h=Math.max(pitch,r.width)/2;L.push([c-h,c+h])}}[].forEach.call(el.querySelectorAll("img,video,iframe,svg"),function(m){var r=m.getBoundingClientRect();if(r.width>.5&&r.height>.5)L.push([R-r.right,R-r.left])});L.sort(function(x,y){return x[0]-y[0]});var O=[0],s=0;for(var g=0;g<20000;g++){var B=s+st;if(B>=cw-2)break;var m=Infinity;for(var j=0;j<L.length;j++){var p=L[j];if(p[0]>=B-1)break;if(p[1]>B+1&&p[0]<m)m=p[0]}var nx=(m<Infinity&&m>s+st/2)?m:B;O.push(nx);s=nx}return O}function mk(el){var o={el:el,i:0,n:1,st:0,wt:0,t:0};var sp=document.createElement("div");sp.style.cssText="width:0;height:1px";el.appendChild(sp);o.sp=sp;var bar=document.createElement("div");bar.className="pgb";bar.innerHTML="<button type=button class=nx aria-label=次のページ>◀</button><input type=range class=rg min=0 max=0 value=0><span class=pgn></span><button type=button class=pv aria-label=前のページ>▶</button>";el.parentNode.insertBefore(bar,el.nextSibling);o.bar=bar;o.nx=bar.querySelector(".nx");o.pv=bar.querySelector(".pv");o.rg=bar.querySelector(".rg");o.lb=bar.querySelector(".pgn");function paint(){o.lb.textContent=(o.i+1)+" / "+o.n;o.rg.max=Math.max(0,o.n-1);o.rg.value=o.i;o.nx.disabled=o.i>=o.n-1;o.pv.disabled=o.i<=0}o.calc=function(){var st=el.clientWidth;if(!st)return;sp.style.width="0px";el.scrollTo({left:0,behavior:"auto"});var pp=parseFloat(getComputedStyle(el).lineHeight)||0;if(pp)[].forEach.call(el.querySelectorAll(".im"),function(d){d.style.width="";var i=d.querySelector("img"),w=i?i.getBoundingClientRect().width:0;if(w)d.style.width=Math.ceil(w/pp)*pp+"px"});var cw=el.scrollWidth;o.st=st;o.offs=offs(el,st,cw);o.n=o.offs.length;sp.style.width=Math.max(0,o.offs[o.n-1]+st-cw)+"px";o.i=Math.max(0,Math.min(o.i,o.n-1));el.scrollTo({left:-o.offs[o.i],behavior:"auto"});paint()};o.lay=function(){var f=parseFloat(getComputedStyle(el).fontSize)||17,pitch=Math.round(f*1.9),avail=el.parentNode.clientWidth;el.style.setProperty("--p",pitch+"px");var w=avail<pitch*3?avail:Math.floor(avail/pitch)*pitch;el.style.width=w+"px";el.style.setProperty("--pw",w+"px");el.style.height=Math.max(320,innerHeight-200)+"px";o.calc()};o.to=function(i){o.i=Math.max(0,Math.min(o.n-1,i));el.scrollTo({left:-(o.offs?o.offs[o.i]:o.i*o.st),behavior:"auto"});paint()};o.go=function(d){o.to(o.i+d)};o.nx.onclick=function(){cur=o;o.go(1)};o.pv.onclick=function(){cur=o;o.go(-1)};o.rg.oninput=function(){cur=o;o.to(+o.rg.value)};var sx=0,sy=0,ok=false;el.addEventListener("pointerdown",function(e){cur=o;sx=e.clientX;sy=e.clientY;ok=true});el.addEventListener("pointercancel",function(){ok=false});el.addEventListener("pointerup",function(e){if(!ok)return;ok=false;var dx=e.clientX-sx,dy=e.clientY-sy;if(e.pointerType!="mouse"&&Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.5){o.go(dx>0?1:-1);return}if(Math.abs(dx)<8&&Math.abs(dy)<8&&!e.target.closest("a,summary,button,img,iframe,video,sup")&&!String(getSelection()).length){var r=el.getBoundingClientRect();o.go(e.clientX<r.left+r.width/2?1:-1)}});el.addEventListener("wheel",function(e){e.preventDefault();if(Date.now()-o.wt<250)return;o.wt=Date.now();o.go(e.deltaY>0||e.deltaX>0?1:-1)},{passive:false});el.addEventListener("toggle",function(){setTimeout(o.calc,0)},true);el.addEventListener("load",o.calc,true);el.addEventListener("scroll",function(){clearTimeout(o.t);o.t=setTimeout(function(){var a=Math.abs(el.scrollLeft),O=o.offs||[0],k=0;for(var j=1;j<O.length;j++)if(Math.abs(a-O[j])<Math.abs(a-O[k]))k=j;if(k!=o.i||Math.abs(a-O[k])>2){o.i=k;el.scrollTo({left:-O[k],behavior:"auto"});paint()}},120)});o.lay();return o}function off(){C.forEach(function(o){o.sp.remove();o.bar.remove();o.el.style.width="";o.el.style.height="";o.el.style.removeProperty("--pw");o.el.style.removeProperty("--p");o.el.scrollLeft=0});C=[];cur=null}function setFs(n){fs=Math.max(12,Math.min(32,n));try{localStorage.setItem("exfs",fs)}catch(e){}[].forEach.call(document.querySelectorAll(".rd"),function(r){r.style.setProperty("--fs",fs+"px")});C.forEach(function(o){o.lay()})}function curFs(){return fs||Math.round(parseFloat(getComputedStyle(document.querySelector(".rd")).fontSize))||16}document.getElementById("fm").onclick=function(){setFs(curFs()-1)};document.getElementById("fp").onclick=function(){setFs(curFs()+1)};if(fs)setFs(fs);b.onclick=function(){on=!on;var t=document.querySelectorAll(".rd");for(var i=0;i<t.length;i++)t[i].classList.toggle("tate",on);if(on){C=[].map.call(t,mk);cur=C[0]}else off();scrollTo(0,0);b.textContent=on?"横書き":"縦書き"};addEventListener("resize",function(){C.forEach(function(o){o.lay()})});addEventListener("keydown",function(e){if(!on||!cur)return;if(e.key=="ArrowLeft"){cur.go(1);e.preventDefault()}else if(e.key=="ArrowRight"){cur.go(-1);e.preventDefault()}});<\/script>';
 async function exHtml(kind,id,embed,st){
   const f=exFind(kind,id),x=f.x,w=f.w||{};let cnt=0,o='',title=f.title||'無題';
   const sec=async(h,b,lv)=>{
@@ -2836,7 +2839,7 @@ async function exHtml(kind,id,embed,st){
   }else o=`<h1>${esc(x.title)}</h1>${dt}`+await sec('',x.body,2);
   const nv=kind=='gal',cs=getComputedStyle(document.documentElement);
   const pal=[['--bg','#f3f4f8'],['--fg','#1f2230'],['--mut','#767b8f'],['--card','#fff'],['--line','#dcdfe8'],['--ink','#2d3350']].map(([k,d])=>`${k}:${cs.getPropertyValue(k).trim()||d}`).join(';');
-  return `<!DOCTYPE html>\n<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>:root{${pal};color-scheme:${cs.colorScheme||'light'}}${EX_CSS}</style></head><body><main>${nv?'<button id="tg" class="tg">縦書き</button>':''}${o}</main>${nv?EX_TG:''}</body></html>\n`;
+  return `<!DOCTYPE html>\n<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>:root{${pal};color-scheme:${cs.colorScheme||'light'}}${EX_CSS}</style></head><body><main>${nv?'<div class="tb"><button id="fm" class="tg" aria-label="文字を小さく">A−</button><button id="fp" class="tg" aria-label="文字を大きく">A＋</button><button id="tg" class="tg">縦書き</button></div>':''}${o}</main>${nv?EX_TG:''}</body></html>\n`;
 }
 async function exHtmlRun(kind,id,f){
   const cb=$('#exim'),embed=!cb||cb.checked,st={ok:0,ng:0};
@@ -3091,20 +3094,50 @@ function pgPaint(){
   if(a)a.disabled=PG.i>=PG.n-1;
   if(b)b.disabled=PG.i<=0;
 }
+/* 行の実測位置からページの区切りを決める(行が境界をまたぐなら、その行から次のページにする) */
+function pgOffs(el,st,cw){
+  const pitch=parseFloat(getComputedStyle(el).lineHeight)||0,R=el.getBoundingClientRect().right,L=[];
+  const rg=document.createRange(),w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);
+  while(w.nextNode()){
+    const n=w.currentNode;if(!n.nodeValue.trim())continue;
+    const pe=n.parentElement;if(!pe||pe.closest('rt,#pgsp'))continue;
+    rg.selectNodeContents(n);
+    for(const r of rg.getClientRects()){
+      if(r.width<.5||r.height<.5)continue;
+      const c=R-(r.left+r.right)/2,h=Math.max(pitch,r.width)/2;
+      L.push([c-h,c+h]);
+    }
+  }
+  el.querySelectorAll('img,video,iframe,svg').forEach(m=>{const r=m.getBoundingClientRect();if(r.width>.5&&r.height>.5)L.push([R-r.right,R-r.left])});
+  L.sort((x,y)=>x[0]-y[0]);
+  const offs=[0];let s=0;
+  for(let g=0;g<20000;g++){
+    const B=s+st;if(B>=cw-2)break;
+    let m=Infinity;
+    for(const p of L){if(p[0]>=B-1)break;if(p[1]>B+1&&p[0]<m)m=p[0]}
+    const nx=(m<Infinity&&m>s+st/2)?m:B;
+    offs.push(nx);s=nx;
+  }
+  return offs;
+}
 function pgCalc(){
   const el=pgBox();if(!el)return;
   const st=el.clientWidth;if(!st)return;
   const sp=el.querySelector('#pgsp');if(sp)sp.style.width='0px';
+  el.scrollTo({left:0,behavior:'auto'}); /* 測定は先頭位置で行う */
+  const pp=parseFloat(getComputedStyle(el).lineHeight)||0;
+  if(pp)el.querySelectorAll('.im').forEach(d=>{d.style.width='';const i=d.querySelector('img'),w=i?i.getBoundingClientRect().width:0;if(w)d.style.width=Math.ceil(w/pp)*pp+'px'}); /* 画像の幅も行の幅の整数倍にそろえる */
   const cw=el.scrollWidth;
-  PG.step=st;PG.n=Math.max(1,Math.ceil((cw-2)/st));
-  if(sp)sp.style.width=(PG.n*st-cw)+'px'; /* 最後のページも1画面ぶんになるよう余白を足す */
+  PG.step=st;PG.offs=pgOffs(el,st,cw);PG.n=PG.offs.length;
+  if(sp)sp.style.width=Math.max(0,PG.offs[PG.n-1]+st-cw)+'px'; /* 最後のページも1画面ぶんになるよう余白を足す */
   PG.i=Math.max(0,Math.min(PG.i,PG.n-1));
-  el.scrollTo({left:-PG.i*st,behavior:'auto'});
+  el.scrollTo({left:-PG.offs[PG.i],behavior:'auto'});
   pgPaint();
 }
 function pgLayout(){
   const el=pgBox();if(!el)return;
-  const pitch=nvFs()*1.9,avail=$('#app').clientWidth-32;
+  const pitch=Math.round(nvFs()*1.9),avail=$('#app').clientWidth-32;
+  el.style.setProperty('--p',pitch+'px'); /* 1行の幅は整数pxにして、ページ境界で行がずれないようにする */
   const w=avail<pitch*3?avail:Math.floor(avail/pitch)*pitch; /* 行の幅の整数倍にして、行が途中で切れないように */
   el.style.width=w+'px';el.style.setProperty('--pw',w+'px');
   pgCalc();
@@ -3112,7 +3145,7 @@ function pgLayout(){
 function pgTo(i){
   const el=pgBox();if(!el)return;
   PG.i=Math.max(0,Math.min(PG.n-1,i));
-  el.scrollTo({left:-PG.i*PG.step,behavior:'auto'});pgPaint();
+  el.scrollTo({left:-(PG.offs?PG.offs[PG.i]:PG.i*PG.step),behavior:'auto'});pgPaint();
 }
 const pgGo=d=>pgTo(PG.i+d);
 function pgSetup(){
@@ -3135,8 +3168,9 @@ function pgSetup(){
   el.addEventListener('scroll',()=>{
     clearTimeout(PG.t);
     PG.t=setTimeout(()=>{
-      const a=Math.abs(el.scrollLeft),k=Math.max(0,Math.min(PG.n-1,Math.round(a/PG.step)));
-      if(k!=PG.i||Math.abs(a-k*PG.step)>2){PG.i=k;el.scrollTo({left:-k*PG.step,behavior:'auto'});pgPaint()}
+      const a=Math.abs(el.scrollLeft),O=PG.offs||[0];let k=0;
+      for(let j=1;j<O.length;j++)if(Math.abs(a-O[j])<Math.abs(a-O[k]))k=j;
+      if(k!=PG.i||Math.abs(a-O[k])>2){PG.i=k;el.scrollTo({left:-O[k],behavior:'auto'});pgPaint()}
     },120);
   });
 }
