@@ -733,6 +733,9 @@ dialog:has(.gv){width:min(900px,96vw)}
 #cswh{margin-top:18px}
 #cswh .hw .pc{margin-top:0}
 #cswh .cs-picker .cs-missing{flex:1 1 100%}
+.box input{display:block;margin:0 0 12px}
+.box input:focus-visible{outline-offset:0}
+.box .row{margin-top:6px}
 </style>
 </head>
 <body>
@@ -1068,6 +1071,24 @@ async function login(){
     await connect();
   }catch(e){S.repo=null;S.token='';$('#err').textContent=e.message}
 }
+/* ---- インストールの案内(ログイン画面): Chrome系は自作ボタン、iPhone・iPadは「ホーム画面に追加」の案内 ---- */
+let DIP=null;
+const isStandalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+function instPaint(){
+  const el=$('#inst');if(!el)return;
+  if(isStandalone()){el.innerHTML='';return}
+  if(DIP)el.innerHTML='<button class="btn sub" onclick="instGo()">アプリとしてインストール</button>';
+  else if(isIOS())el.innerHTML='<p class="mut" style="margin:0">iPhone・iPadでは、画面の共有ボタンから「ホーム画面に追加」を選ぶと、アプリとして使えます。</p>';
+  else el.innerHTML='';
+}
+async function instGo(){
+  if(!DIP)return;
+  DIP.prompt();
+  try{await DIP.userChoice}catch(e){}
+  DIP=null;instPaint();
+}
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();DIP=e;instPaint()});
+addEventListener('appinstalled',()=>{DIP=null;instPaint()});
 function toggleReg(){S.reg=!S.reg;render()}
 async function register(){
   const iv=$('#iv').value.trim(),u=$('#un').value.trim(),p=$('#pw').value,p2=$('#pw2').value;
@@ -1216,9 +1237,9 @@ function qBody(){
 function view(){
   const app=$('#app');
   if(!S.repo){
-    if(S.reg){app.innerHTML=`<div class="box"><h2>新規登録</h2><p class="mut">招待コードを入れて、ユーザー名とパスワードを決めてください。ユーザー名は半角の英数字・_・-で2〜20文字(英字は小文字になります)、パスワードは8文字以上です。</p><input id="iv" autocapitalize="none" autocomplete="off" placeholder="招待コード"><input id="un" autocomplete="username" autocapitalize="none" placeholder="ユーザー名"><input id="pw" type="password" autocomplete="new-password" placeholder="パスワード(8文字以上)"><input id="pw2" type="password" autocomplete="new-password" placeholder="パスワード(確認)" onkeydown="if(event.key==\'Enter\')register()"><div class="row"><button class="btn" onclick="register()">登録する</button></div><div class="row"><button class="btn sub" onclick="toggleReg()">ログインに戻る</button></div><p class="mut" id="err"></p></div>`;return}
-    app.innerHTML=`<div class="box"><h2>ログイン</h2><p class="mut">渡されたユーザー名とパスワードを入れると、自分のデータに接続します。ログイン情報はこのブラウザにだけ保存されます。</p><input id="un" autocomplete="username" autocapitalize="none" placeholder="ユーザー名"><input id="pw" type="password" autocomplete="current-password" placeholder="パスワード" onkeydown="if(event.key=='Enter')login()"><div class="row"><button class="btn" onclick="login()">ログイン</button></div><div class="row"><button class="btn sub" onclick="toggleReg()">新規登録はこちら</button></div><p class="mut" id="err"></p></div>`;
-    return;
+    if(S.reg){app.innerHTML=`<div class="box"><h2>新規登録</h2><p class="mut">招待コードを入れて、ユーザー名とパスワードを決めてください。ユーザー名は半角の英数字・_・-で2〜20文字(英字は小文字になります)、パスワードは8文字以上です。</p><input id="iv" autocapitalize="none" autocomplete="off" placeholder="招待コード"><input id="un" autocomplete="username" autocapitalize="none" placeholder="ユーザー名"><input id="pw" type="password" autocomplete="new-password" placeholder="パスワード(8文字以上)"><input id="pw2" type="password" autocomplete="new-password" placeholder="パスワード(確認)" onkeydown="if(event.key==\'Enter\')register()"><div class="row"><button class="btn" onclick="register()">登録する</button></div><div class="row"><button class="btn sub" onclick="toggleReg()">ログインに戻る</button></div><p class="mut" id="err"></p><div id="inst"></div></div>`;instPaint();return}
+    app.innerHTML=`<div class="box"><h2>ログイン</h2><p class="mut">渡されたユーザー名とパスワードを入れると、自分のデータに接続します。ログイン情報はこのブラウザにだけ保存されます。</p><input id="un" autocomplete="username" autocapitalize="none" placeholder="ユーザー名"><input id="pw" type="password" autocomplete="current-password" placeholder="パスワード" onkeydown="if(event.key=='Enter')login()"><div class="row"><button class="btn" onclick="login()">ログイン</button></div><div class="row"><button class="btn sub" onclick="toggleReg()">新規登録はこちら</button></div><p class="mut" id="err"></p><div id="inst"></div></div>`;
+    instPaint();return;
   }
   if(S.tab=='shed')return shedView();
   if(S.tab=='cmp')return cmpView();
