@@ -1525,7 +1525,7 @@ function charList(w,cs){
     h+=`<div class="item cathd" data-id="${k.id}" data-t="k">${grip}<button class="cat${cl?' closed':''}" aria-expanded="${!cl}" onclick="toggleCat('${k.id}')"><b>${esc(k.title)}</b><i></i>${ico(P_DN)}</button><button class="ic" aria-label="カテゴリの設定" onclick="catDlg('${k.id}')">${ico(DOTS)}</button></div>`;
     if(!cl)h+=mine(k.id).map(c=>charRow(c,cust,k.id)).join('')+memoHtml(k.id);
   });
-  return h||'<div class="empty">まだキャラがいません。➕から追加してみましょう</div>';
+  return h||'<div class="empty">まだキャラがいません。<br>＋から追加できます</div>';
 }
 function charAddDlg(){
   const w=S.works.find(x=>x.id==S.workId);if(!w)return;
@@ -1579,7 +1579,7 @@ function memoRead(w,x){
 function memoMenu(id){
   const f=findMemo(id);if(!f)return;
   open(`<h3 style="margin:0;word-break:break-all">${esc(f.m.title)}</h3>
-  <div class="menu"><button class="btn sub" onclick="moveMemoDlg('${id}')">移動</button><button class="btn sub" onclick="dupMemo('${id}')">複製</button><button class="btn del" onclick="delMemo('${id}')">削除</button></div>
+  <div class="menu"><button class="btn sub" onclick="moveMemoDlg('${id}')">移動</button><button class="btn sub" onclick="dupMemo('${id}')">複製</button><button class="btn sub" onclick="exportDlg('memo','${id}')">書き出し</button><button class="btn del" onclick="delMemo('${id}')">削除</button></div>
   <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`);
 }
 function moveMemoDlg(id){
@@ -1651,7 +1651,7 @@ function stPick(i){S.sti=i;stPaint()}
 function charMenu(id){
   const c=S.chars.find(x=>x.id==id);if(!c)return;
   open(`<h3 style="margin:0;word-break:break-all">${esc(c.name)}</h3>
-  <div class="menu"><button class="btn sub" onclick="moveCharDlg('${id}')">移動</button><button class="btn sub" onclick="dupChar('${id}')">複製</button><button class="btn del" onclick="delChar('${id}')">削除</button></div>
+  <div class="menu"><button class="btn sub" onclick="moveCharDlg('${id}')">移動</button><button class="btn sub" onclick="dupChar('${id}')">複製</button><button class="btn sub" onclick="exportDlg('char','${id}')">書き出し</button><button class="btn del" onclick="delChar('${id}')">削除</button></div>
   <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`);
 }
 function moveCharDlg(id){
@@ -1863,7 +1863,17 @@ const FAB={n:false};
   new MutationObserver(fix).observe(document.getElementById('app'),{childList:true,subtree:true});
 })();
 function idxList(){
-  if(S.ed||S.tab=='shed')return[];
+  if(S.tab=='shed')return[];
+  if(S.ed){ /* 編集中: 本文欄の「# 見出し」行から索引を作る(キャラは詳細情報の中なので1段下げる) */
+    const t=$('#eb'),x=edItem();if(!t||!x)return[];
+    const out=[],re=/^[\u3000\t]*(#{1,3}) (.*)$/,add=isChar(x)?1:0;let pos=0;
+    t.value.split('\n').forEach(ln=>{
+      const m=re.exec(ln);
+      if(m){const s=m[2].replace(/《《(.+?)》》/g,'$1').replace(/《[^》]*》/g,'').replace(/[｜|]/g,'').replace(/\*+/g,'').trim();if(s)out.push({pos,t:s,l:Math.min(2,m[1].length-1+add)})}
+      pos+=ln.length+1;
+    });
+    return out;
+  }
   return [...document.querySelectorAll('#app .hd,#app .pc>h4')].map(el=>{
     const c=el.cloneNode(true);c.querySelectorAll('rt').forEach(r=>r.remove());
     const isH=el.classList.contains('hd'),lv=isH?+(/h(\d)/.exec(el.className)||[0,1])[1]-1:0;
@@ -1883,8 +1893,23 @@ function idxDlg(){
   open(`<h3 style="margin:0">見出し</h3><div class="idx">${hs.map((h,i)=>`<button class="btn sub idxb l${h.l}" onclick="idxGo(${i})">${esc(h.t)}</button>`).join('')}</div>
   <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`);
 }
+/* 編集中: 本文欄の pos 文字目(見出し行の頭)までスクロールする。折り返しも数えるため、同じ見た目の見えない枠で高さを測る */
+function edJump(pos){
+  const t=$('#eb');if(!t)return;
+  const cs=getComputedStyle(t),m=document.createElement('div');
+  m.style.cssText='position:absolute;visibility:hidden;left:-9999px;top:0;white-space:pre-wrap;box-sizing:border-box;width:'+t.clientWidth+'px';
+  ['fontFamily','fontSize','fontWeight','fontStyle','letterSpacing','lineHeight','paddingLeft','paddingRight','wordBreak','overflowWrap','tabSize'].forEach(k=>{m.style[k]=cs[k]});
+  m.textContent=t.value.slice(0,pos)+'\u200b';document.body.appendChild(m);
+  const lh=parseFloat(cs.lineHeight)||parseFloat(cs.fontSize)*1.7,y=m.offsetHeight-lh;m.remove();
+  const e=document.querySelector('.edh'),off=(e?e.offsetHeight+(parseFloat(getComputedStyle(e).top)||0):0)+6;
+  scrollTo({top:Math.max(0,t.getBoundingClientRect().top+scrollY+(parseFloat(cs.paddingTop)||0)+y-off),behavior:'smooth'});
+}
+let fabT=0;const fabLater=()=>{clearTimeout(fabT);fabT=setTimeout(fabUpdate,400)};
+addEventListener('input',e=>{if(S.ed&&e.target&&e.target.id=='eb')fabLater()});
 function idxGo(i){
-  const h=(S.idx||[])[i];if(!h||!document.body.contains(h.el))return;
+  const h=(S.idx||[])[i];if(!h)return;
+  if(h.pos!==undefined){$('#dlg').close();setTimeout(()=>edJump(h.pos),50);return}
+  if(!document.body.contains(h.el))return;
   $('#dlg').close();
   for(let p=h.el.parentElement;p;p=p.parentElement)if(p.tagName=='DETAILS')p.open=true; /* 閉じた折りたたみの中の見出しは開いてから飛ぶ */
   setTimeout(()=>h.el.scrollIntoView({behavior:'smooth',block:'start'}),50);
@@ -2122,7 +2147,7 @@ function dropUpl(){
   if(S.upl&&S.upl.length)rmImgs(S.upl);S.upl=[];
   if(S.ic){S.ic.add.forEach(rmIcon);S.ic=null}
 }
-function grow(t){t.style.height='auto';t.style.height=t.scrollHeight+'px'}
+function grow(t){const x=scrollX,y=scrollY;t.style.height='auto';t.style.height=t.scrollHeight+'px';if(scrollY!==y||scrollX!==x)scrollTo(x,y)} /* 高さを測り直す間にページが縮んでスクロール位置が飛ばないよう、元の位置に戻す */
 function insText(t,f,e,txt){
   if(f==e&&!txt)return;
   t.focus();t.setSelectionRange(f,e);
@@ -2297,7 +2322,7 @@ function linkDlg(vid){
   open(`<h3 style="margin:0">${vid?'動画を埋め込む':'リンクを挿入'}</h3>
   ${vid?'':`<label for="lk-t">表示する文字</label><input id="lk-t" value="${isU?'':esc(sel)}" placeholder="例:公式サイト">`}
   <label for="lk-u">URL</label><input id="lk-u" type="url" inputmode="url" autocomplete="off" placeholder="https://..." value="${isU?esc(sel):''}">
-  ${vid?'<p class="mut">YouTube・Vimeo・ニコニコ・mp4 のURLを、独立した1行として入れます。<br>本文を開いたときにそのまま再生できます。</p>':'<p class="mut">本文には <b>[文字](URL)</b> の形で入ります。</p>'}
+  ${vid?'<p class="mut">YouTube・Vimeo・ニコニコ・mp4 のURLを、独立した1行として入れます。本文を開いたときにそのまま再生できます。</p>':'<p class="mut">本文には <b>[文字](URL)</b> の形で入ります。</p>'}
   <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="lkOk()">挿入</button></div>`);
   setTimeout(()=>{const e=$('#lk-u');if(e)e.focus()},60);
 }
@@ -2397,7 +2422,7 @@ function cancelEdit(){
 function itemMenu(id){
   const w=S.works.find(x=>x.id==S.workId),x=w.notes.find(n=>n.id==id),f=isF(x);
   open(`<h3 style="margin:0;word-break:break-all">${esc(x.title)}</h3>
-  <div class="menu">${f?`<button class="btn sub" onclick="folderDlg('${id}')">名前を変更</button>`:''}<button class="btn sub" onclick="moveDlg('${id}')">移動</button>${f?'':`<button class="btn sub" onclick="dupNote('${id}')">複製</button>`}<button class="btn del" onclick="${f?`delFolder('${id}')`:`delNote('${id}')`}">削除</button></div>
+  <div class="menu">${f?`<button class="btn sub" onclick="folderDlg('${id}')">名前を変更</button>`:''}<button class="btn sub" onclick="moveDlg('${id}')">移動</button>${f?'':`<button class="btn sub" onclick="dupNote('${id}')">複製</button>`}<button class="btn sub" onclick="exportDlg('note','${id}')">書き出し</button><button class="btn del" onclick="${f?`delFolder('${id}')`:`delNote('${id}')`}">削除</button></div>
   <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`);
 }
 function subtree(w,id){
@@ -2640,13 +2665,65 @@ function applyTheme0(t){
 function setTheme(t){localStorage.setItem('sm_theme',t);applyTheme(t);themeDlg()}
 function setCustom(k,v){const c=getCustom();c[k]=v;localStorage.setItem('sm_custom',JSON.stringify(c));applyTheme('custom')}
 function resetCustom(){localStorage.removeItem('sm_custom');applyTheme('custom');themeDlg()}
+/* ===== 書き出し: 各項目の⋯メニューから、その1件(フォルダなら中身ぜんぶ)を .txt / .json で端末に保存 ===== */
+/* 本文: 画像・ギャラリー作品の埋め込み([[img:…]] [[gal:…]])だけは取り除く */
+const exClean=t=>String(t||'').split('\n').filter(l=>!/^[\s\u3000]*(\[\[(img|gal):[\w-]+\]\][\s\u3000]*)+$/.test(l)).join('\n').replace(/\[\[(img|gal):[\w-]+\]\]/g,'').replace(/\s+$/,'');
+const exSub=t=>`${'-'.repeat(30)}\n${t}\n${'-'.repeat(30)}`;
+function exFind(kind,id){
+  if(kind=='gal'){const g=S.gal.find(x=>x.id==id&&!gIsF(x));return g?{title:g.title,x:g}:null}
+  if(kind=='char'){const c=S.chars.find(x=>x.id==id);return c?{title:c.name,x:c,w:S.works.find(w=>w.id==c.workId)||{}}:null}
+  if(kind=='memo'){const f=findMemo(id);return f?{title:f.m.title,x:f.m,w:f.w}:null}
+  const w=S.works.find(x=>x.id==S.workId),n=w&&(w.notes||[]).find(x=>x.id==id);
+  return n?{title:n.title,x:n,w}:null;
+}
+function exText(kind,id){
+  const f=exFind(kind,id);if(!f)return'';
+  const x=f.x,w=f.w,o=[];
+  if(kind=='char'){
+    const cat=((w.cats||[]).find(k=>k.id==x.cat)||{}).title,v=x.voice||{};
+    o.push(x.name+(x.ruby?`(${x.ruby})`:''),'');
+    if(cat)o.push(`カテゴリ: ${cat}`);
+    if(x.memo)o.push(`一言メモ: ${x.memo}`);
+    if((x.tags||[]).length)o.push(`タグ: ${x.tags.map(t=>'#'+t).join(' ')}`);
+    (x.info||[]).filter(r=>r.v).forEach(r=>o.push(`${r.k}: ${r.v}`));
+    if(v.one||v.two||v.three)o.push(`サンプルボイス: 一人称「${v.one||''}」 二人称「${v.two||''}」 三人称「${v.three||''}」`);
+    if(v.text&&v.text.trim())o.push('','[セリフ]',exClean(v.text));
+    if(x.body&&x.body.trim())o.push('','[詳細情報]',exClean(x.body));
+  }else if(kind=='note'&&isF(x)){
+    o.push(x.title,'');
+    const tree=(pid,path)=>items(w,pid).forEach(n=>{if(isF(n))tree(n.id,path.concat(n.title));else o.push(exSub(path.concat(n.title).join(' › ')),exClean(n.body)||'(本文なし)','')});
+    tree(x.id,[]);
+  }else o.push(x.title,'',exClean(x.body)||'(本文なし)');
+  return o.join('\n').replace(/\s+$/,'')+'\n';
+}
+function exJson(kind,id){
+  const f=exFind(kind,id);if(!f)return'';
+  let d=f.x;
+  if(kind=='note'&&isF(f.x)){const ids=subtree(f.w,id);d={folder:f.x,notes:f.w.notes.filter(n=>ids.has(n.id)&&n.id!=id)}}
+  return JSON.stringify({app:'創作まとめ',kind,exported:new Date().toISOString(),data:d},null,2);
+}
+function exportDlg(kind,id){
+  const f=exFind(kind,id);if(!f)return;
+  open(`<h3 style="margin:0">書き出し</h3><p class="mut" style="word-break:break-all">「${esc(f.title)}」${kind=='note'&&isF(f.x)?'の中の設定をまとめて':'を'}書き出します。</p>
+  <div class="menu"><button class="btn" onclick="doExport('${kind}','${id}','txt')">テキスト(.txt)</button><button class="btn sub" onclick="doExport('${kind}','${id}','json')">JSON(.json・バックアップ向け)</button></div>
+  <p class="mut" style="margin:8px 0 0">画像は含まれません(テキストでは画像の行を取り除きます)。ルビ・傍点の書き方はそのまま残ります。</p>
+  <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`);
+}
+function doExport(kind,id,fmt){
+  const f=exFind(kind,id);if(!f)return;
+  const out=fmt=='json'?exJson(kind,id):exText(kind,id);
+  const a=document.createElement('a'),u=URL.createObjectURL(new Blob([out],{type:(fmt=='json'?'application/json':'text/plain')+';charset=utf-8'}));
+  a.href=u;a.download=`${(f.title||'無題').replace(/[\\/:*?"<>|]/g,'_')}.${fmt}`;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u),4000);
+  $('#dlg').close();status('書き出しました');
+}
 function themeDlg(){
   const t=document.documentElement.dataset.theme,c=getCustom();S.ck=S.ck||'bg';
   open(`<h3 style="margin:0">設定</h3>${S.repo?`<p class="mut">接続中: ${esc(S.repo.split('/')[1])}</p>`:''}<label>テーマ</label>
   <div class="themes">${Object.entries(TH).map(([k,v])=>`<button class="btn ${k==t?'':'sub'}" onclick="setTheme('${k}')">${v}</button>`).join('')}</div>
   ${t=='custom'?`<div class="chips">${Object.keys(CL).map(k=>`<button class="btn ${k==S.ck?'':'sub'}" onclick="S.ck='${k}';themeDlg()"><i class="sw" data-sw="${k}" style="background:${c[k]}"></i>${CL[k]}</button>`).join('')}</div>${pickerHTML('cpt',c[S.ck],S.ck)}<div class="row"><button class="btn sub" onclick="resetCustom()">初期色に戻す</button></div>`:''}
   ${S.repo?'<div class="row"><button class="btn sub" onclick="goShed()">チェックシートの編集</button></div>':''}
-  ${S.repo?`<label>オフライン</label><p class="mut" style="margin:0">${S.off?(S.cfHold?'競合の確認待ちです。「再接続」を押すと、競合している箇所を選べます。<br>選ぶまでの編集はこの端末に保存されます。':'オフラインです。<br>前回読み込んだデータを表示しています。<br>編集はこの端末に保存され、つながると自動でGitHubに送られます。'):'読み込んだデータといちど表示した画像はオフラインでも見られ、編集もできます(つながると自動で送ります)。<br>まだ見ていない画像もまとめて保存できます。'}</p><div class="row">${S.off?'<button class="btn sub" onclick="reconnect()">再接続</button>':'<button class="btn sub" onclick="offlineAll()">画像をすべてオフライン用に保存</button>'}</div>`:''}
+  ${S.repo?`<label>オフライン</label><p class="mut" style="margin:0">${S.off?(S.cfHold?'競合の確認待ちです。「再接続」を押すと、競合している箇所を選べます。選ぶまでの編集は、この端末に保存されます。':'オフラインです。<br>前回読み込んだデータを表示しています。<br>編集はこの端末に保存され、つながると自動でGitHubに送られます。'):'読み込んだデータと一度表示した画像は、<br>オフラインでも見られ、編集もできます。(つながると自動で送ります)<br>まだ見ていない画像もまとめて保存できます。'}</p><div class="row">${S.off?'<button class="btn sub" onclick="reconnect()">再接続</button>':'<button class="btn sub" onclick="offlineAll()">画像をすべてオフライン用に保存</button>'}</div>`:''}
   ${isApp()?'':'<div class="row"><button class="btn sub" onclick="installApp()">アプリとしてインストール</button></div>'}
   <div class="row">${S.repo?'<button class="btn del" onclick="logout()">切断</button>':''}<span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`,el=>{
     setCustom(el.dataset.k,el.dataset.v);
@@ -2855,7 +2932,7 @@ function galRead(x){
 function galMenu(id){
   const g=S.gal.find(x=>x.id==id&&!gIsF(x));if(!g)return;
   open(`<h3 style="margin:0;word-break:break-all">${esc(g.title)}</h3>
-  <div class="menu"><button class="btn sub" onclick="galMoveDlg('${id}')">移動</button><button class="btn sub" onclick="galLinkDlg('${id}')">紐づけ</button><button class="btn del" onclick="galDel('${id}')">削除</button></div>
+  <div class="menu"><button class="btn sub" onclick="galMoveDlg('${id}')">移動</button><button class="btn sub" onclick="galLinkDlg('${id}')">紐づけ</button>${g.type=='novel'?`<button class="btn sub" onclick="exportDlg('gal','${id}')">書き出し</button>`:''}<button class="btn del" onclick="galDel('${id}')">削除</button></div>
   <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`);
 }
 function galMoveDlg(id){
@@ -2898,7 +2975,7 @@ function galView(){
   <div class="ctabs">${[['all','すべて'],...Object.entries(GT)].map(([k,l])=>`<button class="btn ${k==ty?'':'sub'}" onclick="setGalT('${k}')">${l} ${cnt(k)}</button>`).join('')}</div>
   <div class="bar"><button class="btn ibtn" aria-label="ギャラリーに追加" title="追加" onclick="galEdit()">${ico(P_PLUS)}</button><button class="btn sub ibtn" aria-label="フォルダを追加" title="フォルダを追加" onclick="galFolderDlg()">${ico(P_FADD)}</button><select aria-label="並び替え" onchange="setGalS(this.value)">${SORTS.map(([k,v])=>`<option value="${k}"${k==so?' selected':''}>${v}</option>`).join('')}</select></div>
   ${fl.length?`<div class="list" style="margin-top:4px;margin-bottom:14px">${fl.map(x=>galFolderRow(x,so=='custom')).join('')}</div>`:''}
-  ${a.length?`<div class="gg">${a.map(g=>galCard(g,so=='custom')).join('')}</div>`:fl.length?'':`<div class="empty">${inWk.length?'条件に合うものがありません':S.nf?'このフォルダはまだ空です':galHere().length||S.gal.length?'条件に合うものがありません':'まだありません。<br>＋からイラスト・小説・動画を追加できます'}</div>`}`;
+  ${a.length?`<div class="gg">${a.map(g=>galCard(g,so=='custom')).join('')}</div>`:fl.length?'':`<div class="empty">${inWk.length?'条件に合うものがありません':S.nf?'このフォルダはまだ空です':galHere().length||S.gal.length?'条件に合うものがありません':'まだありません。➕からイラスト・小説・動画を追加できます'}</div>`}`;
   hydrate(app);
 }
 function galOpen(id){
@@ -3965,7 +4042,7 @@ function cwEditOn(w){
   }
   markEmpty(w);
   const m=w.querySelector('.cs-msg');
-  if(m)m.textContent=sh?(sh.querySelector('.cs-tx,.cs-gpl')?'各項目に自由に入力できます(保存は右上の保存ボタン)':'マスをクリックで塗りつぶし(もう一度押すと解除)。保存は右上の保存ボタン'):'';
+  if(m)m.textContent=sh?(sh.querySelector('.cs-tx,.cs-gpl')?'各項目に自由に入力できます':'マスをクリックで塗りつぶし(もう一度押すと解除)'):'';
 }
 async function cwDraw(){
   const h=$('#cswh .hw'),c=CW.c;if(!h||!c)return;
