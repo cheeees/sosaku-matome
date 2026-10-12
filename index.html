@@ -108,6 +108,10 @@ details.fold>.fb{padding:2px 0 4px 1.3em}
 details.fold>summary.fh{align-items:center}
 details.fold>summary.fh .hd{flex:1;min-width:0;margin-top:.25em;margin-bottom:.15em}
 details.fold>summary.fh .hd.h2{margin-bottom:.5em}
+/* 見出しの折りたたみ: 折りたたみマークは見出しの文字のすぐ右(見出し ▾) */
+details.fold>summary.fh::before{display:none}
+details.fold>summary.fh .hd::after{content:"";display:inline-block;vertical-align:middle;width:7px;height:7px;margin:0 0 .2em .7em;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(-45deg);transition:transform .15s}
+details.fold[open]>summary.fh .hd::after{transform:rotate(45deg)}
 .ind{padding-left:calc(var(--n) * 1em)}
 .vb{margin:10px 0}.vb .gvid{margin:0 auto}.vb .gvf{margin:0 auto}
 .ge{margin:10px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
