@@ -743,7 +743,7 @@ dialog:has(.gv){width:min(900px,96vw)}
 <dialog id="dlg"></dialog>
 <dialog id="cfdlg"></dialog>
 <script>
-const $=s=>document.querySelector(s),API_BASE='https://YOUR-WORKER.workers.dev',API=API_BASE+'/gh';
+const $=s=>document.querySelector(s),API_BASE='https://sosaku-api.cheeees0707.workers.dev',API=API_BASE+'/gh';
 const S={token:localStorage.getItem('sm_sess')||'',repo:null,works:[],chars:[],gal:[],sha:{},workId:null,tab:'chars',q:'',pend:{},rev:0};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
