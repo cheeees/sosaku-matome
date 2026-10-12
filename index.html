@@ -95,6 +95,11 @@ nav svg{width:24px;height:24px}
 .nvsz{display:flex;align-items:center;gap:10px;margin-top:8px}
 .nvsz input{flex:1;padding:0;border:0;background:none}
 .nvpv{margin-top:14px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-family:var(--nvff,inherit);font-size:var(--nvfs,17px);line-height:1.8}
+dialog:has(#impt),dialog:has(.imrs){width:min(640px,94vw)}
+#impt{width:100%;resize:vertical}
+.imr{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;margin-top:10px}
+.imr>input[type=checkbox]{width:auto;margin-top:28px}
+.imr textarea{width:100%;resize:vertical}
 .edw{position:relative;overflow:hidden;border:1px solid var(--line);border-bottom:0;border-radius:8px;background:var(--card) repeating-linear-gradient(to bottom,transparent 0,transparent calc(1.7em - 1px),var(--line) calc(1.7em - 1px),var(--line) 1.7em)}
 .edw:focus-within{outline:2px solid var(--ink)}
 .rd.ed{position:relative;z-index:1;display:block;width:100%;margin:0;padding:0 8px;border:0;border-radius:0;outline:0;background:transparent;-webkit-appearance:none;appearance:none;white-space:pre-wrap;min-height:1.7em;resize:none;overflow:hidden}
@@ -2215,7 +2220,7 @@ function editView(w,x){
     <div class="fr1"><input id="fq" placeholder="検索" value="${esc(fq)}" oninput="fInput(this.value)" onkeydown="if(event.key=='Enter'){event.preventDefault();fnext(event.shiftKey?-1:1)}"><span class="mut" id="fc"></span><button class="ic" aria-label="前を検索" onclick="fnext(-1)">${ico('<path d="M6 15l6-6 6 6"/>')}</button><button class="ic" aria-label="次を検索" onclick="fnext(1)">${ico('<path d="M6 9l6 6 6-6"/>')}</button></div>
     <div class="fr1"><input id="fr" placeholder="置換後の文字"><button class="btn sub" onclick="frep(0)">置換</button><button class="btn sub" onclick="frep(1)">すべて</button></div>
   </div></div>
-  <label for="et" style="margin-top:0">${C?'名前':'項目名'}</label><input id="et" class="et" value="${esc(C?x.name:x.title)}" placeholder="${C?'キャラの名前':'例:魔法のしくみ'}">
+  ${C?'<div class="bar" style="margin:0 0 4px"><button class="btn sub" onclick="impDlg()">文章から入力</button></div>':''}<label for="et" style="margin-top:0">${C?'名前':'項目名'}</label><input id="et" class="et" value="${esc(C?x.name:x.title)}" placeholder="${C?'キャラの名前':'例:魔法のしくみ'}">
   ${dateIn('ecd',cTime(x))}
   ${C?`<label for="ert">ふりがな</label><input id="ert" value="${esc(x.ruby||'')}"><label for="emm">一言メモ</label><input id="emm" value="${esc(x.memo||'')}" placeholder="一言でどうぞ">
   <div class="bar" style="margin:14px 0 0"><span class="dot l" id="eip" style="--c:${esc(x.color)}"></span><button class="btn sub ibtn" aria-label="イメージカラー" title="イメージカラー" onclick="colDlg()">${ico(P_PALETTE)}</button><button class="btn sub ibtn" aria-label="アイコン画像" title="アイコン画像" onclick="icDlg()">${ico(P_IMG)}</button></div>
@@ -3465,6 +3470,161 @@ function cmpView(){
   <div id="cbody">${body}</div>`;
   hydrate(app);hFit();
 }
+
+/* ===== 文章から入力(キャラ編集画面。ペーストした文章を読み取って各欄に振り分ける) ===== */
+const IMP_INFO={'性別':'性別','年齢':'年齢','職業':'職業','国籍':'国籍','誕生日':'誕生日','身長':'身長','体重':'体重','目色':'目色','瞳':'目色','瞳色':'目色','眼色':'目色','髪色':'髪色','髪':'髪色','服装':'服装'};
+const IMP_KEYS={name:['名前','氏名','キャラ名','キャラクター名','name'],ruby:['読み','よみ','ふりがな','フリガナ','読み仮名','ルビ'],memo:['一言','一言メモ','ひとこと','キャッチコピー'],tags:['タグ','tag','tags'],color:['イメージカラー','テーマカラー','カラー'],one:['一人称'],two:['二人称'],three:['三人称']};
+const IMP_FIELD=(()=>{const m={};Object.entries(IMP_KEYS).forEach(([f,a])=>a.forEach(k=>m[k]=f));return m})();
+const IMP_COMMA=new Set(['一言','一言メモ','一人称','二人称','三人称']);
+const IMP_VK=/^(?:sv|samplevoice|サンプルボイス|セリフ|ボイス)$/i;
+const impNk=k=>String(k).normalize('NFKC').replace(/[\s　*＊]/g,'').toLowerCase();
+const impSep=l=>{const t=l.trim();return t.length>=3&&!/[\p{L}\p{N}「」『』]/u.test(t)};
+const IMP_GEN=/^([^\s　≈＝=:：、，,「『【（(▼■□●○★☆◆◇・\-－―—*＊《]{1,12})[\s　]*([≈＝=:：、])[\s　]*(.*)$/;
+function impEntry(line,trusted){
+  const t=line.trim();if(!t)return null;
+  if(t[0]=='【'){
+    const ms=[...t.matchAll(/【([^】]{1,24})】/g)];
+    if(!ms.length||ms[0].index!==0)return null;
+    const toks=ms.map((m,i)=>({k:m[1].trim(),v:t.slice(m.index+m[0].length,i+1<ms.length?ms[i+1].index:t.length).trim()}));
+    if(toks.length==1&&!toks[0].v&&IMP_VK.test(impNk(toks[0].k)))return{voice:1};
+    return{toks};
+  }
+  if(IMP_VK.test(impNk(t.replace(/[:：≈]\s*$/,''))))return{voice:1};
+  let m=/^[*＊]\s*([^*＊]{1,20}?)\s*[*＊]$/.exec(t);
+  if(m)return{toks:[{k:m[1],v:''}]};
+  m=IMP_GEN.exec(t);
+  if(m){
+    const nk=impNk(m[1]),sep=m[2];
+    if(sep=='、')return IMP_COMMA.has(nk)?{toks:[{k:m[1],v:m[3].trim()}]}:null;
+    if(IMP_INFO[nk]||IMP_FIELD[nk]||trusted(sep))return{toks:[{k:m[1],v:m[3].trim()}]};
+  }
+  return null;
+}
+function impParse(text){
+  const L=String(text||'').replace(/\r\n?/g,'\n').split('\n'),cnt={};
+  L.forEach(l=>{const m=IMP_GEN.exec(l.trim());if(m&&m[2]!='、')cnt[m[2]]=(cnt[m[2]]||0)+1});
+  const trusted=s=>(cnt[s]||0)>=3,ent=l=>impEntry(l,trusted);
+  const R={name:'',ruby:'',memo:'',tags:[],color:'',info:[],one:'',two:'',three:'',voice:'',body:''};
+  const got=new Set(),vals={},chunks=[],tidy=s=>s.replace(/^(?:[ \t　]*\n)+/,'').replace(/(?:\n[ \t　]*)+$/,'').replace(/(\n[ \t　]*){3,}/g,'\n\n');
+  let free=[],voiceDone=false,pron='';
+  const flush=()=>{const s=tidy(free.join('\n'));if(s.trim())chunks.push(s);free=[]};
+  /* 既知の項目(名前・基本情報・一言・一人称など)。取り込んだら true */
+  const put=(k,v)=>{
+    const nk=impNk(k),f=IMP_FIELD[nk],ik=IMP_INFO[nk];
+    if(!f&&!ik)return false;
+    if(!v)return true;
+    let key=f||('i:'+ik);
+    if(f=='color'){const m=v.match(/#?([0-9a-fA-F]{6})\b/);if(!m)return false;v='#'+m[1].toLowerCase()}
+    if(got.has(key)){if(vals[key]!==v)free.push(k.trim()+'：'+v);return true}
+    got.add(key);vals[key]=v;
+    if(f=='name'){
+      const m=/^(.*?)[\s　]*[（(]([^）)]+)[）)]\s*$/.exec(v);
+      if(m&&m[1].trim()&&/^[ぁ-ゟァ-ヿー・\s　=＝]+$/.test(m[2])){R.name=m[1].trim();if(!R.ruby)R.ruby=m[2].trim()}else R.name=v;
+    }else if(f=='ruby')R.ruby=v;
+    else if(f=='memo')R.memo=v;
+    else if(f=='tags')R.tags=v.split(/[\s　,、，#＃]+/).filter(Boolean);
+    else if(f=='color')R.color=v;
+    else if(f)R[f]=v.replace(/[\s　]+/g,'、');
+    else R.info.push({k:ik,v});
+    return true;
+  };
+  let i=0;
+  while(i<L.length){
+    const e=ent(L[i]);
+    if(!e){free.push(L[i]);i++;continue}
+    if(e.voice){
+      if(voiceDone){free.push(L[i]);i++;continue} /* 2つ目以降のセリフ欄は、本文にそのまま残す */
+      voiceDone=true;i++;
+      let j=i;while(j<L.length&&!L[j].trim())j++;
+      const f=(L[j]||'').trim();
+      if(f&&!/^[「『【]/.test(f)&&!ent(L[j])&&!impSep(f)&&f.length<=60){pron=f;i=j+1}
+      const q=[];let k=i;
+      while(k<L.length){const t=L[k].trim();if(!t){k++;continue}if(/^[「『]/.test(t)){q.push(t);k++;continue}break}
+      R.voice=q.join('\n');i=k;continue;
+    }
+    let adv=1;
+    e.toks.forEach((tk,ti)=>{
+      const k=tk.k,v=tk.v;
+      if(put(k,v))return;
+      let cont=[];
+      if(ti==e.toks.length-1){
+        let j=i+1;
+        if(!v){while(j<L.length&&!ent(L[j])&&!impSep(L[j]))j++}
+        else{while(j<L.length&&L[j].trim()&&!ent(L[j])&&!impSep(L[j]))j++}
+        cont=L.slice(i+1,j);
+      }
+      const num=/^[\d０-９.．/／%％+＋\-－\s]+$/.test(v);
+      if(v&&(num||(!cont.length&&v.length<=30))){ /* 短い項目は基本情報へ(同名が既にあれば、本文にそのまま残す) */
+        const ex=R.info.find(x=>x.k==k.trim());
+        if(!ex)R.info.push({k:k.trim(),v});else if(ex.v!==v)free.push(k.trim()+'：'+v);
+        return;
+      }
+      if(!v&&!cont.some(x=>x.trim()))return;
+      flush();
+      const s=tidy([...(v?[v]:[]),...cont].join('\n'));
+      chunks.push('# '+k.trim()+'\n'+s); /* 長い項目は見出し付きで詳細情報へ */
+      adv+=cont.length;
+    });
+    i+=adv;
+  }
+  flush();
+  R.body=chunks.join('\n\n');
+  if(pron&&!R.one&&!R.two){const a=pron.split(/[、,，\s　]+/).filter(Boolean);R.one=a[0]||'';R.two=a.slice(1).join('、')}
+  return R;
+}
+function impDlg(back){
+  if(!S.ic)return;
+  open(`<h3 style="margin:0">文章から入力</h3><p class="mut" style="margin:6px 0 0">「名前≈〜」「【年齢】〜」などの項目を読み取って、入力欄に振り分けます。</p>
+  <textarea id="impt" rows="10" style="margin-top:10px" placeholder="キャラの設定文をここに貼り付け">${esc(back&&S.imp?S.imp.text:'')}</textarea>
+  <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="impGo()">読み取る</button></div>`);
+  setTimeout(()=>{const e=$('#impt');if(e)e.focus()},60);
+}
+function impGo(){
+  const t=$('#impt').value;if(!t.trim()){$('#impt').focus();return}
+  const R=impParse(t),rows=[];
+  const add=(k,label,val,ta)=>{if(val&&String(val).trim())rows.push({k,label,val:String(val).trim(),ta})};
+  add('name','名前',R.name);add('ruby','ふりがな',R.ruby);add('memo','一言メモ',R.memo);add('tags','タグ',R.tags.join(' '));add('color','イメージカラー',R.color);
+  R.info.forEach(r=>add('i:'+r.k,r.k,r.v));
+  add('one','一人称',R.one);add('two','二人称',R.two);add('three','三人称',R.three);add('voice','セリフ',R.voice,1);add('body','詳細情報',R.body,1);
+  if(!rows.length){status('読み取れる項目が見つかりませんでした',1);return}
+  S.imp={rows,text:t};
+  open(`<h3 style="margin:0">読み取った内容</h3>
+  <div class="imrs">${rows.map((r,i)=>`<div class="imr"><input type="checkbox" data-c="${i}" checked aria-label="${esc(r.label)}を反映"><div><div class="mut">${esc(r.label)}</div>${r.ta?`<textarea data-v="${i}" rows="${Math.min(8,Math.max(2,r.val.split('\n').length))}">${esc(r.val)}</textarea>`:`<input data-v="${i}" value="${esc(r.val)}">`}</div></div>`).join('')}</div>
+  <label>反映のしかた</label><select id="impm"><option value="fill">空欄だけ埋める(詳細情報は末尾に追加)</option><option value="over">すべて上書き</option></select>
+  <div class="row"><button class="btn sub" onclick="impDlg(1)">戻る</button><span class="sp"></span><button class="btn" onclick="impApply()">入力欄に反映</button></div>`);
+}
+function impApply(){
+  const d=S.imp;if(!d||!S.ic)return;
+  const over=$('#impm').value=='over';let n=0,infoCh=false;
+  const setv=(sel,v)=>{const e=$(sel);if(!e)return;if(over||!e.value.trim()){e.value=v;if(e.tagName=='TEXTAREA')grow(e);n++}};
+  d.rows.forEach((r,i)=>{
+    const c=document.querySelector(`#dlg [data-c="${i}"]`),el=document.querySelector(`#dlg [data-v="${i}"]`);
+    if(!c||!c.checked||!el)return;
+    const v=el.value.trim();if(!v)return;
+    if(r.k=='name')setv('#et',v);
+    else if(r.k=='ruby')setv('#ert',v);
+    else if(r.k=='memo')setv('#emm',v);
+    else if(r.k=='one')setv('#ev1',v);
+    else if(r.k=='two')setv('#ev2',v);
+    else if(r.k=='three')setv('#ev3',v);
+    else if(r.k=='voice')setv('#evo',v);
+    else if(r.k=='tags'){
+      const e=$('#etg');if(!e)return;
+      const sp=/[\s　,、]+/,old=over?[]:e.value.split(sp).map(t=>t.replace(/^#/,'')).filter(Boolean);
+      e.value=[...new Set([...old,...v.split(sp).map(t=>t.replace(/^#/,'')).filter(Boolean)])].join(' ');tagSug();n++;
+    }
+    else if(r.k=='color'){if(/^#[0-9a-f]{6}$/i.test(v)){S.ic.col=v;colPaint();n++}}
+    else if(r.k=='body'){const e=$('#eb');if(e){e.value=(over||!e.value.trim())?v:e.value.replace(/\s+$/,'')+'\n\n'+v;grow(e);fhl();n++}}
+    else if(r.k.startsWith('i:')){
+      const k=r.k.slice(2),row=S.ic.info.find(x=>x.k==k);
+      if(row){if(over||!row.v.trim()){row.v=v;n++;infoCh=true}}
+      else{S.ic.info.push({k,v});n++;infoCh=true}
+    }
+  });
+  if(infoCh)edInf();
+  S.imp=null;$('#dlg').close();status(n?`${n}項目を入力欄に反映しました`:'反映する項目がありませんでした');
+}
+/* ===== /文章から入力 ===== */
 
 applyTheme(document.documentElement.dataset.theme||'light');
 if(!S.token)boot=null;
