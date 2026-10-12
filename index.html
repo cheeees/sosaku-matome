@@ -2297,7 +2297,7 @@ function linkDlg(vid){
   open(`<h3 style="margin:0">${vid?'動画を埋め込む':'リンクを挿入'}</h3>
   ${vid?'':`<label for="lk-t">表示する文字</label><input id="lk-t" value="${isU?'':esc(sel)}" placeholder="例:公式サイト">`}
   <label for="lk-u">URL</label><input id="lk-u" type="url" inputmode="url" autocomplete="off" placeholder="https://..." value="${isU?esc(sel):''}">
-  ${vid?'<p class="mut">YouTube・Vimeo・ニコニコ・mp4 のURLを、独立した1行として入れます。本文を開いたときにそのまま再生できます。</p>':'<p class="mut">本文には <b>[文字](URL)</b> の形で入ります。</p>'}
+  ${vid?'<p class="mut">YouTube・Vimeo・ニコニコ・mp4 のURLを、独立した1行として入れます。<br>本文を開いたときにそのまま再生できます。</p>':'<p class="mut">本文には <b>[文字](URL)</b> の形で入ります。</p>'}
   <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="lkOk()">挿入</button></div>`);
   setTimeout(()=>{const e=$('#lk-u');if(e)e.focus()},60);
 }
@@ -2646,7 +2646,7 @@ function themeDlg(){
   <div class="themes">${Object.entries(TH).map(([k,v])=>`<button class="btn ${k==t?'':'sub'}" onclick="setTheme('${k}')">${v}</button>`).join('')}</div>
   ${t=='custom'?`<div class="chips">${Object.keys(CL).map(k=>`<button class="btn ${k==S.ck?'':'sub'}" onclick="S.ck='${k}';themeDlg()"><i class="sw" data-sw="${k}" style="background:${c[k]}"></i>${CL[k]}</button>`).join('')}</div>${pickerHTML('cpt',c[S.ck],S.ck)}<div class="row"><button class="btn sub" onclick="resetCustom()">初期色に戻す</button></div>`:''}
   ${S.repo?'<div class="row"><button class="btn sub" onclick="goShed()">チェックシートの編集</button></div>':''}
-  ${S.repo?`<label>オフライン</label><p class="mut" style="margin:0">${S.off?(S.cfHold?'競合の確認待ちです。「再接続」を押すと、競合している箇所を選べます。選ぶまでの編集は、この端末に保存されます。':'いまオフラインです。前回読み込んだデータを表示しています。編集はこの端末に保存され、つながると自動でGitHubに送られます(画像の追加・削除はオンラインのときだけ)。'):'読み込んだデータと、いちど表示した画像は、オフラインでも見られ、編集もできます(つながると自動で送ります)。まだ見ていない画像もまとめて保存できます。'}</p><div class="row">${S.off?'<button class="btn sub" onclick="reconnect()">再接続</button>':'<button class="btn sub" onclick="offlineAll()">画像をすべてオフライン用に保存</button>'}</div>`:''}
+  ${S.repo?`<label>オフライン</label><p class="mut" style="margin:0">${S.off?(S.cfHold?'競合の確認待ちです。「再接続」を押すと、競合している箇所を選べます。<br>選ぶまでの編集はこの端末に保存されます。':'オフラインです。<br>前回読み込んだデータを表示しています。<br>編集はこの端末に保存され、つながると自動でGitHubに送られます。'):'読み込んだデータといちど表示した画像はオフラインでも見られ、編集もできます(つながると自動で送ります)。<br>まだ見ていない画像もまとめて保存できます。'}</p><div class="row">${S.off?'<button class="btn sub" onclick="reconnect()">再接続</button>':'<button class="btn sub" onclick="offlineAll()">画像をすべてオフライン用に保存</button>'}</div>`:''}
   ${isApp()?'':'<div class="row"><button class="btn sub" onclick="installApp()">アプリとしてインストール</button></div>'}
   <div class="row">${S.repo?'<button class="btn del" onclick="logout()">切断</button>':''}<span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`,el=>{
     setCustom(el.dataset.k,el.dataset.v);
@@ -2898,7 +2898,7 @@ function galView(){
   <div class="ctabs">${[['all','すべて'],...Object.entries(GT)].map(([k,l])=>`<button class="btn ${k==ty?'':'sub'}" onclick="setGalT('${k}')">${l} ${cnt(k)}</button>`).join('')}</div>
   <div class="bar"><button class="btn ibtn" aria-label="ギャラリーに追加" title="追加" onclick="galEdit()">${ico(P_PLUS)}</button><button class="btn sub ibtn" aria-label="フォルダを追加" title="フォルダを追加" onclick="galFolderDlg()">${ico(P_FADD)}</button><select aria-label="並び替え" onchange="setGalS(this.value)">${SORTS.map(([k,v])=>`<option value="${k}"${k==so?' selected':''}>${v}</option>`).join('')}</select></div>
   ${fl.length?`<div class="list" style="margin-top:4px;margin-bottom:14px">${fl.map(x=>galFolderRow(x,so=='custom')).join('')}</div>`:''}
-  ${a.length?`<div class="gg">${a.map(g=>galCard(g,so=='custom')).join('')}</div>`:fl.length?'':`<div class="empty">${inWk.length?'条件に合うものがありません':S.nf?'このフォルダはまだ空です':galHere().length||S.gal.length?'条件に合うものがありません':'まだありません。➕からイラスト・小説・動画を追加できます'}</div>`}`;
+  ${a.length?`<div class="gg">${a.map(g=>galCard(g,so=='custom')).join('')}</div>`:fl.length?'':`<div class="empty">${inWk.length?'条件に合うものがありません':S.nf?'このフォルダはまだ空です':galHere().length||S.gal.length?'条件に合うものがありません':'まだありません。<br>＋からイラスト・小説・動画を追加できます'}</div>`}`;
   hydrate(app);
 }
 function galOpen(id){
