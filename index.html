@@ -1345,25 +1345,38 @@ function icPaint(){
   const d=$('#eid');if(d)d.style.display=c?'':'none';
 }
 /* ---- 画像の追加元: URL(保存しない) / 以前追加した画像(同じ中身のコピーなので、容量はほぼ増えない) ---- */
-function imgSrc(cb){
+/* ---- 画像の追加: 画像ボタンを押すと「新規追加 / URLから追加 / 以前の画像」を選べる ---- */
+function imgMenu(o){
   let d=$('#isd');
-  if(!d){d=document.createElement('dialog');d.id='isd';d.style.cssText='width:min(560px,94vw);padding:16px;border-radius:12px;background:Canvas;color:CanvasText';document.body.appendChild(d)}
-  const ps=allImgPaths().filter(p=>!/_t\.webp$/.test(p));
-  d.innerHTML=`<h3 style="margin:0 0 8px">画像を追加</h3><label>画像のURL(https://〜)</label><input id="isu" style="width:100%;box-sizing:border-box" placeholder="https://..."><p class="mut" style="margin:4px 0">画像はこのアプリに保存せず、URLの画像をそのまま表示します。元の画像が消えると表示されなくなります。</p><div class="row"><button class="btn" onclick="isGo()">このURLを使う</button></div><label style="margin-top:12px">以前追加した画像から選ぶ</label><div style="display:grid;grid-template-columns:repeat(auto-fill,72px);gap:6px;max-height:36vh;overflow:auto;margin:6px 0">${ps.map(p=>`<img data-p="${esc(p)}" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:6px;cursor:pointer;background:#8883" onclick="isPick(this.dataset.p)">`).join('')||'<span class="mut">まだありません</span>'}</div><div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#isd').close()">閉じる</button></div>`;
-  S.isCb=cb;d.showModal();hydrate(d);
+  if(!d){d=document.createElement('dialog');d.id='isd';d.style.width='min(560px,94vw)';document.body.appendChild(d)}
+  S.imo=o;imoHome();d.showModal();
 }
-function isGo(){const u=$('#isu').value.trim();if(!/^https:\/\/\S+$/i.test(u)){status('https:// で始まるURLを入れてください',1);return}$('#isd').close();S.isCb({url:u})}
-function isPick(p){$('#isd').close();S.isCb({path:p})}
+function imoHome(){
+  const d=$('#isd'),o=S.imo;
+  d.innerHTML=`<h3 style="margin:0">画像を追加</h3><div class="menu"><button class="btn sub" onclick="$('#imof').click()">新規追加</button><button class="btn sub" onclick="imoUrl()">URLから追加</button><button class="btn sub" onclick="imoPrev()">以前の画像</button></div><input id="imof" type="file" accept="image/*"${o.multi?' multiple':''} hidden onchange="imoFiles([...this.files]);this.value=''"><div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#isd').close()">閉じる</button></div>`;
+}
+function imoFiles(fs){const o=S.imo;$('#isd').close();if(fs.length&&o)o.files(fs)}
+function imoUrl(){
+  $('#isd').innerHTML=`<h3 style="margin:0">URLから追加</h3><label for="isu">画像のURL</label><input id="isu" style="width:100%;box-sizing:border-box" placeholder="https://..." inputmode="url" autocomplete="off"><div class="row"><button class="btn sub" onclick="imoHome()">戻る</button><span class="sp"></span><button class="btn" onclick="isGo()">追加</button></div>`;
+  setTimeout(()=>{const e=$('#isu');if(e)e.focus()},50);
+}
+function imoPrev(){
+  const d=$('#isd'),ps=allImgPaths().filter(p=>!/_t\.webp$/.test(p));
+  d.innerHTML=`<h3 style="margin:0">以前の画像</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,72px);gap:6px;max-height:50vh;overflow:auto;margin:10px 0">${ps.map(p=>`<img data-p="${esc(p)}" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:6px;cursor:pointer;background:#8883" onclick="isPick(this.dataset.p)">`).join('')||'<span class="mut">まだありません</span>'}</div><div class="row"><button class="btn sub" onclick="imoHome()">戻る</button><span class="sp"></span><button class="btn sub" onclick="$('#isd').close()">閉じる</button></div>`;
+  hydrate(d);
+}
+function isGo(){const u=$('#isu').value.trim();if(!/^https:\/\/\S+$/i.test(u)){status('https:// で始まるURLを入れてください',1);return}const o=S.imo;$('#isd').close();o.src({url:u})}
+function isPick(p){const o=S.imo;$('#isd').close();o.src({path:p})}
 const cpTo=async(r,np)=>{status('画像をコピー中…');if(!await copyImg(r.path,np))throw new Error('元の画像が見つかりません')};
-function icSrc(){imgSrc(async r=>{
+function icSrc(){imgMenu({files:fs=>icAdd(fs[0]),src:async r=>{
   if(!S.ic)return;
   try{
     if(r.url)S.ic.cur=r.url;
     else{const np=`pic/char/${uid('a')}.webp`;await cpTo(r,np);S.ic.add.push(np);S.ic.cur=np}
     icPaint();status('アイコンを設定しました');
   }catch(e){status(e.message,1)}
-})}
-function cvSrc(){imgSrc(async r=>{
+}})}
+function cvSrc(){imgMenu({multi:true,files:fs=>addCovers(fs),src:async r=>{
   const w=S.works.find(x=>x.id==S.workId);if(!w)return;w.covers=w.covers||[];
   try{
     const id=uid('p');
@@ -1372,8 +1385,8 @@ function cvSrc(){imgSrc(async r=>{
     save('works.json');status('追加しました');
   }catch(e){status(e.message,1)}
   coverDlg();render();
-})}
-function galSrc(){imgSrc(async r=>{
+}})}
+function galSrc(){imgMenu({multi:true,files:fs=>galImgs(fs),src:async r=>{
   if(!S.gd)return;
   try{
     if(r.url)S.gd.d.imgs.push({p:r.url});
@@ -1387,7 +1400,7 @@ function galSrc(){imgSrc(async r=>{
     }
     galImgPaint();status('画像を追加しました');
   }catch(e){status(e.message,1)}
-})}
+}})}
 const uEnc=u=>'u-'+btoa(String.fromCharCode(...new TextEncoder().encode(u))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const uDec=id=>{let b=id.slice(2).replace(/-/g,'+').replace(/_/g,'/');while(b.length%4)b+='=';return new TextDecoder().decode(Uint8Array.from(atob(b),c=>c.charCodeAt(0)))};
 const nPath=id=>/^u-/.test(id)?uDec(id):`pic/note/${id}.webp`;
@@ -1396,25 +1409,25 @@ function noteSrc(){
   const t=$('#eb');if(!t)return;
   if(curTa()!==t){status('画像は詳細情報の欄にだけ入れられます',1);return}
   S.sel=t.selectionEnd;
-  imgSrc(async r=>{try{
+  imgMenu({multi:true,files:fs=>addNoteImg(fs),src:async r=>{try{
     if(r.url){noteIns(uEnc(r.url));return}
     const id=uid('i');await cpTo(r,`pic/note/${id}.webp`);(S.upl=S.upl||[]).push(id);noteIns(id);status('画像を追加しました');
-  }catch(e){status(e.message,1)}});
+  }catch(e){status(e.message,1)}}});
 }
-function stSrc(){imgSrc(async r=>{
+function stSrc(){imgMenu({multi:true,files:fs=>stNew(fs),src:async r=>{
   if(!S.ic)return;
   try{
     let p=r.url;if(!p){p=`pic/char/stand/${uid('s')}.webp`;await cpTo(r,p);S.ic.add.push(p)}
     S.ic.stands.push({id:uid('t'),name:'立ち絵'+(S.ic.stands.length+1),path:p,faces:[]});edSt();status('立ち絵を追加しました');
   }catch(e){status(e.message,1)}
-})}
-function faceSrc(i){imgSrc(async r=>{
+}})}
+function faceSrc(i){imgMenu({multi:true,files:fs=>faceNew(i,fs),src:async r=>{
   const t=S.ic&&S.ic.stands[i];if(!t)return;
   try{
     let p=r.url;if(!p){p=`pic/char/face/${uid('s')}.webp`;await cpTo(r,p);S.ic.add.push(p)}
     (t.faces=t.faces||[]).push({id:uid('f'),path:p});edSt();status('表情差分を追加しました');
   }catch(e){status(e.message,1)}
-})}
+}})}
 async function icAdd(f){
   if(!f||!S.ic)return;
   try{
@@ -1441,7 +1454,7 @@ async function upImg(f,dir){
 }
 function edSt(){
   const b=$('#est');if(!b||!S.ic)return;
-  b.innerHTML=S.ic.stands.map((s,i)=>`<div class="stc"><div class="bar" style="margin:0 0 8px"><input value="${esc(s.name)}" placeholder="立ち絵の名前(例:制服)" oninput="S.ic.stands[${i}].name=this.value"><button class="btn del ibtn" aria-label="この立ち絵を削除" title="削除" onclick="stDel(${i})">${ico(P_X)}</button></div><img class="stimg" data-p="${esc(s.path)}" alt=""><div class="faces2">${(s.faces||[]).map((f,j)=>`<div class="fc"><img data-p="${esc(f.path)}" alt=""><button class="fx" aria-label="削除" onclick="faceDel(${i},${j})">×</button></div>`).join('')}<label class="fadd" for="ef-${i}" aria-label="表情差分を追加">${ico(P_PLUS)}</label><button class="fadd" aria-label="表情差分をURL・以前の画像から追加" title="URL・以前の画像" onclick="faceSrc(${i})">URL</button><input id="ef-${i}" type="file" accept="image/*" multiple hidden onchange="faceNew(${i},[...this.files]);this.value=''"></div></div>`).join('');
+  b.innerHTML=S.ic.stands.map((s,i)=>`<div class="stc"><div class="bar" style="margin:0 0 8px"><input value="${esc(s.name)}" placeholder="立ち絵の名前(例:制服)" oninput="S.ic.stands[${i}].name=this.value"><button class="btn del ibtn" aria-label="この立ち絵を削除" title="削除" onclick="stDel(${i})">${ico(P_X)}</button></div><img class="stimg" data-p="${esc(s.path)}" alt=""><div class="faces2">${(s.faces||[]).map((f,j)=>`<div class="fc"><img data-p="${esc(f.path)}" alt=""><button class="fx" aria-label="削除" onclick="faceDel(${i},${j})">×</button></div>`).join('')}<button class="fadd" aria-label="表情差分を追加" title="表情差分を追加" onclick="faceSrc(${i})">${ico(P_PLUS)}</button></div></div>`).join('');
   hydrate(b);
 }
 async function stNew(fs){
@@ -1497,9 +1510,7 @@ function colDlg(){
 }
 function icDlg(){
   if(!S.ic)return;
-  open(`<h3 style="margin:0">アイコン画像</h3><p class="mut">正方形に切り抜いて、WebPに変換して pic/char に保存されます。</p>
-  <div class="icp"><span class="dot l" id="eip2" style="--c:${esc(S.ic.col)}"></span><button class="btn sub" onclick="$('#eif').click()">画像を選ぶ</button><button class="btn sub" onclick="icSrc()">URL・以前の画像</button><button class="btn del" id="eid" onclick="icDel()">削除</button></div>
-  <input id="eif" type="file" accept="image/*" hidden onchange="icAdd(this.files[0]);this.value=''">
+  open(`<h3 style="margin:0">アイコン画像</h3>  <div class="icp"><span class="dot l" id="eip2" style="--c:${esc(S.ic.col)}"></span><button class="btn sub" onclick="icSrc()">画像を設定</button><button class="btn del" id="eid" onclick="icDel()">削除</button></div>
   <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`);
   icPaint();
 }
@@ -2199,19 +2210,17 @@ function editView(w,x){
   const C=isChar(x);
   $('#app').innerHTML=`${workBar(w)}
   <div class="edh"><div class="bar" style="margin-bottom:6px"><span style="flex:1"></span><button id="fbtn" class="btn ibtn${fopen?'':' sub'}" aria-label="検索・置換" onclick="fToggle()">${ico(P_FIND)}</button><button class="btn sub ibtn" aria-label="キャンセル" onclick="cancelEdit()">${ico(P_X)}</button><button class="btn ibtn" aria-label="保存" onclick="saveEdit()">${ico(P_SAVE)}</button></div>
-  <div class="tb" onmousedown="event.preventDefault()"><button onclick="fmt('h')" aria-label="見出し" title="見出し">${ico(T_H)}</button><button onclick="fmt('b')" aria-label="太字" title="太字">${ico(T_B)}</button><button onclick="fmt('i')" aria-label="斜体" title="斜体">${ico(T_I)}</button><button onclick="fmt('r')" aria-label="ルビ" title="ルビ">${ico(T_R)}</button><button onclick="fmt('d')" aria-label="傍点" title="傍点">${ico(T_D)}</button><button onclick="fmt('n')" aria-label="注意書き" title="注意書き(小さく薄く)">${ico(T_N)}</button><button onclick="fmt('f')" aria-label="脚注" title="脚注">${ico(T_F)}</button><button onclick="fmt('to')" aria-label="字下げを減らす" title="字下げを減らす">${ico(T_OUT)}</button><button onclick="fmt('ti')" aria-label="字下げを増やす" title="字下げを増やす">${ico(T_IN)}</button><button onclick="fmt('q')" aria-label="引用" title="引用">${ico(P_QT)}</button><button onclick="fmt('c')" aria-label="カード" title="カード">${ico(P_CARD)}</button><button onclick="fmt('fo')" aria-label="折りたたみ(最初は閉じる)" title="折りたたみ(最初は閉じる)">${ico(T_FC)}</button><button onclick="fmt('fp')" aria-label="折りたたみ(最初から開く)" title="折りたたみ(最初から開く)">${ico(T_FP)}</button><button onclick="linkDlg()" aria-label="リンク" title="リンク">${ico(T_LK)}</button><button onclick="linkDlg(1)" aria-label="動画を埋め込む" title="動画を埋め込む(YouTubeなど)">${ico(T_VD)}</button><button onclick="galPickDlg()" aria-label="ギャラリー作品を貼り付け" title="ギャラリー作品を貼り付け">${ico(T_GL)}</button><button onclick="imgPick()" aria-label="画像を追加" title="画像を追加">${ico(P_IMG)}</button><button onclick="noteSrc()" aria-label="URL・以前の画像から追加" title="URL・以前の画像から追加" style="font-size:11px;font-weight:700">URL</button></div></div>
+  <div class="tb" onmousedown="event.preventDefault()"><button onclick="fmt('h')" aria-label="見出し" title="見出し">${ico(T_H)}</button><button onclick="fmt('b')" aria-label="太字" title="太字">${ico(T_B)}</button><button onclick="fmt('i')" aria-label="斜体" title="斜体">${ico(T_I)}</button><button onclick="fmt('r')" aria-label="ルビ" title="ルビ">${ico(T_R)}</button><button onclick="fmt('d')" aria-label="傍点" title="傍点">${ico(T_D)}</button><button onclick="fmt('n')" aria-label="注意書き" title="注意書き(小さく薄く)">${ico(T_N)}</button><button onclick="fmt('f')" aria-label="脚注" title="脚注">${ico(T_F)}</button><button onclick="fmt('to')" aria-label="字下げを減らす" title="字下げを減らす">${ico(T_OUT)}</button><button onclick="fmt('ti')" aria-label="字下げを増やす" title="字下げを増やす">${ico(T_IN)}</button><button onclick="fmt('q')" aria-label="引用" title="引用">${ico(P_QT)}</button><button onclick="fmt('c')" aria-label="カード" title="カード">${ico(P_CARD)}</button><button onclick="fmt('fo')" aria-label="折りたたみ(最初は閉じる)" title="折りたたみ(最初は閉じる)">${ico(T_FC)}</button><button onclick="fmt('fp')" aria-label="折りたたみ(最初から開く)" title="折りたたみ(最初から開く)">${ico(T_FP)}</button><button onclick="linkDlg()" aria-label="リンク" title="リンク">${ico(T_LK)}</button><button onclick="linkDlg(1)" aria-label="動画を埋め込む" title="動画を埋め込む(YouTubeなど)">${ico(T_VD)}</button><button onclick="galPickDlg()" aria-label="ギャラリー作品を貼り付け" title="ギャラリー作品を貼り付け">${ico(T_GL)}</button><button onclick="noteSrc()" aria-label="画像を追加" title="画像を追加">${ico(P_IMG)}</button></div></div>
   <div id="fp"${fopen?'':' hidden'}>
     <div class="fr1"><input id="fq" placeholder="検索" value="${esc(fq)}" oninput="fInput(this.value)" onkeydown="if(event.key=='Enter'){event.preventDefault();fnext(event.shiftKey?-1:1)}"><span class="mut" id="fc"></span><button class="ic" aria-label="前を検索" onclick="fnext(-1)">${ico('<path d="M6 15l6-6 6 6"/>')}</button><button class="ic" aria-label="次を検索" onclick="fnext(1)">${ico('<path d="M6 9l6 6 6-6"/>')}</button></div>
     <div class="fr1"><input id="fr" placeholder="置換後の文字"><button class="btn sub" onclick="frep(0)">置換</button><button class="btn sub" onclick="frep(1)">すべて</button></div>
   </div></div>
-  <input id="nimg" type="file" accept="image/*" multiple hidden onchange="addNoteImg([...this.files]);this.value=''">
   <label for="et" style="margin-top:0">${C?'名前':'項目名'}</label><input id="et" class="et" value="${esc(C?x.name:x.title)}" placeholder="${C?'キャラの名前':'例:魔法のしくみ'}">
   ${dateIn('ecd',cTime(x))}
   ${C?`<label for="ert">ふりがな</label><input id="ert" value="${esc(x.ruby||'')}"><label for="emm">一言メモ</label><input id="emm" value="${esc(x.memo||'')}" placeholder="一言でどうぞ">
   <div class="bar" style="margin:14px 0 0"><span class="dot l" id="eip" style="--c:${esc(x.color)}"></span><button class="btn sub ibtn" aria-label="イメージカラー" title="イメージカラー" onclick="colDlg()">${ico(P_PALETTE)}</button><button class="btn sub ibtn" aria-label="アイコン画像" title="アイコン画像" onclick="icDlg()">${ico(P_IMG)}</button></div>
   <label for="etg">タグ(空白かカンマ区切り)</label><input id="etg" value="${esc((x.tags||[]).join(' '))}" oninput="tagSug()" onfocus="tagSug()"><div id="tsg" class="tsg"></div>
-  <label>立ち絵・表情差分</label><div id="est"></div><label class="btn sub ibtn lb" for="esf" aria-label="立ち絵を追加" title="立ち絵を追加">${ico(P_IMG)}</label><button class="btn sub" onclick="stSrc()">URL・以前の画像</button>
-  <input id="esf" type="file" accept="image/*" multiple hidden onchange="stNew([...this.files]);this.value=''">
+  <label>立ち絵・表情差分</label><div id="est"></div><button class="btn sub ibtn lb" aria-label="立ち絵を追加" title="立ち絵を追加" onclick="stSrc()">${ico(P_IMG)}</button>
   <label>基本情報</label><div id="einf"></div><button class="btn sub ibtn" aria-label="項目を追加" title="項目を追加" onclick="infAdd()">${ico(P_PLUS)}</button>
   <label>サンプルボイス</label>
   <div class="eli2"><span class="tl">一人称</span><input id="ev1" value="${esc((x.voice||{}).one||'')}"></div>
@@ -2331,7 +2340,6 @@ function fmt(k){
     const c=a+pre.length+4+sel.length;t.setSelectionRange(sel?c+4:c,sel?c+4:c);
   }
 }
-function imgPick(){const t=$('#eb');if(!t)return;if(curTa()!==t){status('画像は詳細情報の欄にだけ入れられます',1);return}S.sel=t.selectionEnd;$('#nimg').click()}
 async function addNoteImg(files){
   if(!files.length||!$('#eb'))return;
   let pos=Math.min(S.sel??$('#eb').value.length,$('#eb').value.length),n=0;
@@ -2605,10 +2613,8 @@ async function toWebp(f,q=1,max=0){
 const b64blob=b=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(b)});
 function coverDlg(){
   const w=S.works.find(x=>x.id==S.workId),cv=w.covers||[];
-  open(`<h3 style="margin:0">カバー画像</h3><p class="mut">追加した画像は、画質100%のWebPに変換して pic/cover に保存されます。▲▼で表示順を変えられます。</p>
-  <div class="thumbs">${cv.map((c,k)=>`<div class="th"><img data-p="${esc(c.path)}" alt=""><span style="margin-left:auto;display:flex;align-items:center;gap:2px"><button class="ic" aria-label="前へ" ${k?'':'disabled style="opacity:.3"'} onclick="moveCover('${c.id}',-1)">${ico(P_UP)}</button><button class="ic" aria-label="後ろへ" ${k<cv.length-1?'':'disabled style="opacity:.3"'} onclick="moveCover('${c.id}',1)">${ico(P_DN)}</button><button class="btn del" style="margin-left:6px" onclick="delCover('${c.id}')">削除</button></span></div>`).join('')||'<div class="empty">まだ画像がありません</div>'}</div>
-  <input id="cf" type="file" accept="image/*" multiple hidden onchange="addCovers(this.files)">
-  <div class="row"><button class="btn" onclick="$('#cf').click()">画像を追加</button><button class="btn sub" onclick="cvSrc()">URL・以前の画像</button><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`);
+  open(`<h3 style="margin:0">カバー画像</h3><div class="thumbs">${cv.map((c,k)=>`<div class="th"><img data-p="${esc(c.path)}" alt=""><span style="margin-left:auto;display:flex;align-items:center;gap:2px"><button class="ic" aria-label="前へ" ${k?'':'disabled style="opacity:.3"'} onclick="moveCover('${c.id}',-1)">${ico(P_UP)}</button><button class="ic" aria-label="後ろへ" ${k<cv.length-1?'':'disabled style="opacity:.3"'} onclick="moveCover('${c.id}',1)">${ico(P_DN)}</button><button class="btn del" style="margin-left:6px" onclick="delCover('${c.id}')">削除</button></span></div>`).join('')||'<div class="empty">まだ画像がありません</div>'}</div>
+  <div class="row"><button class="btn" onclick="cvSrc()">画像を追加</button><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`);
   hydrate($('#dlg'));
 }
 async function addCovers(files){
@@ -3157,9 +3163,8 @@ function galEdit(id){
   <label>タイトル</label><input id="gti" value="${esc(cur.title)}">
   ${dateIn('gcd',cur.ts||Date.now())}
   ${!id&&gVis(cur.p||null).length?`<label>フォルダ</label>${gFolderSel('gfd',cur.p||null)}`:''}
-  <div id="g-image"><label>画像(複数OK。WebPに変換して pic/gallery に保存されます)</label><div class="faces2" id="gim"></div>
-    <div class="row" style="margin-top:10px"><button class="btn sub" onclick="$('#gif').click()">画像を追加</button><button class="btn sub" onclick="galSrc()">URL・以前の画像</button></div>
-    <input id="gif" type="file" accept="image/*" multiple hidden onchange="galImgs([...this.files]);this.value=''"></div>
+  <div id="g-image"><label>画像</label><div class="faces2" id="gim"></div>
+    <div class="row" style="margin-top:10px"><button class="btn sub" onclick="galSrc()">画像を追加</button></div></div>
   <div id="g-novel"><textarea id="gbo" hidden>${esc(cur.body)}</textarea>
     <div class="row" style="margin-top:10px"><button class="btn sub" style="white-space:nowrap;flex:none" onclick="$('#gtf').click()">txtを読み込む</button></div>
     <p class="mut" id="gtn" style="margin:6px 0 0">${id?'本文は、小説を開いて✎から書き換えられます':(cur.body?'':'読み込まなくても、あとから書けます')}</p>
