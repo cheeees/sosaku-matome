@@ -72,6 +72,12 @@
       "path": "pic/char/face/smv6l2ehtg5o.webp"
      }
     ]
+   },
+   {
+    "id": "tmv6l3tywt8l",
+    "name": "メインイラスト",
+    "path": "pic/char/stand/smv6l3tyqxfq.webp",
+    "faces": []
    }
   ],
   "sheets": {
@@ -203,7 +209,7 @@
    ]
   },
   "ts": 1789905600000,
-  "up": 1791891743613,
+  "up": 1791890116727,
   "bodyFile": "chars/mio.txt",
   "beforeFile": "chars/mio.before.txt"
  },
@@ -257,6 +263,12 @@
       "path": "pic/char/face/smv6lauzuwp0.webp"
      }
     ]
+   },
+   {
+    "id": "tmv6lbdzync5",
+    "name": "私服イラスト",
+    "path": "pic/char/stand/smv6lbdzs17o.webp",
+    "faces": []
    }
   ],
   "sheets": {
@@ -383,7 +395,7 @@
    ]
   },
   "ts": 1790337600000,
-  "up": 1791891737020,
+  "up": 1791890469077,
   "bodyFile": "chars/haru.txt",
   "beforeFile": "chars/haru.before.txt"
  },
@@ -566,7 +578,7 @@
   "name": "凪沢 渚",
   "ruby": "なぎさわ なぎさ",
   "color": "#7ed0c4",
-  "icon": "pic/nagisa.svg",
+  "icon": "pic/char/amv6m4qh26by.webp",
   "tags": [
    "港町",
    "行動派"
@@ -586,9 +598,23 @@
   },
   "stands": [
    {
-    "name": "普段着",
-    "path": "pic/nagisa.svg",
-    "faces": []
+    "id": "tmv6m5l5is81",
+    "name": "立ち絵1",
+    "path": "pic/char/stand/smv6m5l5gyz5.webp",
+    "faces": [
+     {
+      "id": "fmv6m5q94l3e",
+      "path": "pic/char/face/smv6m5q93m0q.webp"
+     },
+     {
+      "id": "fmv6m5q9a7a1",
+      "path": "pic/char/face/smv6m5q99qrg.webp"
+     },
+     {
+      "id": "fmv6m5q9fnf0",
+      "path": "pic/char/face/smv6m5q9fpc7.webp"
+     }
+    ]
    }
   ],
   "sheets": {
@@ -692,6 +718,7 @@
    ]
   },
   "ts": 1790596800000,
+  "up": 1791891880999,
   "bodyFile": "chars/nagisa.txt",
   "beforeFile": "chars/nagisa.before.txt"
  },
@@ -703,7 +730,7 @@
   "name": "灯台守のゲン",
   "ruby": "とうだいもりのげん",
   "color": "#a9b4c6",
-  "icon": "pic/gen.svg",
+  "icon": "pic/char/amv6m63ux68x.webp",
   "tags": [
    "灯台",
    "老人"
@@ -727,9 +754,42 @@
   },
   "stands": [
    {
-    "name": "制服",
-    "path": "pic/gen.svg",
-    "faces": []
+    "id": "tmv6m6eoq2xc",
+    "name": "立ち絵1",
+    "path": "pic/char/stand/smv6m6eoonaw.webp",
+    "faces": [
+     {
+      "id": "fmv6m6pvld9l",
+      "path": "pic/char/face/smv6m6pvkkro.webp"
+     },
+     {
+      "id": "fmv6m6pvsjjh",
+      "path": "pic/char/face/smv6m6pvrmok.webp"
+     },
+     {
+      "id": "fmv6m6pvzc2b",
+      "path": "pic/char/face/smv6m6pvyd1x.webp"
+     }
+    ]
+   },
+   {
+    "id": "tmv6m6hk7v61",
+    "name": "若い頃",
+    "path": "pic/char/stand/smv6m6hk5pqb.webp",
+    "faces": [
+     {
+      "id": "fmv6m6tjgr09",
+      "path": "pic/char/face/smv6m6tjfitc.webp"
+     },
+     {
+      "id": "fmv6m6tjldhl",
+      "path": "pic/char/face/smv6m6tjln0k.webp"
+     },
+     {
+      "id": "fmv6m6tjtigf",
+      "path": "pic/char/face/smv6m6tjsfei.webp"
+     }
+    ]
    }
   ],
   "sheets": {
@@ -845,6 +905,7 @@
    ]
   },
   "ts": 1790769600000,
+  "up": 1791891932806,
   "bodyFile": "chars/gen.txt",
   "beforeFile": "chars/gen.before.txt"
  }
