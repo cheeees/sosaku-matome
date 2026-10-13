@@ -83,10 +83,21 @@ function demoPrelude(cfg){
     if(!m)return _fetch(input,init);
     var repo=decodeURIComponent(m[1])+'/'+decodeURIComponent(m[2]),path=decodeURIComponent(m[3]);
     var meth=String(init.method||'GET').toUpperCase(),f=F[path];
-    /* 基本シート(公開リポジトリ)は読み取りだけ、そのまま本物から取得する */
+    /* 基本シート: 読み取りだけ。サイト直下の data/preset/ を先に見て、なければ本物(API)から取得する */
     if(repo!==REPO){
       if(meth!=='GET')return Promise.resolve(J({message:'demo'},403));
-      return _fetch(input,init).catch(function(){return J({message:'Not Found'},404)});
+      var nf=function(){return J({message:'Not Found'},404)};
+      if(/^data\/preset\/?$/.test(path)){
+        return _fetch(input,init).then(function(r){if(r.ok)return r;throw 0}).catch(function(){
+          return _fetch('https://api.github.com/repos/'+repo+'/contents/'+path,{headers:{Accept:'application/vnd.github+json'}}).then(function(r){if(r.ok)return r;throw 0});
+        }).catch(function(){
+          return J((cfg.basePresets||[]).map(function(n){return{type:'file',name:n,path:'data/preset/'+n,sha:'b'+n.length}}));
+        });
+      }
+      if(/^data\/preset\/./.test(path)&&/raw/i.test(accept)){
+        return _fetch(cfg.site+path.split('/').map(encodeURIComponent).join('/')).then(function(r){return r.ok?r:_fetch(input,init)}).catch(function(){return _fetch(input,init)}).catch(nf);
+      }
+      return _fetch(input,init).catch(nf);
     }
     /* チェックシート一覧: data/preset を一覧として返す */
     if(meth==='GET'&&/^data\/preset\/?$/.test(path)&&!/raw/i.test(accept)){
@@ -100,7 +111,10 @@ function demoPrelude(cfg){
         if(DEL[path])return Promise.resolve(J({message:'Not Found'},404));
         if(!/raw/i.test(accept))return Promise.resolve(J({message:'Not Found'},404));
         /* 画像など: data/demo/ に同じパスのファイルがあればそれを返す */
-        return _fetch(cfg.base+path.split('/').map(encodeURIComponent).join('/')).then(function(r){return r.ok?r:J({message:'Not Found'},404)},function(){return J({message:'Not Found'},404)});
+        var enc=path.split('/').map(encodeURIComponent).join('/'),nf=function(){return J({message:'Not Found'},404)};
+        return _fetch(cfg.base+enc).then(function(r){return r.ok?r:Promise.reject()}).catch(function(){
+          return /^data\/preset\//.test(path)?_fetch(cfg.site+enc).then(function(r){return r.ok?r:nf()}):nf();
+        }).catch(nf);
       }
       if(/raw/i.test(accept))return Promise.resolve(new Response(f.t!=null?new Blob([f.t],{type:f.type}):b64blob(f.b,f.type),{status:200,headers:{'Content-Type':f.type}}));
       return Promise.resolve(J({type:'file',path:path,sha:f.sha,size:(f.t!=null?f.t.length:f.b.length),encoding:'base64',content:f.t!=null?b64enc(f.t):f.b}));
@@ -179,10 +193,10 @@ function demoPrelude(cfg){
     if(x&&typeof x.date==='string'){var m=/^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(x.date.trim());if(m)x.ts=Date.UTC(+m[1],+m[2]-1,+m[3],12);delete x.date}
   }
   Promise.all([get('index.html').then(function(r){if(!r.ok)throw new Error('index.html');return r.text()}),json('works.json'),json('characters.json'),json('gallery.json').catch(function(){return null}),json('presets.json').catch(function(){return[]})]).then(function(a){
-    var html=a[0],works=a[1],chars=a[2],gal=a[3],before={},presets={};
+    var html=a[0],works=a[1],chars=a[2],gal=a[3],before={},presets={},bpre={};
     if(gal)gal.forEach(fixDate);
     (Array.isArray(a[4])?a[4]:[]).forEach(function(n){if(typeof n==='string')presets[n]=1});
-    chars.forEach(function(c){((c.sheets&&c.sheets.list)||[]).forEach(function(x){if(x&&x.src==='user'&&x.file)presets[x.file]=1})});
+    chars.forEach(function(c){((c.sheets&&c.sheets.list)||[]).forEach(function(x){if(x&&x.file){if(x.src==='user')presets[x.file]=1;else if(x.src==='base')bpre[x.file]=1}})});
     works.forEach(function(w){fixDate(w);(w.notes||[]).forEach(fixDate);(w.memos||[]).forEach(fixDate)});
     return Promise.all(chars.map(function(c){
       fixDate(c);
@@ -192,7 +206,7 @@ function demoPrelude(cfg){
       if(c.beforeFile)jobs.push(text(c.beforeFile).then(function(t){if(t)before[c.id]=t}));
       delete c.bodyFile;delete c.beforeFile;
       return Promise.all(jobs);
-    })).then(function(){return{html:html,cfg:{works:works,chars:chars,gal:gal,before:before,base:new URL(DATA,location.href).href,presets:Object.keys(presets)}}});
+    })).then(function(){return{html:html,cfg:{works:works,chars:chars,gal:gal,before:before,base:new URL(DATA,location.href).href,site:new URL('./',location.href).href,presets:Object.keys(presets),basePresets:Object.keys(bpre)}}});
   }).then(function(o){
     var json=JSON.stringify(o.cfg).replace(/</g,'\\u003c');
     var inj='<script>('+demoPrelude.toString()+')('+json+');<\/script>',html=o.html;
