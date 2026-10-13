@@ -72,12 +72,6 @@
       "path": "pic/char/face/smv6l2ehtg5o.webp"
      }
     ]
-   },
-   {
-    "id": "tmv6l3tywt8l",
-    "name": "メインイラスト",
-    "path": "pic/char/stand/smv6l3tyqxfq.webp",
-    "faces": []
    }
   ],
   "sheets": {
@@ -209,7 +203,7 @@
    ]
   },
   "ts": 1789905600000,
-  "up": 1791890116727,
+  "up": 1791891743613,
   "bodyFile": "chars/mio.txt",
   "beforeFile": "chars/mio.before.txt"
  },
@@ -263,12 +257,6 @@
       "path": "pic/char/face/smv6lauzuwp0.webp"
      }
     ]
-   },
-   {
-    "id": "tmv6lbdzync5",
-    "name": "私服イラスト",
-    "path": "pic/char/stand/smv6lbdzs17o.webp",
-    "faces": []
    }
   ],
   "sheets": {
@@ -395,7 +383,7 @@
    ]
   },
   "ts": 1790337600000,
-  "up": 1791890469077,
+  "up": 1791891737020,
   "bodyFile": "chars/haru.txt",
   "beforeFile": "chars/haru.before.txt"
  },
