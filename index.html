@@ -95,7 +95,8 @@ nav svg{width:24px;height:24px}
 .nvsz{display:flex;align-items:center;gap:10px;margin-top:8px}
 .nvsz input{flex:1;padding:0;border:0;background:none}
 .nvpv{margin-top:14px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-family:var(--nvff,inherit);font-size:var(--nvfs,17px);line-height:1.8}
-dialog:has(#impt),dialog:has(.imrs){width:min(640px,94vw)}
+dialog:has(#impt),dialog:has(.imrs),dialog:has(#qrb){width:min(640px,94vw)}
+#qrb,#qrt{width:100%;resize:vertical}
 #impt{width:100%;resize:vertical}
 .imr{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;margin-top:10px}
 .imr>input[type=checkbox]{width:auto;margin-top:28px}
@@ -1600,7 +1601,7 @@ function charAddDlg(){
   <label>一言メモ</label><input id="nm" placeholder="一言でどうぞ">
   ${dateIn('ncd',Date.now())}
   <label>カテゴリ</label><select id="nc"><option value="">カテゴリなし</option>${(w.cats||[]).map(k=>`<option value="${k.id}">${esc(k.title)}</option>`).join('')}</select>
-  <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="addChar()">追加</button></div>`);
+  <div class="row"><button class="btn sub" onclick="qzStart('add')">質問から作る</button><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="addChar()">追加</button></div>`);
 }
 function addChar(){
   const w=S.works.find(x=>x.id==S.workId);if(!w)return;
@@ -2392,7 +2393,7 @@ function editView(w,x){
     <div class="fr1"><input id="fq" placeholder="検索" value="${esc(fq)}" oninput="fInput(this.value)" onkeydown="if(event.key=='Enter'){event.preventDefault();fnext(event.shiftKey?-1:1)}"><span class="mut" id="fc"></span><button class="ic" aria-label="前を検索" onclick="fnext(-1)">${ico('<path d="M6 15l6-6 6 6"/>')}</button><button class="ic" aria-label="次を検索" onclick="fnext(1)">${ico('<path d="M6 9l6 6 6-6"/>')}</button></div>
     <div class="fr1"><input id="fr" placeholder="置換後の文字"><button class="btn sub" onclick="frep(0)">置換</button><button class="btn sub" onclick="frep(1)">すべて</button></div>
   </div></div>
-  ${C?'<div class="bar" style="margin:0 0 4px"><button class="btn sub" onclick="impDlg()">文章から入力</button></div>':''}<label for="et" style="margin-top:0">${C?'名前':'項目名'}</label><input id="et" class="et" value="${esc(C?x.name:x.title)}" placeholder="${C?'キャラの名前':'例:魔法のしくみ'}">
+  ${C?'<div class="bar" style="margin:0 0 4px"><button class="btn sub" onclick="impDlg()">文章から入力</button><button class="btn sub" style="margin-left:8px" onclick="qzStart(\'edit\')">質問から作る</button></div>':''}<label for="et" style="margin-top:0">${C?'名前':'項目名'}</label><input id="et" class="et" value="${esc(C?x.name:x.title)}" placeholder="${C?'キャラの名前':'例:魔法のしくみ'}">
   ${dateIn('ecd',cTime(x))}
   ${C?`<label for="ert">ふりがな</label><input id="ert" value="${esc(x.ruby||'')}"><label for="emm">一言メモ</label><input id="emm" value="${esc(x.memo||'')}" placeholder="一言でどうぞ">
   <div class="bar" style="margin:14px 0 0"><span class="dot l" id="eip" style="--c:${esc(x.color)}"></span><button class="btn sub ibtn" aria-label="イメージカラー" title="イメージカラー" onclick="colDlg()">${ico(P_PALETTE)}</button><button class="btn sub ibtn" aria-label="アイコン画像" title="アイコン画像" onclick="icDlg()">${ico(P_IMG)}</button></div>
@@ -3912,6 +3913,180 @@ function impApply(){
   S.imp=null;$('#dlg').close();status(n?`${n}項目を入力欄に反映しました`:'反映する項目がありませんでした');
 }
 /* ===== /文章から入力 ===== */
+
+/* ===== 質問から作る(キャラ追加・編集画面。質問に答えると、性格・口調などの文章を作る) ===== */
+/* 軸ごとに4段階: 0=強く負側 / 1=やや負側 / 2=やや正側 / 3=強く正側。答えが打ち消し合った軸は文章に入れない */
+const QZA=[
+ {a:['無口で一人を好む','物静かな','人当たりのよい','社交的で目立つ'],
+  s:['人付き合いは最低限にとどめ、一人で過ごす時間をなにより大切にしている。','口数は多くないが、親しい相手とは打ち解けて話せる。','初対面でも構えずに話せて、場の空気に自然に馴染む。','誰とでもすぐに打ち解け、人の輪の中心にいることが多い。'],
+  g:['自分の世界を深く掘り下げられる','聞き上手で落ち着いている','人を安心させ、場を和ませる','人を巻き込み、場を動かす力がある'],
+  b:['孤立しやすく、助けを求めるのが下手','自分から踏み出すのに時間がかかる','気を遣いすぎて疲れやすい','静かな時間が取れないと消耗する']},
+ {a:['常に冷静沈着な','落ち着いた','感情豊かな','熱しやすい'],
+  s:['感情を表に出すことがほとんどなく、何が起きても淡々としている。','普段は穏やかで、感情の波は小さい。','喜怒哀楽がはっきりしていて、思ったことが顔に出やすい。','感情が激しく、熱くなると周りが見えなくなるほど突き進む。'],
+  g:['緊急時でも取り乱さない','動じず物事を見極められる','共感力が高く、人の心を動かせる','情熱で周囲を引っ張る'],
+  b:['冷たい人だと誤解されやすい','本音が見えにくい','感情に振り回されることがある','衝動的で、後から後悔しやすい']},
+ {a:['直感と感性で動く','感覚を大事にする','筋道を立てて考える','徹底した合理主義の'],
+  s:['理屈よりも直感や気分で動き、ひらめきを信じて決断する。','判断の決め手は、論理より「なんとなくの感覚」であることが多い。','物事を整理して考え、根拠をもとに判断する。','感情を切り離して合理的に判断し、効率や結果を最優先にする。'],
+  g:['独創的な発想ができる','感受性が豊かで、細やかな変化に気づく','説明が的確で、判断がぶれにくい','無駄がなく、問題解決が速い'],
+  b:['気分にムラがあり、説明が苦手','根拠のない決断で周囲を困らせる','融通がきかないと言われることがある','割り切りすぎて、人の気持ちを置き去りにしがち']},
+ {a:['自分本位な','マイペースな','面倒見のよい','自己犠牲もいとわない'],
+  s:['まず自分の利益や望みを優先し、他人のために動くことはあまりない。','基本はマイペースで、自分の都合を大事にする。','困っている人を見ると放っておけず、つい手を貸してしまう。','他人のためなら自分を後回しにして、身を削ることもいとわない。'],
+  g:['自分の意思に正直で、ぶれない','他人に流されない','頼られる安心感がある','見返りを求めず尽くせる'],
+  b:['協調性に欠け、わがままに映る','周囲への配慮が足りないことがある','頼まれると断れず、抱え込みやすい','自分を犠牲にしすぎて、無理を溜め込む']},
+ {a:['極めて用心深い','慎重な','行動力のある','怖いもの知らずの'],
+  s:['何をするにも最悪の事態を想定し、確信が持てるまで動かない。','よく考えてから動くタイプで、危険な賭けは避ける。','やると決めたら行動が早く、迷ったら先に動いてみる。','危険や前例を恐れず、無茶な挑戦にも真っ先に飛び込む。'],
+  g:['リスク管理に長けている','準備に抜かりがない','決断が早く、チャンスを逃さない','突破力があり、状況を切り開く'],
+  b:['臆病で、好機を逃しがち','慎重さが行動の遅さにつながる','見切り発車で失敗することがある','無謀で、周囲をひやひやさせる']},
+ {a:['悲観的な','やや心配性な','前向きな','底抜けに楽観的な'],
+  s:['物事の悪い面が先に目に入り、最悪を想定して構えている。','心配性なところがあり、うまくいくか不安になりやすい。','どんな状況でも良い面を見つけて、前を向こうとする。','根拠がなくても「なんとかなる」と信じていて、落ち込んでもすぐ立ち直る。'],
+  g:['危機への備えが厚い','現実を甘く見ない','周囲を明るくする','折れない心を持つ'],
+  b:['ネガティブ思考に陥りやすい','不安から踏み出せなくなる','見通しが甘くなることがある','危機感に欠け、楽観が裏目に出る']}
+];
+/* [軸の番号, 質問, 選択肢(負側), 選択肢(正側)] */
+const QZQ=[
+ [0,'休日の理想の過ごし方は?','家で一人でのんびり','友人と出かけて騒ぐ'],
+ [1,'理不尽なことを言われたら?','顔に出さず受け流す','その場でカッとなって言い返す'],
+ [2,'大事な決断をするとき頼るのは?','直感・心の声','データと理屈'],
+ [3,'目の前で知らない人が困っていたら?','関わらず通り過ぎる','迷わず声をかける'],
+ [4,'初めて行く場所では?','下調べをして道順を確認する','とりあえず歩いて探索する'],
+ [5,'計画が失敗したとき、最初に思うのは?','やっぱりダメだったか','次はうまくいく'],
+ [0,'パーティーに誘われたら?','理由をつけて断りたい','喜んで参加する'],
+ [1,'感動的な映画を見たとき?','静かに見終えて淡々としている','人目も気にせず泣く'],
+ [2,'友人が悩みを相談してきたら?','まず気持ちに寄り添う','原因を整理して解決策を示す'],
+ [3,'ご褒美が一つだけ。友人もほしがっていたら?','自分のものにする','譲る'],
+ [4,'うまい儲け話を聞いたら?','まず疑ってかかる','面白そうだと乗ってみる'],
+ [5,'将来のことを考えると?','不安のほうが大きい','わくわくする'],
+ [0,'初対面の人と話すとき?','自分からは話しかけない','自分から話題を振る'],
+ [1,'嬉しいことがあったとき?','内心で静かに喜ぶ','全身で喜びを表す'],
+ [2,'物事を選ぶ基準は?','好きか、しっくりくるか','効率やメリット'],
+ [3,'仲間のために自分が損をする場面では?','損はしたくない','仕方ない、引き受ける'],
+ [4,'目の前に危険な近道があったら?','遠回りでも安全な道','近道を行く'],
+ [5,'雨の日の外出は?','ついてないな','雨もいいもんだ']
+];
+const QZP=['私','僕','俺','あたし','わたくし','自分','わし'];
+const QZS={
+ pol:{n:'丁寧',t:'丁寧な言葉づかいで、誰に対しても敬語を崩さない。',two:'あなた',l:'「はじめまして、{p}は{n}と申します。どうぞよろしくお願いいたします。」'},
+ cas:{n:'くだけた',t:'くだけた調子で、誰とでも気軽に話す。',two:'君',l:'「どうも、{n}だよ。{p}のことは気軽に呼んでね!」'},
+ blu:{n:'ぶっきらぼう',t:'言葉数が少なく、ぶっきらぼうな話し方をする。',two:'お前',l:'「……{n}だ。それだけ分かれば十分だろう。」'},
+ sof:{n:'おっとり',t:'ゆっくりとした、おっとりした口調で話す。',two:'あなた',l:'「あのぅ、{n}といいます。ゆっくり、仲良くしてくださいね。」'},
+ old:{n:'古風',t:'古風で芝居がかった言い回しを好む。',two:'お主',l:'「{p}は{n}と申す者。以後、お見知り置きを。」'}
+};
+function qzStart(mode){
+  let q;
+  if(mode=='add'){
+    if(!S.works.find(x=>x.id==S.workId))return;
+    q={mode,name:($('#nn').value||'').trim(),ruby:($('#nr').value||'').trim(),cat:$('#nc').value||null,ts:dateTs('ncd',Date.now())};
+  }else{
+    if(!S.ic)return;
+    q={mode,name:($('#et').value||'').trim(),ruby:($('#ert').value||'').trim()};
+  }
+  Object.assign(q,{age:'',job:'',ans:QZQ.map(()=>null),p:null,st:null,i:-1});
+  S.qz=q;qzShow();
+}
+function qzNext(){
+  const q=S.qz;if(!q)return;
+  const n=$('#qzn').value.trim();
+  if(q.mode=='add'&&!n){$('#qzn').focus();return}
+  q.name=n;q.ruby=$('#qzr').value.trim();q.age=$('#qza').value.trim();q.job=$('#qzj').value.trim();
+  q.i=0;qzShow();
+}
+function qzAns(v){const q=S.qz;if(!q)return;q.ans[q.i]=v;q.i++;qzShow()}
+function qzBack(){const q=S.qz;if(!q||q.i<0)return;q.i--;qzShow()}
+function qzPick(j){const q=S.qz;if(!q)return;q.p=j<0?'':QZP[j];q.i++;qzShow()}
+function qzSt(k){const q=S.qz;if(!q)return;q.st=k;q.i++;qzShow()}
+function qzBuild(q){
+  const sc=QZA.map(()=>0);
+  QZQ.forEach((x,i)=>{if(q.ans[i])sc[x[0]]+=q.ans[i]});
+  const tier=s=>s<=-2?0:s==-1?1:s==1?2:s>=2?3:-1;
+  const ord=sc.map((s,i)=>({s,i})).filter(o=>o.s).sort((a,b)=>Math.abs(b.s)-Math.abs(a.s)||a.i-b.i),top=ord.slice(0,3);
+  const sen=QZA.map((a,i)=>{const t=tier(sc[i]);return t<0?'':a.s[t]}).filter(Boolean);
+  const st=QZS[q.st],p=q.p||'私',parts=[];
+  if(sen.length)parts.push('# 性格\n'+sen.join(''));
+  if(top.length){
+    parts.push('# 長所\n'+top.map(o=>'・'+QZA[o.i].g[tier(o.s)]).join('\n'));
+    parts.push('# 短所\n'+top.map(o=>'・'+QZA[o.i].b[tier(o.s)]).join('\n'));
+  }
+  if(st)parts.push('# 話し方\n'+st.t);
+  const info=[];
+  if(q.age)info.push({k:'年齢',v:q.age});
+  if(q.job)info.push({k:'職業',v:q.job});
+  return{
+    memo:ord.length?ord.slice(0,2).map(o=>QZA[o.i].a[tier(o.s)]).join('、')+'人物':'',
+    body:parts.join('\n\n'),
+    one:q.p||'',
+    two:st?st.two:'',
+    text:st?st.l.replace(/\{n\}/g,q.name||'(名前)').replace(/\{p\}/g,p):'',
+    info
+  };
+}
+function qzShow(){
+  const q=S.qz;if(!q)return;
+  const N=QZQ.length,i=q.i,close=`<button class="btn sub" onclick="$('#dlg').close()">閉じる</button>`;
+  if(i<0){
+    open(`<h3 style="margin:0">質問から作る</h3><p class="mut" style="margin:6px 0 0">${N}問ほどの質問に答えると、性格や話し方の文章を作ります。結果はあとで直せます。</p>
+    <label for="qzn">名前${q.mode=='add'?'(必須)':''}</label><input id="qzn" value="${esc(q.name)}">
+    <label for="qzr">ふりがな</label><input id="qzr" value="${esc(q.ruby)}">
+    <label for="qza">年齢(任意)</label><input id="qza" value="${esc(q.age)}" placeholder="例:17歳 / 20代後半">
+    <label for="qzj">職業(任意)</label><input id="qzj" value="${esc(q.job)}" placeholder="例:学生 / 探偵">
+    <div class="row"><span class="sp"></span>${close}<button class="btn" onclick="qzNext()">はじめる</button></div>`);
+    return;
+  }
+  if(i<N){
+    const x=QZQ[i],a=q.ans[i];
+    open(`<div class="mut">質問 ${i+1} / ${N}</div><h3 style="margin:6px 0 0">${esc(x[1])}</h3>
+    <div class="menu">${[[-1,x[2]],[1,x[3]],[0,'どちらでもない']].map(([v,t])=>`<button class="btn ${a===v?'':'sub'}" onclick="qzAns(${v})">${esc(t)}</button>`).join('')}</div>
+    <div class="row"><button class="btn sub" onclick="qzBack()">戻る</button><span class="sp"></span>${close}</div>`);
+    return;
+  }
+  if(i==N){
+    open(`<div class="mut">一人称</div><h3 style="margin:6px 0 0">自分のことを何と呼ぶ?</h3>
+    <div class="nvo">${QZP.map((p,j)=>`<button class="btn ${q.p===p?'':'sub'}" onclick="qzPick(${j})">${esc(p)}</button>`).join('')}</div>
+    <div class="menu"><button class="btn sub" onclick="qzPick(-1)">指定しない</button></div>
+    <div class="row"><button class="btn sub" onclick="qzBack()">戻る</button><span class="sp"></span>${close}</div>`);
+    return;
+  }
+  if(i==N+1){
+    open(`<div class="mut">話し方</div><h3 style="margin:6px 0 0">しっくりくる口調は?</h3>
+    <div class="menu">${Object.entries(QZS).map(([k,v])=>`<button class="btn ${q.st==k?'':'sub'}" onclick="qzSt('${k}')">${esc(v.n)}</button>`).join('')}</div>
+    <div class="row"><button class="btn sub" onclick="qzBack()">戻る</button><span class="sp"></span>${close}</div>`);
+    return;
+  }
+  const R=q.R=qzBuild(q);
+  open(`<h3 style="margin:0">できあがり</h3><p class="mut" style="margin:6px 0 0">内容は直してから${q.mode=='add'?'作成':'反映'}できます。</p>
+  <label for="qrm">一言メモ</label><input id="qrm" value="${esc(R.memo)}">
+  <label for="qr1">一人称</label><input id="qr1" value="${esc(R.one)}">
+  <label for="qr2">二人称</label><input id="qr2" value="${esc(R.two)}">
+  <label for="qrt">セリフ(サンプル)</label><textarea id="qrt" rows="2">${esc(R.text)}</textarea>
+  <label for="qrb">詳細情報</label><textarea id="qrb" rows="12">${esc(R.body)}</textarea>
+  ${q.mode=='add'?'':`<label for="qro">反映のしかた</label><select id="qro"><option value="fill">空欄だけ埋める(詳細情報は末尾に追加)</option><option value="over">すべて上書き</option></select>`}
+  <div class="row"><button class="btn sub" onclick="qzBack()">戻る</button><span class="sp"></span>${close}<button class="btn" onclick="qzDone()">${q.mode=='add'?'作成':'入力欄に反映'}</button></div>`);
+}
+function qzDone(){
+  const q=S.qz;if(!q)return;
+  const R={memo:$('#qrm').value.trim(),one:$('#qr1').value.trim(),two:$('#qr2').value.trim(),text:$('#qrt').value.trim(),body:$('#qrb').value.trim(),info:q.R?q.R.info:[]};
+  if(q.mode=='add'){
+    const w=S.works.find(x=>x.id==S.workId);if(!w)return;
+    const id=uid('c'),nc={id,name:q.name,ruby:q.ruby,color:'#ff8fa3',tags:[],memo:R.memo,body:R.body,voice:{one:R.one,two:R.two,three:'',text:R.text},info:R.info,workId:w.id,cat:q.cat,o:nextCO(w)};
+    if(isoD(q.ts)!=isoD(Date.now()))nc.ts=q.ts;
+    S.chars.push(nc);save('characters.json');S.qz=null;
+    navTo(()=>{S.rd=id});
+    const d=$('#dlg');if(d.open)d.close();
+    return;
+  }
+  if(!S.ic)return;
+  const over=$('#qro').value=='over';let n=0;
+  const setv=(sel,v)=>{const e=$(sel);if(!e||!v)return;if(over||!e.value.trim()){e.value=v;if(e.tagName=='TEXTAREA')grow(e);n++}};
+  setv('#et',q.name);setv('#ert',q.ruby);setv('#emm',R.memo);setv('#ev1',R.one);setv('#ev2',R.two);setv('#evo',R.text);
+  const eb=$('#eb');
+  if(eb&&R.body){eb.value=(over||!eb.value.trim())?R.body:eb.value.replace(/\s+$/,'')+'\n\n'+R.body;grow(eb);fhl();n++}
+  R.info.forEach(r=>{
+    const row=S.ic.info.find(x=>x.k==r.k);
+    if(row){if(over||!row.v.trim()){row.v=r.v;n++}}else{S.ic.info.push({k:r.k,v:r.v});n++}
+  });
+  edInf();
+  S.qz=null;$('#dlg').close();status(n?`${n}項目を入力欄に反映しました`:'反映する項目がありませんでした');
+}
+/* ===== /質問から作る ===== */
 
 applyTheme(document.documentElement.dataset.theme||'light');
 if(!S.token)boot=null;
