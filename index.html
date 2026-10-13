@@ -4013,21 +4013,13 @@ const QZQ=[
  [10,'出世や評価は?','あまり興味がない','ほしい、勝ち取りたい'],
  [10,'ライバルが現れたら?','争いは避けたい','負けたくない、燃える']
 ];
-const QZP=['私','僕','俺','あたし','わたくし','自分','わし'];
-const QZS={
- pol:{n:'丁寧',t:'丁寧な言葉づかいで、誰に対しても敬語を崩さない。',two:'あなた',l:'「はじめまして、{p}は{n}と申します。どうぞよろしくお願いいたします。」'},
- cas:{n:'くだけた',t:'くだけた調子で、誰とでも気軽に話す。',two:'君',l:'「どうも、{n}だよ。{p}のことは気軽に呼んでね!」'},
- blu:{n:'ぶっきらぼう',t:'言葉数が少なく、ぶっきらぼうな話し方をする。',two:'お前',l:'「……{n}だ。それだけ分かれば十分だろう。」'},
- sof:{n:'おっとり',t:'ゆっくりとした、おっとりした口調で話す。',two:'あなた',l:'「あのぅ、{n}といいます。ゆっくり、仲良くしてくださいね。」'},
- old:{n:'古風',t:'古風で芝居がかった言い回しを好む。',two:'お主',l:'「{p}は{n}と申す者。以後、お見知り置きを。」'}
-};
 /* 複雑モード用の自由記述(すべて空欄でスキップできる) */
 const QZF=[
  {k:'like',h:'好きなもの',q:'好きなもの・好きなことは?',ph:'例:甘いもの、夜の散歩'},
  {k:'hate',h:'苦手なもの',q:'苦手なもの・嫌いなことは?',ph:'例:大きな音、嘘をつく人'},
  {k:'dear',h:'大切な人・もの',q:'大切にしている人やものは?',ph:'例:亡き祖母の形見の懐中時計'},
  {k:'skill',h:'趣味・特技',q:'趣味や特技は?',ph:'例:料理、一度見た顔は忘れない'},
- {k:'habit',h:'口癖',q:'よく口にする言葉(口癖)は?',ph:'例:まあ、なんとかなるさ'},
+ {k:'daily',h:'普段の過ごし方',q:'普段はどんなふうに過ごしている?',ph:'例:朝は早起きして散歩、休日は一日中本を読む'},
  {k:'past',h:'過去の出来事',q:'今の人格に影響した過去の出来事は?',ph:'例:幼い頃に故郷を離れた'},
  {k:'wish',h:'叶えたいこと',q:'叶えたいこと・目的は?',ph:'例:もう一度、家族と暮らす'},
  {k:'secret',h:'隠していること',q:'人に隠していることは?',ph:'例:本当は泳げない'}
@@ -4063,8 +4055,7 @@ function qzSteps(lv){
     for(let r=0;r<3;r++)for(let x=0;x<5;x++)ord.push(30+x*3+r);
   }
   ord.forEach(k=>a.push({t:'c',k}));
-  if(lv=='c')QZF.forEach((f,k)=>a.push({t:'f',k}));
-  a.push({t:'p'},{t:'s'});
+  QZF.forEach((f,k)=>a.push({t:'f',k}));
   return a;
 }
 function qzStart(mode){
@@ -4076,7 +4067,7 @@ function qzStart(mode){
     if(!S.ic)return;
     q={mode,name:($('#et').value||'').trim(),ruby:($('#ert').value||'').trim()};
   }
-  Object.assign(q,{age:'',job:'',lv:'s',steps:[],ans:QZQ.map(()=>null),fr:{},p:null,st:null,i:-1});
+  Object.assign(q,{age:'',job:'',lv:'s',steps:[],ans:QZQ.map(()=>null),fr:{},i:-1});
   S.qz=q;qzShow();
 }
 function qzNext(){
@@ -4090,8 +4081,6 @@ function qzSaveFree(){const q=S.qz,s=qzCur(),e=$('#qzf');if(q&&s&&s.t=='f'&&e)q.
 function qzAns(v){const q=S.qz,s=qzCur();if(!q||!s)return;q.ans[s.k]=v;q.i++;qzShow()}
 function qzFree(){const q=S.qz;if(!q)return;qzSaveFree();q.i++;qzShow()}
 function qzBack(){const q=S.qz;if(!q||q.i<0)return;qzSaveFree();q.i--;qzShow()}
-function qzPick(j){const q=S.qz;if(!q)return;q.p=j<0?'':QZP[j];q.i++;qzShow()}
-function qzSt(k){const q=S.qz;if(!q)return;q.st=k;q.i++;qzShow()}
 function qzBuild(q){
   const lv=q.lv=='c',n=QZA.map(()=>0),sc=QZA.map(()=>0);
   q.steps.forEach(s=>{if(s.t!='c')return;const x=QZQ[s.k][0];n[x]++;if(q.ans[s.k])sc[x]+=q.ans[s.k]});
@@ -4100,7 +4089,7 @@ function qzBuild(q){
   const ord=r.map((v,i)=>({v,i})).filter(o=>o.v).sort((a,b)=>Math.abs(b.v)-Math.abs(a.v)||a.i-b.i),top=ord.slice(0,lv?4:3);
   const sent=ax=>ax.map(i=>{const t=tier(r[i]);return t<0?'':QZA[i].s[t]}).filter(Boolean).join('');
   const SEC=lv?[['性格',[0,1,2,5]],['対人関係',[3,7,8]],['行動原理',[4,6,9,10]]]:[['性格',[0,1,2,3,4,5]]];
-  const st=QZS[q.st],p=q.p||'私',parts=[];
+  const parts=[];
   SEC.forEach(([h,ax])=>{const t=sent(ax);if(t)parts.push('# '+h+'\n'+t)});
   if(top.length){
     parts.push('# 長所\n'+top.map(o=>'・'+QZA[o.i].g[tier(o.v)]).join('\n'));
@@ -4110,21 +4099,14 @@ function qzBuild(q){
     const sd=v=>v<=-.34?-1:v>=.34?1:0,w=c=>Math.abs(r[c[0]])+Math.abs(r[c[2]]);
     const gp=QZC.filter(c=>n[c[0]]&&n[c[2]]&&sd(r[c[0]])==c[1]&&sd(r[c[2]])==c[3]).sort((a,b)=>w(b)-w(a)).slice(0,3);
     if(gp.length)parts.push('# ギャップ\n'+gp.map(c=>'・'+c[4]).join('\n'));
-    QZF.forEach(f=>{const v=(q.fr[f.k]||'').trim();if(v&&f.k!='habit')parts.push('# '+f.h+'\n'+v)});
   }
-  const habit=lv?(q.fr.habit||'').trim().replace(/^[「『]+|[」』]+$/g,''):'';
-  if(st||habit)parts.push('# 話し方\n'+[st?st.t:'',habit?`口癖は「${habit}」。`:''].filter(Boolean).join(''));
+  QZF.forEach(f=>{const v=(q.fr[f.k]||'').trim();if(v)parts.push('# '+f.h+'\n'+v)});
   const info=[];
   if(q.age)info.push({k:'年齢',v:q.age});
   if(q.job)info.push({k:'職業',v:q.job});
-  let text=st?st.l.replace(/\{n\}/g,q.name||'(名前)').replace(/\{p\}/g,p):'';
-  if(habit)text+=(text?'\n':'')+'「'+habit+'」';
   return{
     memo:ord.length?ord.slice(0,2).map(o=>QZA[o.i].a[tier(o.v)]).join('、')+'人物':'',
     body:parts.join('\n\n'),
-    one:q.p||'',
-    two:st?st.two:'',
-    text,
     info
   };
 }
@@ -4132,10 +4114,10 @@ function qzShow(){
   const q=S.qz;if(!q)return;
   const i=q.i,close=`<button class="btn sub" onclick="$('#dlg').close()">閉じる</button>`;
   if(i<0){
-    const nE=18,nC=QZQ.length+QZF.length,c=q.lv=='c';
+    const nE=18+QZF.length,nC=QZQ.length+QZF.length,c=q.lv=='c';
     open(`<h3 style="margin:0">質問から作る</h3>
     <div class="ctabs" style="grid-template-columns:1fr 1fr;margin:10px 0 0"><button class="btn ${c?'sub':''}" onclick="qzLv('s')">簡単(${nE}問)</button><button class="btn ${c?'':'sub'}" onclick="qzLv('c')">複雑(約${nC}問)</button></div>
-    <p class="mut" style="margin:8px 0 0">${c?`性格の傾向を11の軸で細かく聞き、好きなものや過去などの自由記述(空欄でスキップできます)も加えて、そのキャラらしい文章を作ります。`:`${nE}問に答えるだけで、性格や話し方の文章を作ります。`}結果はあとで直せます。</p>
+    <p class="mut" style="margin:8px 0 0">${c?`性格の傾向を11の軸で細かく聞き、好きなものや過去などの自由記述(空欄でスキップできます)も加えて、そのキャラらしい文章を作ります。`:`性格の傾向を6つの軸で聞き、好きなものや過去などの自由記述(空欄でスキップできます)も加えて、文章を作ります。`}結果はあとで直せます。</p>
     <label for="qzn">名前${q.mode=='add'?'(必須)':''}</label><input id="qzn" value="${esc(q.name)}">
     <label for="qzr">ふりがな</label><input id="qzr" value="${esc(q.ruby)}">
     <label for="qza">年齢(任意)</label><input id="qza" value="${esc(q.age)}" placeholder="例:17歳 / 20代後半">
@@ -4143,7 +4125,7 @@ function qzShow(){
     <div class="row"><span class="sp"></span>${close}<button class="btn" onclick="qzNext()">はじめる</button></div>`);
     return;
   }
-  const T=q.steps.length,nq=T-2,s=i<T?q.steps[i]:null;
+  const T=q.steps.length,nq=T,s=i<T?q.steps[i]:null;
   if(s&&s.t=='c'){
     const x=QZQ[s.k],a=q.ans[s.k];
     open(`<div class="mut">質問 ${i+1} / ${nq}</div><h3 style="margin:6px 0 0">${esc(x[1])}</h3>
@@ -4159,25 +4141,9 @@ function qzShow(){
     setTimeout(()=>{const e=$('#qzf');if(e)e.focus()},60);
     return;
   }
-  if(s&&s.t=='p'){
-    open(`<div class="mut">一人称</div><h3 style="margin:6px 0 0">自分のことを何と呼ぶ?</h3>
-    <div class="nvo">${QZP.map((p,j)=>`<button class="btn ${q.p===p?'':'sub'}" onclick="qzPick(${j})">${esc(p)}</button>`).join('')}</div>
-    <div class="menu"><button class="btn sub" onclick="qzPick(-1)">指定しない</button></div>
-    <div class="row"><button class="btn sub" onclick="qzBack()">戻る</button><span class="sp"></span>${close}</div>`);
-    return;
-  }
-  if(s&&s.t=='s'){
-    open(`<div class="mut">話し方</div><h3 style="margin:6px 0 0">しっくりくる口調は?</h3>
-    <div class="menu">${Object.entries(QZS).map(([k,v])=>`<button class="btn ${q.st==k?'':'sub'}" onclick="qzSt('${k}')">${esc(v.n)}</button>`).join('')}</div>
-    <div class="row"><button class="btn sub" onclick="qzBack()">戻る</button><span class="sp"></span>${close}</div>`);
-    return;
-  }
   const R=q.R=qzBuild(q);q.pre=null;
   open(`<h3 style="margin:0">できあがり</h3><p class="mut" style="margin:6px 0 0">内容は直してから${q.mode=='add'?'作成':'反映'}できます。</p>
   <label for="qrm">一言メモ</label><input id="qrm" value="${esc(R.memo)}">
-  <label for="qr1">一人称</label><input id="qr1" value="${esc(R.one)}">
-  <label for="qr2">二人称</label><input id="qr2" value="${esc(R.two)}">
-  <label for="qrt">セリフ(サンプル)</label><textarea id="qrt" rows="${R.text.split('\n').length+1}">${esc(R.text)}</textarea>
   <label for="qrb">詳細情報</label><textarea id="qrb" rows="${q.lv=='c'?16:12}">${esc(R.body)}</textarea>
   <div class="row" style="margin-top:8px"><button class="btn sub" id="qai" onclick="qzAi()">AIで文章を整える</button><button class="btn sub" id="qundo" onclick="qzUndo()" hidden>元に戻す</button></div>
   ${q.mode=='add'?'':`<label for="qro">反映のしかた</label><select id="qro"><option value="fill">空欄だけ埋める(詳細情報は末尾に追加)</option><option value="over">すべて上書き</option></select>`}
@@ -4211,10 +4177,10 @@ function qzUndo(){
 }
 function qzDone(){
   const q=S.qz;if(!q)return;
-  const R={memo:$('#qrm').value.trim(),one:$('#qr1').value.trim(),two:$('#qr2').value.trim(),text:$('#qrt').value.trim(),body:$('#qrb').value.trim(),info:q.R?q.R.info:[]};
+  const R={memo:$('#qrm').value.trim(),body:$('#qrb').value.trim(),info:q.R?q.R.info:[]};
   if(q.mode=='add'){
     const w=S.works.find(x=>x.id==S.workId);if(!w)return;
-    const id=uid('c'),nc={id,name:q.name,ruby:q.ruby,color:'#ff8fa3',tags:[],memo:R.memo,body:R.body,voice:{one:R.one,two:R.two,three:'',text:R.text},info:R.info,workId:w.id,cat:q.cat,o:nextCO(w)};
+    const id=uid('c'),nc={id,name:q.name,ruby:q.ruby,color:'#ff8fa3',tags:[],memo:R.memo,body:R.body,voice:{one:'',two:'',three:'',text:''},info:R.info,workId:w.id,cat:q.cat,o:nextCO(w)};
     if(isoD(q.ts)!=isoD(Date.now()))nc.ts=q.ts;
     S.chars.push(nc);save('characters.json');S.qz=null;
     navTo(()=>{S.rd=id});
@@ -4224,7 +4190,7 @@ function qzDone(){
   if(!S.ic)return;
   const over=$('#qro').value=='over';let n=0;
   const setv=(sel,v)=>{const e=$(sel);if(!e||!v)return;if(over||!e.value.trim()){e.value=v;if(e.tagName=='TEXTAREA')grow(e);n++}};
-  setv('#et',q.name);setv('#ert',q.ruby);setv('#emm',R.memo);setv('#ev1',R.one);setv('#ev2',R.two);setv('#evo',R.text);
+  setv('#et',q.name);setv('#ert',q.ruby);setv('#emm',R.memo);
   const eb=$('#eb');
   if(eb&&R.body){eb.value=(over||!eb.value.trim())?R.body:eb.value.replace(/\s+$/,'')+'\n\n'+R.body;grow(eb);fhl();n++}
   R.info.forEach(r=>{
