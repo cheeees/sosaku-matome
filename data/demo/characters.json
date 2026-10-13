@@ -7,7 +7,7 @@
   "name": "月城 ミオ",
   "ruby": "つきしろ みお",
   "color": "#8fb8de",
-  "icon": "pic/mio.svg",
+  "icon": "pic/char/amv6l1hdw3yv.webp",
   "tags": [
    "図書委員",
    "高校生",
@@ -20,12 +20,12 @@
     "v": "16歳"
    },
    {
-    "k": "所属",
-    "v": "高校一年・図書委員"
-   },
-   {
     "k": "誕生日",
     "v": "11月3日"
+   },
+   {
+    "k": "所属",
+    "v": "高校一年・図書委員"
    }
   ],
   "voice": {
@@ -36,14 +36,50 @@
   },
   "stands": [
    {
+    "id": "tmv6l1t4dku3",
     "name": "制服",
-    "path": "pic/mio.svg",
+    "path": "pic/char/stand/smv6l1t4blcm.webp",
+    "faces": [
+     {
+      "id": "fmv6l1x9x3g4",
+      "path": "pic/char/face/smv6l1x9xnq6.webp"
+     },
+     {
+      "id": "fmv6l1xa3i86",
+      "path": "pic/char/face/smv6l1xa3z40.webp"
+     },
+     {
+      "id": "fmv6l1xa9ycn",
+      "path": "pic/char/face/smv6l1xa92l8.webp"
+     }
+    ]
+   },
+   {
+    "id": "tmv6l278zq32",
+    "name": "私服",
+    "path": "pic/char/stand/smv6l278ywdm.webp",
+    "faces": [
+     {
+      "id": "fmv6l2ehifp2",
+      "path": "pic/char/face/smv6l2ehivqp.webp"
+     },
+     {
+      "id": "fmv6l2ehp419",
+      "path": "pic/char/face/smv6l2ehovm6.webp"
+     },
+     {
+      "id": "fmv6l2ehu5h1",
+      "path": "pic/char/face/smv6l2ehtg5o.webp"
+     }
+    ]
+   },
+   {
+    "id": "tmv6l3tywt8l",
+    "name": "メインイラスト",
+    "path": "pic/char/stand/smv6l3tyqxfq.webp",
     "faces": []
    }
   ],
-  "date": "2026-09-20",
-  "bodyFile": "chars/mio.txt",
-  "beforeFile": "chars/mio.before.txt",
   "sheets": {
    "list": [
     {
@@ -171,7 +207,11 @@
      }
     }
    ]
-  }
+  },
+  "ts": 1789905600000,
+  "up": 1791890116727,
+  "bodyFile": "chars/mio.txt",
+  "beforeFile": "chars/mio.before.txt"
  },
  {
   "id": "cdemo2",
@@ -211,9 +251,6 @@
     "faces": []
    }
   ],
-  "date": "2026-09-25",
-  "bodyFile": "chars/haru.txt",
-  "beforeFile": "chars/haru.before.txt",
   "sheets": {
    "list": [
     {
@@ -336,7 +373,10 @@
      }
     }
    ]
-  }
+  },
+  "ts": 1790337600000,
+  "bodyFile": "chars/haru.txt",
+  "beforeFile": "chars/haru.before.txt"
  },
  {
   "id": "cdemo3",
@@ -375,9 +415,6 @@
     "faces": []
    }
   ],
-  "date": "2026-09-26",
-  "bodyFile": "chars/tsubaki.txt",
-  "beforeFile": "chars/tsubaki.before.txt",
   "sheets": {
    "list": [
     {
@@ -492,7 +529,10 @@
      }
     }
    ]
-  }
+  },
+  "ts": 1790424000000,
+  "bodyFile": "chars/tsubaki.txt",
+  "beforeFile": "chars/tsubaki.before.txt"
  },
  {
   "id": "cdemo4",
@@ -527,9 +567,6 @@
     "faces": []
    }
   ],
-  "date": "2026-09-28",
-  "bodyFile": "chars/nagisa.txt",
-  "beforeFile": "chars/nagisa.before.txt",
   "sheets": {
    "list": [
     {
@@ -629,7 +666,10 @@
      }
     }
    ]
-  }
+  },
+  "ts": 1790596800000,
+  "bodyFile": "chars/nagisa.txt",
+  "beforeFile": "chars/nagisa.before.txt"
  },
  {
   "id": "cdemo5",
@@ -668,9 +708,6 @@
     "faces": []
    }
   ],
-  "date": "2026-09-30",
-  "bodyFile": "chars/gen.txt",
-  "beforeFile": "chars/gen.before.txt",
   "sheets": {
    "list": [
     {
@@ -782,6 +819,9 @@
      }
     }
    ]
-  }
+  },
+  "ts": 1790769600000,
+  "bodyFile": "chars/gen.txt",
+  "beforeFile": "chars/gen.before.txt"
  }
 ]
