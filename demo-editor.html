@@ -204,7 +204,8 @@ function demoPrelude(cfg){
 }
 
 (function(){
-  var DATA='data/demo/',fr=document.getElementById('fr'),stEl=document.getElementById('st'),LS='de:over',GS='de:gh',TK='de:tk';
+  var DATA='data/demo/',fr=document.getElementById('fr'),stEl=document.getElementById('st'),LS='de:over',SG='de:sig',GS='de:gh',TK='de:tk',CURSIG='';
+  function hash(s){var h=5381;for(var i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return s.length+':'+(h>>>0)}
   var ED={over:{}},META={before:{},bodyNames:{},beforeNames:{},presets:{},bpre:{},works:[],chars:[],gal:null},saveT,stT;
   try{ED.over=JSON.parse(localStorage.getItem(LS)||'{}')||{}}catch(e){ED.over={}}
 
@@ -212,7 +213,7 @@ function demoPrelude(cfg){
   function persist(){
     clearTimeout(saveT);
     saveT=setTimeout(function(){
-      try{localStorage.setItem(LS,JSON.stringify(ED.over));st('自動保存しました')}
+      try{localStorage.setItem(LS,JSON.stringify(ED.over));if(CURSIG)localStorage.setItem(SG,CURSIG);st('自動保存しました')}
       catch(e){st('容量オーバーで自動保存できません。「GitHubに保存」かZIPで退避してください',1)}
     },400);
   }
@@ -233,13 +234,16 @@ function demoPrelude(cfg){
   }
 
   /* ---------- リセット ---------- */
-  document.getElementById('rs').addEventListener('click',function(){
-    if(!confirm('編集内容をすべて破棄して、data/demo のサンプルに戻します。\n(ZIP・GitHubに保存していない変更は失われます)'))return;
-    try{Object.keys(localStorage).filter(function(k){return k===LS||k.indexOf('demoed:')===0}).forEach(function(k){localStorage.removeItem(k)})}catch(e){}
+  function resetAll(){
+    try{Object.keys(localStorage).filter(function(k){return k===LS||k===SG||k.indexOf('demoed:')===0}).forEach(function(k){localStorage.removeItem(k)})}catch(e){}
     fr.remove();
     var done=false;function go(){if(!done){done=true;location.reload()}}
     try{var q=indexedDB.deleteDatabase('sm_cache_demoed');q.onsuccess=q.onerror=q.onblocked=go}catch(e){}
     setTimeout(go,600);
+  }
+  document.getElementById('rs').addEventListener('click',function(){
+    if(!confirm('編集内容をすべて破棄して、data/demo のサンプルに戻します。\n(ZIP・GitHubに保存していない変更は失われます)'))return;
+    resetAll();
   });
 
   /* ---------- 共通: 保存するファイルをまとめる ---------- */
@@ -463,6 +467,14 @@ function demoPrelude(cfg){
       delete c.bodyFile;delete c.beforeFile;
       return Promise.all(jobs);
     })).then(function(){
+      /* data/demo のファイルが、前回の編集のあとで更新されていないか確認 */
+      CURSIG=hash(JSON.stringify([works,chars,gal,before]));
+      var sv=null;try{sv=localStorage.getItem(SG)}catch(e){}
+      var hasEdit=['works.json','characters.json','gallery.json'].some(function(k){return ED.over[k]!=null});
+      if(hasEdit&&sv!==CURSIG){
+        if(confirm('data/demo のファイルが、前回編集したときから更新されている可能性があります。\n\n[OK] ブラウザに残っている編集内容を破棄して、最新のファイルを読み込む\n[キャンセル] 編集内容を残したまま開く')){resetAll();return new Promise(function(){})}
+        try{localStorage.setItem(SG,CURSIG)}catch(e){}
+      }
       META.works=works;META.chars=JSON.parse(JSON.stringify(chars));META.before=before;META.gal=gal;
       return{html:html,cfg:{works:works,chars:chars,gal:gal,before:before,base:new URL(DATA,location.href).href,over:ED.over,presets:Object.keys(META.presets),basePresets:Object.keys(META.bpre),site:new URL('./',location.href).href}};
     });
