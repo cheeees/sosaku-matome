@@ -274,7 +274,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .pmemo{margin-top:2px;word-break:break-word}
 .tabs2{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .sfig{margin:0}
-.sfig img{display:block;width:100%;max-width:320px;height:auto;margin:0 auto;border-radius:10px;border:1px solid var(--line);background:var(--card);cursor:zoom-in}
+.sfig img{display:block;width:100%;max-width:320px;height:auto;margin:0 auto;cursor:zoom-in}
 .faces2{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,92px));justify-content:center;gap:8px;margin-top:12px}
 .faces2 img{width:100%;aspect-ratio:1;object-fit:cover;display:block;border-radius:10px;border:1px solid var(--line);background:var(--card);cursor:zoom-in}
 .pc{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:18px}
@@ -285,7 +285,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .skl2 span{color:var(--mut);flex:none}
 .skl2 b{text-align:right;word-break:break-word}
 .stc{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px;background:var(--card)}
-.stimg{display:block;max-width:160px;max-height:200px;border-radius:8px;border:1px solid var(--line);margin-bottom:8px}
+.stimg{display:block;max-width:160px;max-height:200px;margin-bottom:8px}
 .stc .faces2{justify-content:start;margin-top:0}
 #rst .faces2{display:flex;flex-wrap:wrap;justify-content:center}
 #rst .faces2 img{width:92px;flex:0 0 auto}
@@ -789,16 +789,6 @@ dialog:has(.gv){width:min(900px,96vw)}
 .box input{display:block;margin:0 0 12px}
 .box input:focus-visible{outline-offset:0}
 .box .row{margin-top:6px}
-/* チェックシートのプルダウンに「v」マーク(▼)を出す。各セレクトの background 指定で矢印が消えていたため、矢印だけを個別に指定する */
-.shed select,.csw-sel,.cs-psel,.cs-picker select,#shSel{
-  -webkit-appearance:none!important;appearance:none!important;
-  background-image:linear-gradient(45deg,transparent 50%,var(--mut) 50%),linear-gradient(135deg,var(--mut) 50%,transparent 50%)!important;
-  background-position:calc(100% - 17px) 55%,calc(100% - 12px) 55%!important;
-  background-size:5px 5px,5px 5px!important;
-  background-repeat:no-repeat!important;
-  padding-right:32px!important;
-  cursor:pointer;
-}
 </style>
 </head>
 <body>
