@@ -4172,15 +4172,42 @@ function qzShow(){
     <div class="row"><button class="btn sub" onclick="qzBack()">戻る</button><span class="sp"></span>${close}</div>`);
     return;
   }
-  const R=q.R=qzBuild(q);
+  const R=q.R=qzBuild(q);q.pre=null;
   open(`<h3 style="margin:0">できあがり</h3><p class="mut" style="margin:6px 0 0">内容は直してから${q.mode=='add'?'作成':'反映'}できます。</p>
   <label for="qrm">一言メモ</label><input id="qrm" value="${esc(R.memo)}">
   <label for="qr1">一人称</label><input id="qr1" value="${esc(R.one)}">
   <label for="qr2">二人称</label><input id="qr2" value="${esc(R.two)}">
   <label for="qrt">セリフ(サンプル)</label><textarea id="qrt" rows="${R.text.split('\n').length+1}">${esc(R.text)}</textarea>
   <label for="qrb">詳細情報</label><textarea id="qrb" rows="${q.lv=='c'?16:12}">${esc(R.body)}</textarea>
+  <div class="row" style="margin-top:8px"><button class="btn sub" id="qai" onclick="qzAi()">AIで文章を整える</button><button class="btn sub" id="qundo" onclick="qzUndo()" hidden>元に戻す</button></div>
   ${q.mode=='add'?'':`<label for="qro">反映のしかた</label><select id="qro"><option value="fill">空欄だけ埋める(詳細情報は末尾に追加)</option><option value="over">すべて上書き</option></select>`}
   <div class="row"><button class="btn sub" onclick="qzBack()">戻る</button><span class="sp"></span>${close}<button class="btn" onclick="qzDone()">${q.mode=='add'?'作成':'入力欄に反映'}</button></div>`);
+}
+/* 詳細情報の文章を、Worker経由のAI(Cloudflare Workers AI)で自然な文章に整える。失敗してもテンプレートの文章はそのまま残る */
+async function qzAi(){
+  const q=S.qz,b=$('#qai'),t=$('#qrb');if(!q||!b||!t)return;
+  if(S.off||navigator.onLine===false){status('オフライン中はAIを使えません',1);return}
+  const pre=t.value;
+  if(!pre.trim()){status('整える文章がありません',1);return}
+  b.disabled=true;b.textContent='作成中…';
+  const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),60000);
+  try{
+    const r=await fetch(API_BASE+'/ai',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+S.token},body:JSON.stringify({name:q.name,memo:$('#qrm').value.trim(),body:pre}),signal:ctl.signal});
+    if(r.status==404)throw new Error('AIの設定がまだ完了していません(Worker側の /ai)');
+    if(r.status==401)throw new Error('ログインの期限が切れました');
+    if(!r.ok)throw new Error('AIを使えませんでした。今日の無料枠を使い切った可能性があります。いまの文章のまま使えます');
+    const j=await r.json(),tx=String(j.text||'').trim();
+    if(!tx)throw new Error('AIから文章が返りませんでした');
+    q.pre=pre;t.value=tx;
+    const u=$('#qundo');if(u)u.hidden=false;
+    status('AIで整えました');
+  }catch(e){status(e.name=='AbortError'?'AIの応答に時間がかかりすぎました':e.message,1)}
+  clearTimeout(tm);
+  const b2=$('#qai');if(b2){b2.disabled=false;b2.textContent='AIで文章を整える'}
+}
+function qzUndo(){
+  const q=S.qz,t=$('#qrb');if(!q||q.pre==null||!t)return;
+  t.value=q.pre;q.pre=null;const u=$('#qundo');if(u)u.hidden=true;
 }
 function qzDone(){
   const q=S.qz;if(!q)return;
