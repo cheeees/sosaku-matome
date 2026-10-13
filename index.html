@@ -2207,7 +2207,16 @@ function dropUpl(){
   if(S.upl&&S.upl.length)rmImgs(S.upl);S.upl=[];
   if(S.ic){S.ic.add.forEach(rmIcon);S.ic=null}
 }
-function grow(t){const x=scrollX,y=scrollY;t.style.height='auto';t.style.height=t.scrollHeight+'px';if(scrollY!==y||scrollX!==x)scrollTo(x,y)} /* 高さを測り直す間にページが縮んでスクロール位置が飛ばないよう、元の位置に戻す */
+function grow(t){
+  /* 高さを測り直す間、いったん枠の高さを固定して、ページ全体が縮んでスクロール位置が飛ばないようにする */
+  const w=t.parentNode,x=scrollX,y=scrollY,h0=t.offsetHeight;
+  if(w&&w.classList&&w.classList.contains('edw'))w.style.minHeight=h0+'px';
+  t.style.height='auto';
+  const h=t.scrollHeight;
+  t.style.height=h+'px';
+  if(w&&w.style)w.style.minHeight='';
+  if(scrollY!==y||scrollX!==x)scrollTo(x,y);
+}
 function insText(t,f,e,txt){
   if(f==e&&!txt)return;
   t.focus();t.setSelectionRange(f,e);
