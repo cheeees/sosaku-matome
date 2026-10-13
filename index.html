@@ -4146,17 +4146,20 @@ function qzShow(){
   <label for="qrm">一言メモ</label><input id="qrm" value="${esc(R.memo)}">
   <label for="qrb">詳細情報</label><textarea id="qrb" rows="${q.lv=='c'?16:12}">${esc(R.body)}</textarea>
   <div class="row" style="margin-top:8px"><button class="btn sub" id="qai" onclick="qzAi()">AIで文章を整える</button><button class="btn sub" id="qundo" onclick="qzUndo()" hidden>元に戻す</button></div>
+  <div id="qmsg" hidden style="margin:8px 0 0;font-size:13px;line-height:1.5;white-space:normal"></div>
   ${q.mode=='add'?'':`<label for="qro">反映のしかた</label><select id="qro"><option value="fill">空欄だけ埋める(詳細情報は末尾に追加)</option><option value="over">すべて上書き</option></select>`}
   <div class="row"><button class="btn sub" onclick="qzBack()">戻る</button><span class="sp"></span>${close}<button class="btn" onclick="qzDone()">${q.mode=='add'?'作成':'入力欄に反映'}</button></div>`);
 }
 /* 詳細情報の文章を、Worker経由のAI(Cloudflare Workers AI)で自然な文章に整える。失敗してもテンプレートの文章はそのまま残る */
+/* ダイアログの裏にトーストが隠れるので、AIの状況は結果画面の中に出す */
+function qzMsg(m,e){const x=$('#qmsg');if(!x)return;x.textContent=m||'';x.hidden=!m;x.style.color=e?'var(--danger)':'var(--mut)'}
 async function qzAi(){
   const q=S.qz,b=$('#qai'),t=$('#qrb');if(!q||!b||!t)return;
-  if(S.off||navigator.onLine===false){status('オフライン中はAIを使えません',1);return}
+  if(S.off||navigator.onLine===false){qzMsg('オフライン中はAIを使えません',1);return}
   const pre=t.value;
-  if(!pre.trim()){status('整える文章がありません',1);return}
-  b.disabled=true;b.textContent='作成中…';
-  const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),60000);
+  if(!pre.trim()){qzMsg('整える文章がありません',1);return}
+  b.disabled=true;b.textContent='作成中…';qzMsg('AIが文章を作っています。30秒〜1分ほどかかることがあります');
+  const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),120000);
   try{
     const r=await fetch(API_BASE+'/ai',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+S.token},body:JSON.stringify({name:q.name,memo:$('#qrm').value.trim(),body:pre}),signal:ctl.signal});
     if(r.status==404)throw new Error('AIの設定がまだ完了していません(Worker側の /ai)');
@@ -4166,14 +4169,14 @@ async function qzAi(){
     if(!tx)throw new Error('AIから文章が返りませんでした');
     q.pre=pre;t.value=tx;
     const u=$('#qundo');if(u)u.hidden=false;
-    status('AIで整えました');
-  }catch(e){status(e.name=='AbortError'?'AIの応答に時間がかかりすぎました':e.message,1)}
+    qzMsg('AIで整えました。気に入らなければ「元に戻す」で戻せます');
+  }catch(e){qzMsg(e.name=='AbortError'?'AIの応答に時間がかかりすぎました。もう一度ためすか、いまの文章のまま使ってください':e.message,1)}
   clearTimeout(tm);
   const b2=$('#qai');if(b2){b2.disabled=false;b2.textContent='AIで文章を整える'}
 }
 function qzUndo(){
   const q=S.qz,t=$('#qrb');if(!q||q.pre==null||!t)return;
-  t.value=q.pre;q.pre=null;const u=$('#qundo');if(u)u.hidden=true;
+  t.value=q.pre;q.pre=null;const u=$('#qundo');if(u)u.hidden=true;qzMsg('');
 }
 function qzDone(){
   const q=S.qz;if(!q)return;
