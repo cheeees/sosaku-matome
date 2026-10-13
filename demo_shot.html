@@ -195,7 +195,7 @@ function demoPrelude(cfg){
     })).then(function(){return{html:html,cfg:{works:works,chars:chars,gal:gal,before:before,base:new URL(DATA,location.href).href,site:new URL('./',location.href).href,presets:Object.keys(presets),basePresets:Object.keys(bpre)}}});
   }).then(function(o){
     var json=JSON.stringify(o.cfg).replace(/</g,'\\u003c');
-    var inj='<script>('+demoPrelude.toString()+')('+json+');<\/script>',html=o.html;
+    var inj='<style>#fab{display:none!important}</style><script>('+demoPrelude.toString()+')('+json+');<\/script>',html=o.html;
     html=/<head[^>]*>/i.test(html)?html.replace(/<head[^>]*>/i,function(m){return m+inj}):inj+html;
     fr.srcdoc=html;
   }).catch(function(e){
