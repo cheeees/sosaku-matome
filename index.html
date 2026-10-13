@@ -789,6 +789,16 @@ dialog:has(.gv){width:min(900px,96vw)}
 .box input{display:block;margin:0 0 12px}
 .box input:focus-visible{outline-offset:0}
 .box .row{margin-top:6px}
+/* チェックシートのプルダウンに「v」マーク(▼)を出す。各セレクトの background 指定で矢印が消えていたため、矢印だけを個別に指定する */
+.shed select,.csw-sel,.cs-psel,.cs-picker select,#shSel{
+  -webkit-appearance:none!important;appearance:none!important;
+  background-image:linear-gradient(45deg,transparent 50%,var(--mut) 50%),linear-gradient(135deg,var(--mut) 50%,transparent 50%)!important;
+  background-position:calc(100% - 17px) 55%,calc(100% - 12px) 55%!important;
+  background-size:5px 5px,5px 5px!important;
+  background-repeat:no-repeat!important;
+  padding-right:32px!important;
+  cursor:pointer;
+}
 </style>
 </head>
 <body>
