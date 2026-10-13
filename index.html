@@ -169,6 +169,21 @@ sup.fr{font-size:.7em;line-height:0;color:var(--ink);cursor:pointer;margin-left:
 .fnum{flex:none;min-width:1.4em;color:var(--ink);cursor:pointer}
 .edh{position:sticky;top:env(safe-area-inset-top,0px);z-index:4;background:var(--bg);padding:6px 0 4px;margin-bottom:6px}
 html{scroll-padding-top:var(--edh-h,0px)}
+.tl{margin-top:14px}
+.tle{display:grid;grid-template-columns:minmax(4.2em,26%) 16px minmax(0,1fr);column-gap:8px;cursor:pointer}
+.tld{text-align:right;font-weight:600;font-size:13px;line-height:1.5;word-break:break-all;padding-top:1px}
+.tlm{position:relative}
+.tlm::before{content:"";position:absolute;left:50%;top:6px;bottom:-2px;width:2px;background:var(--line);transform:translateX(-50%)}
+.tlm::after{content:"";position:absolute;left:50%;top:5px;width:10px;height:10px;box-sizing:border-box;border-radius:50%;background:var(--ink);border:2px solid var(--bg);box-shadow:0 0 0 1px var(--ink);transform:translateX(-50%)}
+.tle:last-child .tlm::before{display:none}
+.tlc{padding-bottom:18px;min-width:0}
+.tlc b{display:block;line-height:1.5;word-break:break-word}
+.tlb{margin-top:3px;font-size:13px;line-height:1.7;color:var(--mut);white-space:pre-wrap;word-break:break-word}
+.tle:active .tlc b{opacity:.6}
+.tlk{display:inline-flex;align-items:center;gap:5px;margin:7px 6px 0 0;padding:1px 9px 1px 7px;border:1px solid var(--line);border-radius:12px;font-size:12px;line-height:1.6;background:var(--card);cursor:pointer;max-width:100%}
+.tlk i{width:8px;height:8px;border-radius:50%;background:var(--c,var(--mut));flex:none}
+.tlk.un{padding-left:9px;border-style:dashed;color:var(--mut);cursor:default}
+.tlpk{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;max-height:9.5em;overflow:auto}
 .tb{display:flex;gap:6px;flex-wrap:wrap}
 .tb button{flex:none;display:grid;place-items:center;min-width:38px;height:34px;padding:0 6px;border:1px solid var(--line);background:var(--card);border-radius:6px;cursor:pointer;font-size:14px}
 .tb svg{width:20px;height:20px}
@@ -1866,7 +1881,8 @@ function coverZoom(el){const u=el.currentSrc||el.src;if(!u)return;open(`<img cla
 function covInit(){document.querySelectorAll('.slides[data-loop]').forEach(s=>s.scrollTo({left:s.clientWidth,behavior:'auto'}))}
 function covGo(b,d){const s=b.parentNode.querySelector('.slides'),w=s.clientWidth,i=Math.round(s.scrollLeft/w);s.scrollTo({left:(i+d)*w,behavior:'smooth'})}
 const SORTS=[['reg-asc','作成順(▲)'],['reg-desc','作成順(▼)'],['name-asc','名前順(▲)'],['name-desc','名前順(▼)'],['custom','カスタム']];
-const isF=x=>x.t=='f',par=x=>x.p||null;
+const isF=x=>x.t=='f',isT=x=>x.t=='t',par=x=>x.p||null;
+const P_TL='<path d="M7 4v16"/><circle cx="7" cy="7" r="1.6"/><circle cx="7" cy="17" r="1.6"/><path d="M12 7h8M12 17h8"/>';
 const ico=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const nextO=w=>Math.max(-1,...(w.notes||[]).map((x,i)=>x.o??i))+1;
 function items(w,p){
@@ -1881,7 +1897,128 @@ function row(w,x,cust){
   const g=cust?`<span class="grip" role="button" aria-label="ドラッグで並び替え" onpointerdown="dragStart(event)">${ico('<path d="M5 8h14M5 12h14M5 16h14"/>')}</span>`:'';
   const m=`<button class="ic" aria-label="メニュー" onclick="itemMenu('${x.id}')">${ico(DOTS)}</button>`;
   if(isF(x))return `<div class="item" data-id="${x.id}" data-t="f">${g}<div class="folder wide"><button class="fo" onclick="openF('${x.id}')"><b>${esc(x.title)}</b><span class="mut">${w.notes.filter(n=>par(n)==x.id).length} 件</span>${dCre(x)}</button>${m}</div></div>`;
+  if(isT(x))return `<div class="item" data-id="${x.id}" data-t="n">${g}<button class="card note" onclick="readNote('${x.id}')"><span class="cinfo"><b>${esc(x.title)}</b><span class="mut">年表 ・ ${(x.events||[]).length} 件</span>${dCre(x)}</span></button>${m}</div>`;
   return `<div class="item" data-id="${x.id}" data-t="n">${g}<button class="card note" onclick="readNote('${x.id}')"><span class="cinfo"><b>${esc(x.title)}</b>${dCre(x)}</span></button>${m}</div>`;
+}
+/* ---- 年表: ノートの一種 {t:'t', title, events:[{id,d:日付や年の文字,t:出来事,b:説明,chars:[{id?,n:名前}]}], tlsort:'manual'なら手動順} ----
+   キャラは「名前」を必ず持つ。登録キャラと一致(idが生きている/名前が同じ)すれば紐付き表示。未登録でも名前だけで置け、あとで同名のキャラを作ると自動で紐付く */
+function tlKey(d){
+  const s=String(d||'').normalize('NFKC'),n=(s.match(/\d+/g)||[]).slice(0,3).map(Number);
+  if(!n.length)return null;
+  const neg=/紀元前|B\.?C\.?/i.test(s)||/^\s*[-−‐]\s*\d/.test(s);
+  return[neg?-n[0]:n[0],n[1]||0,n[2]||0];
+}
+function tlSorted(x){
+  const a=(x.events||[]).map((e,i)=>({e,i,k:tlKey(e.d)}));
+  if(x.tlsort=='manual')return a.map(o=>o.e);
+  const cmp=(p,q)=>{for(let j=0;j<3;j++)if(p[j]!=q[j])return p[j]-q[j];return 0};
+  return[...a.filter(o=>o.k).sort((p,q)=>cmp(p.k,q.k)||p.i-q.i),...a.filter(o=>!o.k)].map(o=>o.e);
+}
+const tlNk=t=>String(t||'').normalize('NFKC').replace(/[\s=＝・･]/g,'').toLowerCase();
+const tlWC=w=>S.chars.filter(c=>w&&c.workId==w.id);
+function tlRes(r,w){const cs=tlWC(w);return cs.find(c=>r.id&&c.id==r.id)||cs.find(c=>tlNk(c.name)==tlNk(r.n))||null}
+const tlCk=(r,w)=>{const c=tlRes(r,w);return c?'c:'+c.id:'n:'+tlNk(r.n)};
+function tlPeople(x,w){
+  const m=new Map();
+  (x.events||[]).forEach(e=>(e.chars||[]).forEach(r=>{const k=tlCk(r,w);if(!m.has(k)){const c=tlRes(r,w);m.set(k,c?c.name:r.n)}}));
+  return[...m];
+}
+function tlChips(e,edit,w){
+  return(e.chars||[]).map(r=>{const c=tlRes(r,w);return c
+    ?`<span class=\"tlk\"${edit?` role=\"button\" onclick=\"event.stopPropagation();openChar('${c.id}')\"`:''} style=\"--c:${esc(c.color)}\"><i></i>${esc(c.name)}</span>`
+    :`<span class=\"tlk un\">${esc(r.n)}</span>`}).join('');
+}
+function tlHtml(x,edit,w,fk){
+  let ev=tlSorted(x);
+  if(fk)ev=ev.filter(e=>(e.chars||[]).some(r=>tlCk(r,w)==fk));
+  if(!ev.length)return `<div class=\"empty\">${fk?'このキャラが出てくる出来事はありません':'まだ出来事がありません。＋から追加できます'}</div>`;
+  return `<div class=\"tl\">${ev.map(e=>`<div class=\"tle\"${edit?` role=\"button\" onclick=\"tlDlg('${x.id}','${e.id}')\"`:''}><div class=\"tld\">${e.d?esc(e.d):'—'}</div><div class=\"tlm\"></div><div class=\"tlc\"><b>${esc(e.t)}</b>${e.b?`<div class=\"tlb\">${esc(e.b)}</div>`:''}${(e.chars||[]).length?`<div>${tlChips(e,edit,w)}</div>`:''}</div></div>`).join('')}</div>`;
+}
+function tlView(w,x){
+  const pe=tlPeople(x,w),fk=S.tlf&&S.tlf.id==x.id&&pe.some(q=>q[0]==S.tlf.k)?S.tlf.k:'';
+  $('#app').innerHTML=`${workBar(w)}
+  <div class=\"bar\"><button class=\"ic bk\" aria-label=\"戻る\" onclick=\"backRd()\">${ico(P_BACK)}</button><span class=\"rt\">${esc(x.title)}</span><button class=\"ic\" aria-label=\"メニュー\" onclick=\"itemMenu('${x.id}')\">${ico(DOTS)}</button></div>
+  ${dBoth(x)}<div class=\"bar\" style=\"margin-top:10px\"><button class=\"btn ibtn\" aria-label=\"出来事を追加\" title=\"出来事を追加\" onclick=\"tlDlg('${x.id}')\">${ico(P_PLUS)}</button><select onchange=\"tlSetSort('${x.id}',this.value)\" aria-label=\"並び順\"><option value=\"auto\"${x.tlsort=='manual'?'':' selected'}>自動(年の数字順)</option><option value=\"manual\"${x.tlsort=='manual'?' selected':''}>手動(追加順・並べ替え)</option></select></div>
+  ${pe.length?`<div class=\"bar\"><select onchange=\"tlSetFilter('${x.id}',this.value)\" aria-label=\"キャラで絞り込み\"><option value=\"\">キャラ: 全員</option>${pe.map(q=>`<option value=\"${esc(q[0])}\"${q[0]==fk?' selected':''}>${esc(q[1])}</option>`).join('')}</select></div>`:''}
+  ${tlHtml(x,true,w,fk)}`;
+}
+const tlFind=id=>{const w=S.works.find(v=>v.id==S.workId),x=w&&(w.notes||[]).find(n=>n.id==id);return x&&isT(x)?{w,x}:null};
+function tlSetSort(id,v){const f=tlFind(id);if(!f)return;f.x.tlsort=v=='manual'?'manual':'auto';save('works.json');render()}
+function tlSetFilter(id,k){S.tlf={id,k};render()}
+function tlNameDlg(id){
+  const w=S.works.find(x=>x.id==S.workId),x=id?w.notes.find(n=>n.id==id):null;
+  open(`<h3 style=\"margin:0\">${id?'年表の名前を変更':'年表を追加'}</h3>
+  <label for=\"tln\">年表の名前</label><input id=\"tln\" value=\"${esc(x?x.title:'')}\" placeholder=\"例:○○王国の歴史\">
+  <div class=\"row\"><span class=\"sp\"></span><button class=\"btn sub\" onclick=\"$('#dlg').close()\">閉じる</button><button class=\"btn\" onclick=\"tlNameSave('${id||''}')\">保存</button></div>`);
+}
+function tlNameSave(id){
+  const t=$('#tln').value.trim();if(!t){$('#tln').focus();return}
+  const w=S.works.find(x=>x.id==S.workId);w.notes=w.notes||[];
+  if(id){const x=w.notes.find(n=>n.id==id);x.title=t;x.up=Date.now();save('works.json');$('#dlg').close();render();return}
+  const nid=uid('n');w.notes.push({id:nid,t:'t',p:S.nf||null,o:nextO(w),title:t,events:[]});
+  save('works.json');$('#dlg').close();navTo(()=>{S.rd=nid});
+}
+/* 出来事の編集ダイアログ。関係するキャラは TLD.chars に持ち、保存で出来事へ書き込む */
+let TLD={id:'',chars:[]};
+function tlDlg(id,eid){
+  const f=tlFind(id);if(!f)return;
+  const e=eid?(f.x.events||[]).find(v=>v.id==eid):null,man=f.x.tlsort=='manual';
+  TLD={id,chars:cl((e&&e.chars)||[])};
+  open(`<h3 style=\"margin:0\">${e?'出来事を編集':'出来事を追加'}</h3>
+  <label for=\"tld\">日付・年</label><input id=\"tld\" value=\"${esc(e?e.d:'')}\" placeholder=\"例:1203年4月 / 紀元前300年 / 王国暦 120年\">
+  <label for=\"tlt\">出来事</label><input id=\"tlt\" value=\"${esc(e?e.t:'')}\" placeholder=\"例:王都が陥落する\">
+  <label for=\"tlb\">説明(任意)</label><textarea id=\"tlb\" rows=\"4\">${esc(e?e.b||'':'')}</textarea>
+  <label>関係するキャラ(任意)</label><div id=\"tlcs\"></div>
+  <div style=\"display:flex;gap:8px;align-items:center;margin-top:8px\"><input id=\"tlca\" list=\"tlcl\" style=\"flex:1;min-width:0\" placeholder=\"名前で追加(未登録でもOK)\" onkeydown=\"if(event.key=='Enter'){event.preventDefault();tlcAdd()}\"><button type=\"button\" class=\"btn sub\" style=\"flex:none\" onclick=\"tlcAdd()\">追加</button></div>
+  <datalist id=\"tlcl\">${tlWC(f.w).map(c=>`<option value=\"${esc(c.name)}\">`).join('')}</datalist>
+  ${e&&man?`<div class=\"row\" style=\"margin-top:10px\"><button class=\"btn sub\" onclick=\"tlMove('${id}','${eid}',-1)\">▲ 前へ</button><button class=\"btn sub\" onclick=\"tlMove('${id}','${eid}',1)\">▼ 後ろへ</button></div>`:''}
+  <div class=\"row\">${e?`<button class=\"btn del\" onclick=\"tlDel('${id}','${eid}')\">削除</button>`:''}<span class=\"sp\"></span><button class=\"btn sub\" onclick=\"$('#dlg').close()\">閉じる</button><button class=\"btn\" onclick=\"tlSave('${id}','${eid||''}')\">保存</button></div>`);
+  tlcPaint();
+}
+function tlcPaint(){
+  const f=tlFind(TLD.id),box=$('#tlcs');if(!f||!box)return;
+  const cs=tlWC(f.w),sel=new Set(TLD.chars.map(r=>{const c=tlRes(r,f.w);return c&&c.id}).filter(Boolean));
+  const un=TLD.chars.map((r,i)=>({r,i})).filter(o=>!tlRes(o.r,f.w));
+  box.innerHTML=(cs.length?`<div class=\"tlpk\">${cs.map(c=>`<button type=\"button\" class=\"btn chip${sel.has(c.id)?'':' sub'}\" onclick=\"tlcTog('${c.id}')\">${esc(c.name)}</button>`).join('')}</div>`:'<div class=\"mut\">この作品にはまだキャラがいません。名前だけ入れて追加できます</div>')
+    +(un.length?`<div class=\"mut\" style=\"margin-top:8px\">未登録の名前(同じ名前のキャラを登録すると、自動で紐付きます)</div><div class=\"tlpk\" style=\"margin-top:4px\">${un.map(o=>`<button type=\"button\" class=\"btn chip sub\" onclick=\"tlcDel(${o.i})\">${esc(o.r.n)} ✕</button>`).join('')}</div>`:'');
+}
+function tlcTog(cid){
+  const f=tlFind(TLD.id);if(!f)return;
+  const c=tlWC(f.w).find(v=>v.id==cid);if(!c)return;
+  const has=TLD.chars.some(r=>{const q=tlRes(r,f.w);return q&&q.id==cid});
+  TLD.chars=has?TLD.chars.filter(r=>{const q=tlRes(r,f.w);return !(q&&q.id==cid)}):TLD.chars.concat([{id:c.id,n:c.name}]);
+  tlcPaint();
+}
+function tlcAdd(){
+  const f=tlFind(TLD.id),inp=$('#tlca');if(!f||!inp)return;
+  const n=inp.value.trim();if(!n)return;
+  const c=tlWC(f.w).find(v=>tlNk(v.name)==tlNk(n)),r=c?{id:c.id,n:c.name}:{n};
+  if(!TLD.chars.some(q=>tlCk(q,f.w)==tlCk(r,f.w)))TLD.chars.push(r);
+  inp.value='';tlcPaint();inp.focus();
+}
+function tlcDel(i){TLD.chars.splice(i,1);tlcPaint()}
+function tlSave(id,eid){
+  const f=tlFind(id);if(!f)return;
+  const d=$('#tld').value.trim(),t=$('#tlt').value.trim(),b=$('#tlb').value.trim();
+  if(!t){$('#tlt').focus();return}
+  const pending=($('#tlca')||{}).value;if(pending&&pending.trim())tlcAdd(); /* 追加ボタンを押し忘れた名前も入れる */
+  const chars=TLD.chars.map(r=>{const c=tlRes(r,f.w);return c?{id:c.id,n:c.name}:{n:r.n}});
+  f.x.events=f.x.events||[];
+  if(eid){const e=f.x.events.find(v=>v.id==eid);if(e){e.d=d;e.t=t;e.b=b;e.chars=chars}}
+  else f.x.events.push({id:uid('e'),d,t,b,chars});
+  f.x.up=Date.now();save('works.json');$('#dlg').close();render();
+}
+function tlDel(id,eid){
+  const f=tlFind(id);if(!f||!confirm('この出来事を削除します。よろしいですか?'))return;
+  f.x.events=(f.x.events||[]).filter(v=>v.id!=eid);f.x.up=Date.now();
+  save('works.json');$('#dlg').close();render();
+}
+function tlMove(id,eid,d){
+  const f=tlFind(id);if(!f)return;
+  const a=f.x.events||[],i=a.findIndex(v=>v.id==eid),j=i+d;
+  if(i<0||j<0||j>=a.length)return;
+  [a[i],a[j]]=[a[j],a[i]];f.x.up=Date.now();save('works.json');render();
+  tlDlg(id,eid);
 }
 function addNote(){
   const w=S.works.find(x=>x.id==S.workId);if(!w)return;
@@ -1894,6 +2031,7 @@ function addNote(){
 function readNote(id){navTo(()=>{S.rd=id})}
 function backRd(){goBack(()=>{S.rd=null})}
 function readView(w,x){
+  if(isT(x))return tlView(w,x);
   $('#app').innerHTML=`${workBar(w)}
   <div class="bar"><button class="ic bk" aria-label="戻る" onclick="backRd()">${ico(P_BACK)}</button><span class="rt">${esc(x.title)}</span><button class="ic" aria-label="編集" onclick="startEdit('${x.id}')">${ico(P_PEN)}</button><button class="ic" aria-label="メニュー" onclick="itemMenu('${x.id}')">${ico(DOTS)}</button></div>
   ${dBoth(x)}<div class="rd">${x.body?rich(x.body):'<span class="mut">本文がありません。✎から書けます。</span>'}</div>`;
@@ -2510,7 +2648,7 @@ function cancelEdit(){
 function itemMenu(id){
   const w=S.works.find(x=>x.id==S.workId),x=w.notes.find(n=>n.id==id),f=isF(x);
   open(`<h3 style="margin:0;word-break:break-all">${esc(x.title)}</h3>
-  <div class="menu">${f?`<button class="btn sub" onclick="folderDlg('${id}')">名前を変更</button>`:''}<button class="btn sub" onclick="moveDlg('${id}')">移動</button>${f?'':`<button class="btn sub" onclick="dupNote('${id}')">複製</button>`}<button class="btn sub" onclick="exportDlg('note','${id}')">書き出し</button><button class="btn del" onclick="${f?`delFolder('${id}')`:`delNote('${id}')`}">削除</button></div>
+  <div class="menu">${f?`<button class="btn sub" onclick="folderDlg('${id}')">名前を変更</button>`:isT(x)?`<button class="btn sub" onclick="tlNameDlg('${id}')">名前を変更</button>`:''}<button class="btn sub" onclick="moveDlg('${id}')">移動</button>${f?'':`<button class="btn sub" onclick="dupNote('${id}')">複製</button>`}<button class="btn sub" onclick="exportDlg('note','${id}')">書き出し</button><button class="btn del" onclick="${f?`delFolder('${id}')`:`delNote('${id}')`}">削除</button></div>
   <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`);
 }
 function subtree(w,id){
@@ -2604,13 +2742,13 @@ function delFolder(id){
   w.notes=w.notes.filter(x=>!ids.has(x.id));
   save('works.json');$('#dlg').close();render();
 }
-const NK=[x=>x.title,x=>x.body];
+const NK=[x=>x.title,x=>x.body,x=>(x.events||[]).map(e=>[e.d,e.t,e.b,(e.chars||[]).map(r=>r.n).join(' ')].join(' ')).join(' ')];
 function dataBody(w){
   w.notes=w.notes||[];
   const q=S.q.trim();
   if(q){const ok=qOk(q);return `<div class="list" id="qres">${w.notes.filter(x=>ok(hay(x,NK))).map(x=>row(w,x,false)).join('')||'<div class="empty">見つかりませんでした</div>'}</div>`}
   const sort=w.sort||'reg-asc',list=items(w,S.nf||null);
-  return `<div class="bar" style="flex-wrap:wrap"><button class="btn ibtn" aria-label="設定を追加" title="設定を追加" onclick="addNote()">${ico(P_PLUS)}</button><button class="btn sub ibtn" aria-label="フォルダを追加" title="フォルダを追加" onclick="folderDlg()">${ico(P_FADD)}</button><select onchange="setSort(this.value)" aria-label="並び替え">${SORTS.map(([k,v])=>`<option value="${k}"${sort==k?' selected':''}>${v}</option>`).join('')}</select></div>
+  return `<div class="bar" style="flex-wrap:wrap"><button class="btn ibtn" aria-label="設定を追加" title="設定を追加" onclick="addNote()">${ico(P_PLUS)}</button><button class="btn sub ibtn" aria-label="フォルダを追加" title="フォルダを追加" onclick="folderDlg()">${ico(P_FADD)}</button><button class="btn sub ibtn" aria-label="年表を追加" title="年表を追加" onclick="tlNameDlg()">${ico(P_TL)}</button><select onchange="setSort(this.value)" aria-label="並び替え">${SORTS.map(([k,v])=>`<option value="${k}"${sort==k?' selected':''}>${v}</option>`).join('')}</select></div>
   <div class="list">${list.map(x=>row(w,x,sort=='custom')).join('')||`<div class="empty">${S.nf?'このフォルダはまだ空です':'まだ設定がありません。世界観・用語・地理などを書いてみましょう'}</div>`}</div>`;
 }
 function dataView(){
@@ -2700,7 +2838,8 @@ function saveNote(id){
   save('works.json');$('#dlg').close();render();
 }
 function delNote(id){
-  if(!confirm('この設定を削除します。よろしいですか?'))return;
+  const w0=S.works.find(x=>x.id==S.workId),x0=w0&&(w0.notes||[]).find(n=>n.id==id);
+  if(!confirm(x0&&isT(x0)?'この年表を削除します。よろしいですか?':'この設定を削除します。よろしいですか?'))return;
   const w=S.works.find(x=>x.id==S.workId);rmImgs(imgIds((w.notes.find(n=>n.id==id)||{}).body));w.notes=w.notes.filter(n=>n.id!=id);const wasRd=S.rd==id;if(wasRd)S.rd=null;
   save('works.json');
   if(wasRd&&dlgOn&&hi()>=2){dlgOn=false;$('#dlg').close();history.go(-2);return}
@@ -2838,7 +2977,7 @@ async function exPost(html,pf,embed,st){
   r.querySelectorAll('*').forEach(e=>[...e.attributes].forEach(a=>{if(/^on/i.test(a.name))e.removeAttribute(a.name)}));
   const d=document.createElement('div');d.appendChild(r);return d.innerHTML;
 }
-const EX_CSS=`*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 "Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif}main{max-width:760px;margin:0 auto;padding:24px 16px 64px}h1{font-size:1.6em;line-height:1.4;margin:.2em 0 .3em;word-break:break-word}h2{font-size:1.1em;margin:1.8em 0 .6em;padding-bottom:.25em;border-bottom:1px solid var(--line)}.dt{color:var(--mut);font-size:12.5px;margin-bottom:12px}.mut{color:var(--mut);font-size:13px}.tg{float:right;margin-left:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:6px;padding:4px 12px;cursor:pointer}.ch{display:flex;gap:14px;align-items:center}.ico{width:72px;height:72px;border-radius:50%;object-fit:cover;flex:none;border:1px solid var(--line)}.info{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:14px 0;padding:12px;background:var(--card);border:1px solid var(--line);border-radius:8px}.info dt{color:var(--mut)}.info dd{margin:0;white-space:pre-wrap;word-break:break-word}.stands{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}.stands figure{margin:0;text-align:center}.stands img{max-height:320px;max-width:100%;border-radius:6px}.rd{word-break:break-word;line-height:1.7em;font-size:var(--fs,15px)}.ln{white-space:pre-wrap;word-break:break-word;min-height:1.7em;margin-left:.6em}.qt .ln,.cd .ln{margin-left:0}.hd{font-weight:700;line-height:1.5;word-break:break-word}.hd.h1{font-size:1.5em;margin:1em 0 .4em;padding-bottom:.2em;border-bottom:1px solid var(--line)}.hd.h2{font-size:1.12em;line-height:1.4;margin:.9em 0 .7em;padding-left:.5em;border-left:.3em solid var(--ink)}.hd.h3{font-size:1.05em;margin:.8em 0 .2em}.hd:first-child{margin-top:0}.im{margin:8px 0}.im img{display:block;max-width:100%;height:auto;margin:0 auto;border-radius:6px}.bt{-webkit-text-emphasis:"・";text-emphasis:"・";-webkit-text-emphasis-position:over right;text-emphasis-position:over right}ruby{ruby-position:over}rt{font-size:.5em}.rd a,.fns a{color:var(--ink);text-decoration:underline;word-break:break-all}details.fold{margin:6px 0}details.fold>summary{display:flex;align-items:center;gap:6px;padding:3px 0;font-weight:600;cursor:pointer;list-style:none}details.fold>summary::-webkit-details-marker{display:none}details.fold>summary::before{content:"";flex:none;width:6px;height:6px;margin:0 6px 0 3px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(-45deg);transition:transform .15s}details.fold[open]>summary::before{transform:rotate(45deg)}details.fold>.fb{padding:2px 0 4px 1.3em}details.fold>summary.fh::before{display:none}details.fold>summary.fh .hd{flex:1;min-width:0}.ind{padding-left:calc(var(--n)*1em)}.vb{margin:10px 0}.vb video,.gvf{max-width:100%}.ge{margin:10px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}.ge .gh2{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:13px}.ge .gh2 b{flex:1;min-width:0;word-break:break-all}.ge .gnv{padding:2px 12px 12px;font-size:13px;line-height:1.6;color:var(--mut);word-break:break-all}.gn2{white-space:pre-line}.gt{position:relative;aspect-ratio:16/9;background:var(--bg);overflow:hidden;display:grid;place-items:center}.gt img{width:100%;height:100%;object-fit:cover;display:block}.gbadge{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;line-height:1.5;padding:0 8px;border-radius:10px}.sm{font-size:.8em;color:var(--mut)}.qt{margin:6px 0 6px .6em;padding:2px 0 2px 12px;border-left:3px solid var(--mut)}.qt .qt,.cd .qt{margin-left:0}.cd{margin:10px 0;padding:10px 12px;background:var(--card);border:1px solid var(--line);border-radius:8px}sup.fr{font-size:.7em;line-height:0;margin-left:.3em;padding:0 2px}sup.fr a,.fnum a{text-decoration:none}.fns{margin-top:22px;padding-top:10px;border-top:1px solid var(--line);font-size:.85em;color:var(--mut)}.fi{display:flex;gap:6px;margin:2px 0;word-break:break-word}.fnum{flex:none;min-width:1.4em}.rd.tate{padding:4px 0 6px;writing-mode:vertical-rl;text-orientation:mixed;text-combine-upright:digits 2;font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho","Noto Serif JP","MS PMincho",serif;touch-action:pan-y;min-height:320px;overflow:hidden;--p:calc(var(--fs,17px)*1.9);line-height:var(--p);font-size:var(--fs,17px);margin:0 auto;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.pgb{display:flex;align-items:center;gap:10px;margin-top:8px}.pgb button{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:6px;padding:6px 14px;cursor:pointer}.pgb button:disabled{opacity:.4}.pgb input{flex:1;min-width:0;direction:rtl}.pgn{font-size:13px;color:var(--mut);min-width:4.5em;text-align:center}.rd.tate rt{line-height:1}.rd.tate .ln{margin:calc(var(--p)*.7) 0 0;min-height:0;min-width:var(--p)}.rd.tate .hd{margin:calc(var(--p)*.3) var(--p) 0 0!important;padding:0;border:0;position:relative;line-height:var(--p)}.rd.tate .hd.h1{margin-left:var(--p)!important}.rd.tate .hd.h1::after{content:"";position:absolute;top:calc(var(--p)*-.3);bottom:0;left:calc(var(--p)*-.45);border-left:1px solid var(--line)}.rd.tate .ind{padding-left:0;padding-top:calc(var(--n)*1em)}.rd.tate .qt{margin:0 calc(var(--p)/2);padding:10px 0 0;border-left:0;border-top:3px solid var(--mut)}.rd.tate .cd{margin:0 calc(var(--p)/2);padding:10px calc(var(--p)/2 - 1px)}.rd.tate .im{margin:0}.rd.tate .im img{width:auto;max-width:var(--pw,100%);max-height:65vh;margin:0}.rd.tate details.fold>.fb{padding:0}.tb{float:right;display:flex;gap:6px;margin-left:8px}.tb .tg{float:none;margin:0}`;
+const EX_CSS=`*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 "Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif}main{max-width:760px;margin:0 auto;padding:24px 16px 64px}h1{font-size:1.6em;line-height:1.4;margin:.2em 0 .3em;word-break:break-word}h2{font-size:1.1em;margin:1.8em 0 .6em;padding-bottom:.25em;border-bottom:1px solid var(--line)}.dt{color:var(--mut);font-size:12.5px;margin-bottom:12px}.mut{color:var(--mut);font-size:13px}.tg{float:right;margin-left:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:6px;padding:4px 12px;cursor:pointer}.ch{display:flex;gap:14px;align-items:center}.ico{width:72px;height:72px;border-radius:50%;object-fit:cover;flex:none;border:1px solid var(--line)}.info{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:14px 0;padding:12px;background:var(--card);border:1px solid var(--line);border-radius:8px}.info dt{color:var(--mut)}.info dd{margin:0;white-space:pre-wrap;word-break:break-word}.stands{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}.stands figure{margin:0;text-align:center}.stands img{max-height:320px;max-width:100%;border-radius:6px}.rd{word-break:break-word;line-height:1.7em;font-size:var(--fs,15px)}.ln{white-space:pre-wrap;word-break:break-word;min-height:1.7em;margin-left:.6em}.qt .ln,.cd .ln{margin-left:0}.hd{font-weight:700;line-height:1.5;word-break:break-word}.hd.h1{font-size:1.5em;margin:1em 0 .4em;padding-bottom:.2em;border-bottom:1px solid var(--line)}.hd.h2{font-size:1.12em;line-height:1.4;margin:.9em 0 .7em;padding-left:.5em;border-left:.3em solid var(--ink)}.hd.h3{font-size:1.05em;margin:.8em 0 .2em}.hd:first-child{margin-top:0}.im{margin:8px 0}.im img{display:block;max-width:100%;height:auto;margin:0 auto;border-radius:6px}.bt{-webkit-text-emphasis:"・";text-emphasis:"・";-webkit-text-emphasis-position:over right;text-emphasis-position:over right}ruby{ruby-position:over}rt{font-size:.5em}.rd a,.fns a{color:var(--ink);text-decoration:underline;word-break:break-all}details.fold{margin:6px 0}details.fold>summary{display:flex;align-items:center;gap:6px;padding:3px 0;font-weight:600;cursor:pointer;list-style:none}details.fold>summary::-webkit-details-marker{display:none}details.fold>summary::before{content:"";flex:none;width:6px;height:6px;margin:0 6px 0 3px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(-45deg);transition:transform .15s}details.fold[open]>summary::before{transform:rotate(45deg)}details.fold>.fb{padding:2px 0 4px 1.3em}details.fold>summary.fh::before{display:none}details.fold>summary.fh .hd{flex:1;min-width:0}.ind{padding-left:calc(var(--n)*1em)}.vb{margin:10px 0}.vb video,.gvf{max-width:100%}.ge{margin:10px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}.ge .gh2{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:13px}.ge .gh2 b{flex:1;min-width:0;word-break:break-all}.ge .gnv{padding:2px 12px 12px;font-size:13px;line-height:1.6;color:var(--mut);word-break:break-all}.gn2{white-space:pre-line}.gt{position:relative;aspect-ratio:16/9;background:var(--bg);overflow:hidden;display:grid;place-items:center}.gt img{width:100%;height:100%;object-fit:cover;display:block}.gbadge{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;line-height:1.5;padding:0 8px;border-radius:10px}.sm{font-size:.8em;color:var(--mut)}.qt{margin:6px 0 6px .6em;padding:2px 0 2px 12px;border-left:3px solid var(--mut)}.qt .qt,.cd .qt{margin-left:0}.cd{margin:10px 0;padding:10px 12px;background:var(--card);border:1px solid var(--line);border-radius:8px}sup.fr{font-size:.7em;line-height:0;margin-left:.3em;padding:0 2px}sup.fr a,.fnum a{text-decoration:none}.fns{margin-top:22px;padding-top:10px;border-top:1px solid var(--line);font-size:.85em;color:var(--mut)}.fi{display:flex;gap:6px;margin:2px 0;word-break:break-word}.fnum{flex:none;min-width:1.4em}.rd.tate{padding:4px 0 6px;writing-mode:vertical-rl;text-orientation:mixed;text-combine-upright:digits 2;font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho","Noto Serif JP","MS PMincho",serif;touch-action:pan-y;min-height:320px;overflow:hidden;--p:calc(var(--fs,17px)*1.9);line-height:var(--p);font-size:var(--fs,17px);margin:0 auto;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.pgb{display:flex;align-items:center;gap:10px;margin-top:8px}.pgb button{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:6px;padding:6px 14px;cursor:pointer}.pgb button:disabled{opacity:.4}.pgb input{flex:1;min-width:0;direction:rtl}.pgn{font-size:13px;color:var(--mut);min-width:4.5em;text-align:center}.rd.tate rt{line-height:1}.rd.tate .ln{margin:calc(var(--p)*.7) 0 0;min-height:0;min-width:var(--p)}.rd.tate .hd{margin:calc(var(--p)*.3) var(--p) 0 0!important;padding:0;border:0;position:relative;line-height:var(--p)}.rd.tate .hd.h1{margin-left:var(--p)!important}.rd.tate .hd.h1::after{content:"";position:absolute;top:calc(var(--p)*-.3);bottom:0;left:calc(var(--p)*-.45);border-left:1px solid var(--line)}.rd.tate .ind{padding-left:0;padding-top:calc(var(--n)*1em)}.rd.tate .qt{margin:0 calc(var(--p)/2);padding:10px 0 0;border-left:0;border-top:3px solid var(--mut)}.rd.tate .cd{margin:0 calc(var(--p)/2);padding:10px calc(var(--p)/2 - 1px)}.rd.tate .im{margin:0}.rd.tate .im img{width:auto;max-width:var(--pw,100%);max-height:65vh;margin:0}.rd.tate details.fold>.fb{padding:0}.tb{float:right;display:flex;gap:6px;margin-left:8px}.tb .tg{float:none;margin:0}.tl{margin-top:14px}.tle{display:grid;grid-template-columns:minmax(4.2em,26%) 16px minmax(0,1fr);column-gap:8px;cursor:pointer}.tld{text-align:right;font-weight:600;font-size:13px;line-height:1.5;word-break:break-all;padding-top:1px}.tlm{position:relative}.tlm::before{content:"";position:absolute;left:50%;top:6px;bottom:-2px;width:2px;background:var(--line);transform:translateX(-50%)}.tlm::after{content:"";position:absolute;left:50%;top:5px;width:10px;height:10px;box-sizing:border-box;border-radius:50%;background:var(--ink);border:2px solid var(--bg);box-shadow:0 0 0 1px var(--ink);transform:translateX(-50%)}.tle:last-child .tlm::before{display:none}.tlc{padding-bottom:18px;min-width:0}.tlc b{display:block;line-height:1.5;word-break:break-word}.tlb{margin-top:3px;font-size:13px;line-height:1.7;color:var(--mut);white-space:pre-wrap;word-break:break-word}.tle:active .tlc b{opacity:.6}.tle{cursor:default}.tlk{display:inline-flex;align-items:center;gap:5px;margin:7px 6px 0 0;padding:1px 9px 1px 7px;border:1px solid var(--line);border-radius:12px;font-size:12px;line-height:1.6;background:var(--card);cursor:pointer;max-width:100%}.tlk i{width:8px;height:8px;border-radius:50%;background:var(--c,var(--mut));flex:none}.tlk.un{padding-left:9px;border-style:dashed;color:var(--mut);cursor:default}.tlpk{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;max-height:9.5em;overflow:auto}.tlk{cursor:default}`;
 const EX_TG='<script>var b=document.getElementById("tg"),on=0,C=[],cur=null,fs=0;try{fs=+localStorage.getItem("exfs")||0}catch(e){}function offs(el,st,cw){var pitch=parseFloat(getComputedStyle(el).lineHeight)||0,R=el.getBoundingClientRect().right,L=[],rg=document.createRange(),w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);while(w.nextNode()){var n=w.currentNode;if(!n.nodeValue.trim())continue;var pe=n.parentElement;if(!pe||pe.closest("rt"))continue;rg.selectNodeContents(n);var rs=rg.getClientRects();for(var i=0;i<rs.length;i++){var r=rs[i];if(r.width<.5||r.height<.5)continue;var c=R-(r.left+r.right)/2,h=Math.max(pitch,r.width)/2;L.push([c-h,c+h])}}[].forEach.call(el.querySelectorAll("img,video,iframe,svg"),function(m){var r=m.getBoundingClientRect();if(r.width>.5&&r.height>.5)L.push([R-r.right,R-r.left])});L.sort(function(x,y){return x[0]-y[0]});var O=[0],s=0;for(var g=0;g<20000;g++){var B=s+st;if(B>=cw-2)break;var m=Infinity;for(var j=0;j<L.length;j++){var p=L[j];if(p[0]>=B-1)break;if(p[1]>B+1&&p[0]<m)m=p[0]}var nx=(m<Infinity&&m>s+st/2)?m:B;O.push(nx);s=nx}return O}function mk(el){var o={el:el,i:0,n:1,st:0,wt:0,t:0};var sp=document.createElement("div");sp.style.cssText="width:0;height:1px";el.appendChild(sp);o.sp=sp;var bar=document.createElement("div");bar.className="pgb";bar.innerHTML="<button type=button class=nx aria-label=次のページ>◀</button><input type=range class=rg min=0 max=0 value=0><span class=pgn></span><button type=button class=pv aria-label=前のページ>▶</button>";el.parentNode.insertBefore(bar,el.nextSibling);o.bar=bar;o.nx=bar.querySelector(".nx");o.pv=bar.querySelector(".pv");o.rg=bar.querySelector(".rg");o.lb=bar.querySelector(".pgn");function paint(){o.lb.textContent=(o.i+1)+" / "+o.n;o.rg.max=Math.max(0,o.n-1);o.rg.value=o.i;o.nx.disabled=o.i>=o.n-1;o.pv.disabled=o.i<=0}o.calc=function(){var st=el.clientWidth;if(!st)return;sp.style.width="0px";el.scrollTo({left:0,behavior:"auto"});var pp=parseFloat(getComputedStyle(el).lineHeight)||0;if(pp)[].forEach.call(el.querySelectorAll(".im"),function(d){d.style.width="";var i=d.querySelector("img"),w=i?i.getBoundingClientRect().width:0;if(w)d.style.width=Math.ceil(w/pp)*pp+"px"});var cw=el.scrollWidth;o.st=st;o.offs=offs(el,st,cw);o.n=o.offs.length;sp.style.width=Math.max(0,o.offs[o.n-1]+st-cw)+"px";o.i=Math.max(0,Math.min(o.i,o.n-1));el.scrollTo({left:-o.offs[o.i],behavior:"auto"});paint()};o.lay=function(){var f=parseFloat(getComputedStyle(el).fontSize)||17,pitch=Math.round(f*1.9),avail=el.parentNode.clientWidth;el.style.setProperty("--p",pitch+"px");var w=avail<pitch*3?avail:Math.floor(avail/pitch)*pitch;el.style.width=w+"px";el.style.setProperty("--pw",w+"px");el.style.height=Math.max(320,innerHeight-200)+"px";o.calc()};o.to=function(i){o.i=Math.max(0,Math.min(o.n-1,i));el.scrollTo({left:-(o.offs?o.offs[o.i]:o.i*o.st),behavior:"auto"});paint()};o.go=function(d){o.to(o.i+d)};o.nx.onclick=function(){cur=o;o.go(1)};o.pv.onclick=function(){cur=o;o.go(-1)};o.rg.oninput=function(){cur=o;o.to(+o.rg.value)};var sx=0,sy=0,ok=false;el.addEventListener("pointerdown",function(e){cur=o;sx=e.clientX;sy=e.clientY;ok=true});el.addEventListener("pointercancel",function(){ok=false});el.addEventListener("pointerup",function(e){if(!ok)return;ok=false;var dx=e.clientX-sx,dy=e.clientY-sy;if(e.pointerType!="mouse"&&Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.5){o.go(dx>0?1:-1);return}if(Math.abs(dx)<8&&Math.abs(dy)<8&&!e.target.closest("a,summary,button,img,iframe,video,sup")&&!String(getSelection()).length){var r=el.getBoundingClientRect();o.go(e.clientX<r.left+r.width/2?1:-1)}});el.addEventListener("wheel",function(e){e.preventDefault();if(Date.now()-o.wt<250)return;o.wt=Date.now();o.go(e.deltaY>0||e.deltaX>0?1:-1)},{passive:false});el.addEventListener("toggle",function(){setTimeout(o.calc,0)},true);el.addEventListener("load",o.calc,true);el.addEventListener("scroll",function(){clearTimeout(o.t);o.t=setTimeout(function(){var a=Math.abs(el.scrollLeft),O=o.offs||[0],k=0;for(var j=1;j<O.length;j++)if(Math.abs(a-O[j])<Math.abs(a-O[k]))k=j;if(k!=o.i||Math.abs(a-O[k])>2){o.i=k;el.scrollTo({left:-O[k],behavior:"auto"});paint()}},120)});o.lay();return o}function off(){C.forEach(function(o){o.sp.remove();o.bar.remove();o.el.style.width="";o.el.style.height="";o.el.style.removeProperty("--pw");o.el.style.removeProperty("--p");o.el.scrollLeft=0});C=[];cur=null}function setFs(n){fs=Math.max(12,Math.min(32,n));try{localStorage.setItem("exfs",fs)}catch(e){}[].forEach.call(document.querySelectorAll(".rd"),function(r){r.style.setProperty("--fs",fs+"px")});C.forEach(function(o){o.lay()})}function curFs(){return fs||Math.round(parseFloat(getComputedStyle(document.querySelector(".rd")).fontSize))||16}document.getElementById("fm").onclick=function(){setFs(curFs()-1)};document.getElementById("fp").onclick=function(){setFs(curFs()+1)};if(fs)setFs(fs);b.onclick=function(){on=!on;var t=document.querySelectorAll(".rd");for(var i=0;i<t.length;i++)t[i].classList.toggle("tate",on);if(on){C=[].map.call(t,mk);cur=C[0]}else off();scrollTo(0,0);b.textContent=on?"横書き":"縦書き"};addEventListener("resize",function(){C.forEach(function(o){o.lay()})});addEventListener("keydown",function(e){if(!on||!cur)return;if(e.key=="ArrowLeft"){cur.go(1);e.preventDefault()}else if(e.key=="ArrowRight"){cur.go(-1);e.preventDefault()}});<\/script>';
 async function exHtml(kind,id,embed,st){
   const f=exFind(kind,id),x=f.x,w=f.w||{};let cnt=0,o='',title=f.title||'無題';
@@ -2865,8 +3004,10 @@ async function exHtml(kind,id,embed,st){
     title=x.name;
   }else if(kind=='note'&&isF(x)){
     o=`<h1>${esc(x.title)}</h1>${dt}`;
-    const tree=async(pid,path)=>{for(const m of items(w,pid)){if(isF(m))await tree(m.id,path.concat(m.title));else o+=await sec(path.concat(m.title).join(' › '),m.body,2)}};
+    const tree=async(pid,path)=>{for(const m of items(w,pid)){if(isF(m))await tree(m.id,path.concat(m.title));else if(isT(m))o+=`<section><h2>${esc(path.concat(m.title).join(' › '))}</h2>${tlHtml(m,false,w)}</section>`;else o+=await sec(path.concat(m.title).join(' › '),m.body,2)}};
     await tree(x.id,[]);
+  }else if(kind=='note'&&isT(x)){
+    o=`<h1>${esc(x.title)}</h1>${dt}${tlHtml(x,false,w)}`;
   }else o=`<h1>${esc(x.title)}</h1>${dt}`+await sec('',x.body,2);
   const nv=kind=='gal',cs=getComputedStyle(document.documentElement);
   const pal=[['--bg','#f3f4f8'],['--fg','#1f2230'],['--mut','#767b8f'],['--card','#fff'],['--line','#dcdfe8'],['--ink','#2d3350']].map(([k,d])=>`${k}:${cs.getPropertyValue(k).trim()||d}`).join(';');
