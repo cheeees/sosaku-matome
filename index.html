@@ -168,6 +168,7 @@ sup.fr{font-size:.7em;line-height:0;color:var(--ink);cursor:pointer;margin-left:
 .fi{display:flex;gap:6px;margin:2px 0;word-break:break-word}
 .fnum{flex:none;min-width:1.4em;color:var(--ink);cursor:pointer}
 .edh{position:sticky;top:env(safe-area-inset-top,0px);z-index:4;background:var(--bg);padding:6px 0 4px;margin-bottom:6px}
+html{scroll-padding-top:var(--edh-h,0px)}
 .tb{display:flex;gap:6px;flex-wrap:wrap}
 .tb button{flex:none;display:grid;place-items:center;min-width:38px;height:34px;padding:0 6px;border:1px solid var(--line);background:var(--card);border-radius:6px;cursor:pointer;font-size:14px}
 .tb svg{width:20px;height:20px}
@@ -1907,11 +1908,32 @@ const FAB={n:false};
   const fix=()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{
     const y=Math.max(0,Math.round(vv.offsetTop)),t=y?`translateY(${y}px)`:'';
     document.querySelectorAll('.edh').forEach(e=>{if(e.style.transform!=t)e.style.transform=t});
+    const h0=document.querySelector('.edh'),hv=h0?Math.ceil(h0.offsetHeight+(parseFloat(getComputedStyle(h0).top)||0)+8)+'px':'0px';
+    if(document.documentElement.style.getPropertyValue('--edh-h')!==hv)document.documentElement.style.setProperty('--edh-h',hv);
   })};
   vv.addEventListener('resize',fix);vv.addEventListener('scroll',fix);
   addEventListener('scroll',fix,{passive:true});
   new MutationObserver(fix).observe(document.getElementById('app'),{childList:true,subtree:true});
 })();
+/* 編集中: 入力位置(カーソルのある行)が固定ツールバーの裏に隠れたら、ツールバーのすぐ下まで戻す */
+function edReveal(){
+  const t=document.activeElement;
+  if(!S.ed||!t||t.tagName!='TEXTAREA'||!t.classList.contains('ed'))return;
+  const e=document.querySelector('.edh');if(!e)return;
+  const cs=getComputedStyle(t),m=document.createElement('div');
+  m.style.cssText='position:absolute;visibility:hidden;left:-9999px;top:0;white-space:pre-wrap;box-sizing:border-box;width:'+t.clientWidth+'px';
+  ['fontFamily','fontSize','fontWeight','fontStyle','letterSpacing','lineHeight','paddingLeft','paddingRight','wordBreak','overflowWrap','tabSize'].forEach(k=>{m.style[k]=cs[k]});
+  m.textContent=t.value.slice(0,t.selectionStart)+'\u200b';document.body.appendChild(m);
+  const lh=parseFloat(cs.lineHeight)||parseFloat(cs.fontSize)*1.7,y=m.offsetHeight-lh;m.remove();
+  const top=t.getBoundingClientRect().top+(parseFloat(cs.paddingTop)||0)+y,lim=e.getBoundingClientRect().bottom+8;
+  if(top<lim)scrollBy(0,top-lim);
+}
+let rvT=0;
+['focusin','click','keyup','input'].forEach(ev=>addEventListener(ev,x=>{
+  const t=x.target;if(!S.ed||!t||!t.classList||!t.classList.contains('ed'))return;
+  clearTimeout(rvT);rvT=setTimeout(edReveal,60);
+  if(ev=='focusin'||ev=='click')setTimeout(edReveal,380); /* ブラウザ自身のスクロールが落ち着いたあとにもう一度 */
+},true));
 function idxList(){
   if(S.tab=='shed')return[];
   if(S.ed){ /* 編集中: 本文欄の「# 見出し」行から索引を作る(キャラは詳細情報の中なので1段下げる) */
