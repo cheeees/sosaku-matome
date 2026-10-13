@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>創作まとめ デモエディタ</title>
+<meta name="description" content="data/demo のサンプルデータを、アプリの画面で編集し、ZIPまたはGitHubへ保存できるエディタです。">
+<style>
+:root{--bg:#f3f4f8;--fg:#262a33;--mut:#6b7280;--ac:#4a78c9;--bd:#d9dce4}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1d24;--fg:#e8eaf0;--mut:#9aa1b0;--ac:#7aa2e8;--bd:#343846}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{display:flex;flex-direction:column;height:100vh;height:100dvh;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif}
+.bn{flex:none;display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top,0px)) 12px 8px;border-bottom:1px solid var(--bd);background:var(--bg);font-size:13px;line-height:1.4}
+.bn .tag{flex:none;font-weight:700;font-size:11px;letter-spacing:.08em;color:#fff;background:var(--ac);border-radius:999px;padding:2px 9px}
+.bn .tx{flex:1;min-width:0;color:var(--mut)}
+.bn .tx b{color:var(--fg);font-weight:600}
+.bn a,.bn button{flex:none;font:inherit;font-size:12.5px;padding:6px 12px;border-radius:8px;border:1px solid var(--bd);background:transparent;color:var(--fg);text-decoration:none;cursor:pointer;white-space:nowrap}
+.bn a.pri{background:var(--ac);border-color:var(--ac);color:#fff}
+@media (max-width:560px){.bn{flex-wrap:wrap;gap:6px 8px}.bn .tx{flex-basis:100%;order:3}}
+#st{margin-left:6px;color:var(--ac)}#st.e{color:#d14}
+dialog{border:1px solid var(--bd);border-radius:14px;background:var(--bg);color:var(--fg);padding:18px 20px;width:min(440px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog h3{margin:0 0 6px;font-size:16px}
+dialog label{display:block;font-size:12.5px;color:var(--mut);margin-top:10px}
+dialog label.ck{display:flex;gap:6px;align-items:flex-start;line-height:1.5}
+dialog input:not([type=checkbox]){display:block;width:100%;margin-top:4px;padding:8px 10px;font:inherit;font-size:14px;color:var(--fg);background:transparent;border:1px solid var(--bd);border-radius:8px}
+dialog .hint{font-size:12px;line-height:1.7;color:var(--mut);margin:8px 0 0}
+dialog .log{margin-top:12px;font-size:12.5px;line-height:1.7;white-space:pre-wrap;word-break:break-all;min-height:1.7em}
+dialog .log.e{color:#d14}
+dialog .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+dialog .acts button{font:inherit;font-size:13px;padding:8px 16px;border-radius:8px;border:1px solid var(--bd);background:transparent;color:var(--fg);cursor:pointer}
+dialog .acts button.pri{background:var(--ac);border-color:var(--ac);color:#fff}
+dialog .acts button:disabled{opacity:.5;cursor:default}
+iframe{flex:1;min-height:0;width:100%;border:0;background:var(--bg)}
+.err{padding:28px 20px;line-height:1.8;max-width:34em;margin:0 auto}
+</style>
+</head>
+<body>
+<div class="bn">
+  <span class="tag">EDITOR</span>
+  <span class="tx"><b>デモデータを編集できます。</b>変更はこのブラウザに自動保存。<span id="st"></span></span>
+  <button type="button" id="gh">GitHubに保存</button>
+  <button type="button" id="ex">ZIP</button>
+  <button type="button" id="rs">リセット</button>
+  <a href="demo.html">デモを見る</a>
+</div>
+<dialog id="ghd">
+  <h3>GitHubに保存</h3>
+  <p class="hint">編集した内容を、下のフォルダへ<b>1回のコミット</b>で書き込みます。変更のあるファイルだけが送られます。</p>
+  <label>リポジトリ<input id="ghr" placeholder="ユーザー名/リポジトリ名" autocomplete="off"></label>
+  <label>ブランチ<input id="ghb" placeholder="main" autocomplete="off"></label>
+  <label>保存先フォルダ<input id="ghp" placeholder="data/demo/" autocomplete="off"></label>
+  <label>トークン<input id="ght" type="password" placeholder="github_pat_…" autocomplete="off"></label>
+  <label class="ck"><input id="ghk" type="checkbox"> このブラウザにトークンを記憶する(共有PCでは非推奨)</label>
+  <label>コミットメッセージ<input id="ghm" autocomplete="off"></label>
+  <div id="ghl" class="log" aria-live="polite"></div>
+  <div class="acts"><button type="button" id="ghc">閉じる</button><button type="button" id="ghg" class="pri">保存する</button></div>
+  <p class="hint">トークンは Fine-grained token で、<b>このリポジトリだけ</b>・権限は <b>Contents: Read and write</b> のみにするのがおすすめです。トークンは GitHub 以外へは送信しません。</p>
+</dialog>
+<iframe id="fr" title="創作まとめ デモエディタ" allow="clipboard-write; fullscreen"></iframe>
+
+<script>
+/* ============================================================
+   デモ用の差し込みコード。index.html を読み込むとき、いちばん最初に実行されます。
+   ・通信(ログイン・GitHub)を、data/demo のサンプルデータへすり替える
+   ・保存先(localStorage / IndexedDB)を、本物のアプリとは別の名前にする
+   ・キャラ本文に「AI整形前 / 整形後」の切り替えを付ける
+   index.html 本体は書き換えないので、アプリを更新すればデモにも自動で反映されます。
+   cfg = { works, chars, gal, before, base, presets, over }
+   ============================================================ */
+function demoPrelude(cfg){
+  'use strict';
+  var REPO='demo/sample';
+
+  /* ---- 1) 本物のアプリのログイン情報・端末の控えと混ざらないよう、保存先の名前を分ける ---- */
+  var SP=Storage.prototype,_g=SP.getItem,_s=SP.setItem,_r=SP.removeItem,PF='demoed:';
+  SP.getItem=function(k){return _g.call(this,PF+k)};
+  SP.setItem=function(k,v){return _s.call(this,PF+k,v)};
+  SP.removeItem=function(k){return _r.call(this,PF+k)};
+  try{localStorage.setItem('sm_sess','demo')}catch(e){} /* ログイン済みの状態にする(中身はダミー) */
+  var _open=IDBFactory.prototype.open;
+  IDBFactory.prototype.open=function(n,v){return _open.call(this,n==='sm_cache'?'sm_cache_demoed':n,v)};
+
+  /* ---- 2) GitHub の代わりになる、メモリ上のファイル置き場 ----
+     作品・キャラのJSONはここに入れる。画像などは、まず編集で追加されたものを探し、
+     なければ data/demo/ のファイルを読みにいく。 */
+  var F={},SEQ=1;
+  function typeOf(p){return /\.svg$/i.test(p)?'image/svg+xml':/\.webp$/i.test(p)?'image/webp':/\.png$/i.test(p)?'image/png':/\.jpe?g$/i.test(p)?'image/jpeg':/\.gif$/i.test(p)?'image/gif':/\.json$/i.test(p)?'application/json':'application/octet-stream'}
+  function seed(p,t){F[p]={t:t,type:typeOf(p),sha:'s'+(SEQ++)}}
+  seed('works.json',JSON.stringify(cfg.works,null,1));
+  seed('characters.json',JSON.stringify(cfg.chars,null,1));
+  if(cfg.gal)seed('gallery.json',JSON.stringify(cfg.gal,null,1));
+  var DEL={},ov=cfg.over||{};
+  /* 前回までの編集内容(ブラウザに自動保存されたもの)を上書きで反映。null は削除済み */
+  Object.keys(ov).forEach(function(p){if(ov[p]===null){delete F[p];DEL[p]=1}else F[p]={b:ov[p],type:typeOf(p),sha:'s'+(SEQ++)}});
+  function hook(k,p,b){try{parent.__demoEd&&parent.__demoEd[k](p,b)}catch(e){}}
+
+  function J(o,st){return new Response(JSON.stringify(o),{status:st||200,headers:{'Content-Type':'application/json'}})}
+  function b64enc(t){var u=new TextEncoder().encode(t),s='';for(var i=0;i<u.length;i++)s+=String.fromCharCode(u[i]);return btoa(s)}
+  function b64blob(b,type){var s=atob(b),a=new Uint8Array(s.length);for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return new Blob([a],{type:type})}
+
+  var _fetch=window.fetch.bind(window);
+  window.fetch=function(input,init){
+    init=init||{};
+    var url=typeof input==='string'?input:(input&&input.url)||String(input);
+    if(/^(blob|data):/i.test(url))return _fetch(input,init);
+    var u;try{u=new URL(url,location.href)}catch(e){return _fetch(input,init)}
+    if(u.host===location.host)return _fetch(input,init);
+    var p=u.pathname,hd=init.headers||{},accept=String(hd.Accept||hd.accept||'');
+    if(p==='/me')return Promise.resolve(J({username:'demo',repo:REPO}));
+    if(p==='/login'||p==='/register'||p==='/ai')return Promise.resolve(J({error:'demo'},403));
+    var m=/^\/gh\/repos\/([^/]+)\/([^/]+)\/contents\/(.*)$/.exec(p);
+    if(!m)return _fetch(input,init);
+    var repo=decodeURIComponent(m[1])+'/'+decodeURIComponent(m[2]),path=decodeURIComponent(m[3]);
+    var meth=String(init.method||'GET').toUpperCase(),f=F[path];
+    /* 基本シート(公開リポジトリ)は読み取りだけ、そのまま本物から取得する */
+    if(repo!==REPO){
+      if(meth!=='GET')return Promise.resolve(J({message:'demo'},403));
+      return _fetch(input,init).catch(function(){return J({message:'Not Found'},404)});
+    }
+    /* チェックシート一覧: data/preset を一覧として返す */
+    if(meth==='GET'&&/^data\/preset\/?$/.test(path)&&!/raw/i.test(accept)){
+      var nm={};(cfg.presets||[]).forEach(function(n){nm[n]=1});
+      Object.keys(F).forEach(function(k){var q=/^data\/preset\/([^/]+)$/.exec(k);if(q)nm[q[1]]=1});
+      Object.keys(DEL).forEach(function(k){var q=/^data\/preset\/([^/]+)$/.exec(k);if(q)delete nm[q[1]]});
+      return Promise.resolve(J(Object.keys(nm).map(function(n){return{type:'file',name:n,path:'data/preset/'+n,sha:'p'+n.length}})));
+    }
+    if(meth==='GET'){
+      if(!f){
+        if(DEL[path])return Promise.resolve(J({message:'Not Found'},404));
+        if(!/raw/i.test(accept))return Promise.resolve(J({message:'Not Found'},404));
+        /* 画像など: data/demo/ に同じパスのファイルがあればそれを返す */
+        return _fetch(cfg.base+path.split('/').map(encodeURIComponent).join('/')).then(function(r){return r.ok?r:J({message:'Not Found'},404)},function(){return J({message:'Not Found'},404)});
+      }
+      if(/raw/i.test(accept))return Promise.resolve(new Response(f.t!=null?new Blob([f.t],{type:f.type}):b64blob(f.b,f.type),{status:200,headers:{'Content-Type':f.type}}));
+      return Promise.resolve(J({type:'file',path:path,sha:f.sha,size:(f.t!=null?f.t.length:f.b.length),encoding:'base64',content:f.t!=null?b64enc(f.t):f.b}));
+    }
+    if(meth==='PUT'){
+      var b={};try{b=JSON.parse(init.body)}catch(e){}
+      F[path]={b:b.content||'',type:typeOf(path),sha:'s'+(SEQ++)};delete DEL[path];hook('put',path,F[path].b);
+      return Promise.resolve(J({content:{path:path,sha:F[path].sha}},f?200:201));
+    }
+    if(meth==='DELETE'){delete F[path];DEL[path]=1;hook('del',path);return Promise.resolve(J({commit:{}}))}
+    return Promise.resolve(J({message:'Method Not Allowed'},405));
+  };
+
+  /* ---- 3) キャラ本文の「AI整形 前/後」切り替え ----
+     アプリが描いたキャラ詳細の「詳細情報」の上に切り替えボタンを足し、本文だけを差し替える。
+     整形前の文章があるキャラ(cfg.before)だけに出る。 */
+  var BEF=cfg.before||{},MODE='after';
+  var CAP={
+    before:'整形前:「質問から作る」の回答から、自動で組み立てた文章です。',
+    after:'整形後:AIが、回答を一人の人物像としてまとめ直した文章です。'
+  };
+  function demoCmp(c){
+    var bef=c&&BEF[c.id];if(!bef)return;
+    var app=document.getElementById('app');if(!app)return;
+    var sec=null,hs=app.querySelectorAll('section.pc>h4');
+    for(var i=0;i<hs.length;i++)if(hs[i].textContent.trim()==='詳細情報')sec=hs[i].parentNode;
+    var rd=sec&&sec.querySelector('.rd');if(!rd)return;
+    var aft=rd.innerHTML,bh=null,bar=document.createElement('div');
+    bar.style.cssText='margin:2px 0 14px';
+    bar.innerHTML='<div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" class="btn chip" data-m="before">整形前</button><button type="button" class="btn chip" data-m="after">整形後</button></div><div class="mut" data-cap style="font-size:12px;line-height:1.6;margin-top:8px"></div>';
+    sec.insertBefore(bar,rd);
+    var cap=bar.querySelector('[data-cap]');
+    function paint(){
+      var bs=bar.querySelectorAll('button');
+      for(var i=0;i<bs.length;i++){var on=bs[i].getAttribute('data-m')===MODE;bs[i].className='btn chip'+(on?'':' sub');bs[i].setAttribute('aria-pressed',on?'true':'false')}
+      if(MODE==='before'){
+        if(bh===null){try{bh=rich(bef)}catch(e){bh=''}}
+        if(bh)rd.innerHTML=bh;else rd.textContent=bef;
+      }else rd.innerHTML=aft;
+      cap.textContent=CAP[MODE];
+    }
+    bar.addEventListener('click',function(e){var b=e.target.closest('button[data-m]');if(!b)return;MODE=b.getAttribute('data-m');paint()});
+    paint();
+  }
+
+  /* ---- 4) 差し替え(アプリの読み込み後) ---- */
+  addEventListener('load',function(){
+    if(typeof window.charRead==='function'){
+      var orig=window.charRead;
+      window.charRead=function(w,c){var r=orig.apply(this,arguments);try{demoCmp(c)}catch(e){}return r};
+    }
+    /* デモでは使えない操作を、わかりやすい案内に */
+    window.qzAi=function(){try{qzMsg('デモではAIによる整形は使えません。ログイン後にお試しください',1)}catch(e){}};
+    window.logout=function(){try{status('デモでは切断できません')}catch(e){}};
+  });
+}
+
+(function(){
+  var DATA='data/demo/',fr=document.getElementById('fr'),stEl=document.getElementById('st'),LS='de:over',GS='de:gh',TK='de:tk';
+  var ED={over:{}},META={before:{},bodyNames:{},beforeNames:{},presets:{},works:[],chars:[],gal:null},saveT,stT;
+  try{ED.over=JSON.parse(localStorage.getItem(LS)||'{}')||{}}catch(e){ED.over={}}
+
+  function st(m,err){stEl.textContent=m?'('+m+')':'';stEl.className=err?'e':'';clearTimeout(stT);if(m&&!err)stT=setTimeout(function(){stEl.textContent=''},2500)}
+  function persist(){
+    clearTimeout(saveT);
+    saveT=setTimeout(function(){
+      try{localStorage.setItem(LS,JSON.stringify(ED.over));st('自動保存しました')}
+      catch(e){st('容量オーバーで自動保存できません。「GitHubに保存」かZIPで退避してください',1)}
+    },400);
+  }
+  /* アプリ(iframe)が「保存」したときに呼ばれる */
+  window.__demoEd={put:function(p,b){ED.over[p]=b;persist()},del:function(p){ED.over[p]=null;persist()}};
+
+  function get(p){return fetch(p,{cache:'no-store'})}
+  function json(p){return get(DATA+p).then(function(r){if(!r.ok)throw new Error(DATA+p);return r.json()})}
+  function text(p){return get(DATA+p).then(function(r){return r.ok?r.text():''}).then(function(t){return t.replace(/\r\n?/g,'\n').replace(/\s+$/,'')}).catch(function(){return ''})}
+  function fixDate(x){
+    if(x&&typeof x.date==='string'){var m=/^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(x.date.trim());if(m)x.ts=Date.UTC(+m[1],+m[2]-1,+m[3],12);delete x.date}
+  }
+  function fail(msg){
+    fr.hidden=true;
+    var d=document.createElement('div');d.className='err';
+    d.innerHTML='<h2>エディタを開けませんでした</h2><p>'+msg+'</p><p><a href="index.html">アプリのページへ</a></p>';
+    document.body.appendChild(d);
+  }
+
+  /* ---------- リセット ---------- */
+  document.getElementById('rs').addEventListener('click',function(){
+    if(!confirm('編集内容をすべて破棄して、data/demo のサンプルに戻します。\n(ZIP・GitHubに保存していない変更は失われます)'))return;
+    try{Object.keys(localStorage).filter(function(k){return k===LS||k.indexOf('demoed:')===0}).forEach(function(k){localStorage.removeItem(k)})}catch(e){}
+    fr.remove();
+    var done=false;function go(){if(!done){done=true;location.reload()}}
+    try{var q=indexedDB.deleteDatabase('sm_cache_demoed');q.onsuccess=q.onerror=q.onblocked=go}catch(e){}
+    setTimeout(go,600);
+  });
+
+  /* ---------- 共通: 保存するファイルをまとめる ---------- */
+  function b64bytes(b){var s=atob(b),a=new Uint8Array(s.length);for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a}
+  function b64text(b){return new TextDecoder().decode(b64bytes(b))}
+  function bytesB64(u){var s='';for(var i=0;i<u.length;i+=8192)s+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(s)}
+  function safe(s){return String(s).replace(/[\\\/:*?"<>|\s]/g,'_')}
+  function strings(x,out){
+    if(typeof x==='string')out.push(x);
+    else if(x&&typeof x==='object')Object.keys(x).forEach(function(k){strings(x[k],out)});
+    return out;
+  }
+  function flushApp(){
+    var w=fr.contentWindow;
+    try{if(w&&typeof w.flush==='function')return Promise.resolve(w.flush()).catch(function(){})}catch(e){}
+    return Promise.resolve();
+  }
+  /* full=true: 編集していないファイルも含めて全部(ZIP用)。false: 編集したものだけ(GitHub用)
+     返り値: {files:[{path,data:Uint8Array}], dels:[path]}  path は data/demo/ からの相対パス */
+  function collect(full){
+    return flushApp().then(function(){
+      var ov=ED.over,files=[],have={},dels=[];
+      function addT(p,t){if(have[p])return;have[p]=1;files.push({path:p,data:new TextEncoder().encode(t)})}
+      function addB(p,u8){if(have[p])return;have[p]=1;files.push({path:p,data:u8})}
+      var works=ov['works.json']?JSON.parse(b64text(ov['works.json'])):META.works;
+      var chars=ov['characters.json']?JSON.parse(b64text(ov['characters.json'])):JSON.parse(JSON.stringify(META.chars));
+      var gal=ov['gallery.json']?JSON.parse(b64text(ov['gallery.json'])):META.gal;
+
+      if(full||ov['works.json'])addT('works.json',JSON.stringify(works,null,1)+'\n');
+      if(full||ov['gallery.json']){if(gal)addT('gallery.json',JSON.stringify(gal,null,1)+'\n')}
+      if(full||ov['characters.json']){
+        var ids={};
+        chars.forEach(function(c){
+          ids[c.id]=1;var id=safe(c.id);
+          if(typeof c.body==='string'&&c.body.trim()){
+            var bp=META.bodyNames[c.id]||'chars/'+id+'.txt';
+            addT(bp,c.body+'\n');c.bodyFile=bp;
+          }
+          delete c.body;
+          if(META.before[c.id]){
+            var fp=META.beforeNames[c.id]||'chars/'+id+'.before.txt';
+            addT(fp,META.before[c.id]+'\n');c.beforeFile=fp;
+          }
+        });
+        addT('characters.json',JSON.stringify(chars,null,1)+'\n');
+        /* 消したキャラの本文ファイルは削除 */
+        Object.keys(META.bodyNames).forEach(function(id){if(!ids[id])dels.push(META.bodyNames[id])});
+        Object.keys(META.beforeNames).forEach(function(id){if(!ids[id])dels.push(META.beforeNames[id])});
+      }
+
+      /* チェックシート(自分のシート) */
+      var pn={};
+      Object.keys(META.presets).forEach(function(n){pn[n]=1});
+      Object.keys(ov).forEach(function(k){var q=/^data\/preset\/([^/]+)$/.exec(k);if(q){if(ov[k]===null)delete pn[q[1]];else pn[q[1]]=1}});
+      var jobs=Object.keys(pn).map(function(n){
+        var k='data/preset/'+n;
+        if(ov[k]!=null){addB(k,b64bytes(ov[k]));return}
+        if(!full)return;
+        return get(DATA+k).then(function(r){return r.ok?r.arrayBuffer():null}).then(function(b){if(b)addB(k,new Uint8Array(b));else delete pn[n]}).catch(function(){delete pn[n]});
+      });
+      /* 画像(作品・キャラ・ギャラリーが参照するもの + 編集で追加したもの) */
+      var imgRe=/\.(png|jpe?g|gif|webp|svg)$/i,paths={};
+      if(full)strings([works,chars,gal],[]).forEach(function(s){if(imgRe.test(s)&&!/^(https?:|data:|blob:|\/)/i.test(s))paths[s]=1});
+      Object.keys(ov).forEach(function(p){if(ov[p]!==null&&imgRe.test(p))paths[p]=1});
+      Object.keys(paths).forEach(function(p){
+        if(ov[p]!=null){addB(p,b64bytes(ov[p]));return}
+        jobs.push(get(DATA+p.split('/').map(encodeURIComponent).join('/')).then(function(r){return r.ok?r.arrayBuffer():null}).then(function(b){if(b)addB(p,new Uint8Array(b))}).catch(function(){}));
+      });
+      /* アプリで削除したファイル */
+      Object.keys(ov).forEach(function(p){if(ov[p]===null)dels.push(p)});
+
+      return Promise.all(jobs).then(function(){
+        if(Object.keys(pn).length&&(full||Object.keys(ov).some(function(k){return /^data\/preset\//.test(k)})))addT('presets.json',JSON.stringify(Object.keys(pn).sort(),null,1)+'\n');
+        dels=dels.filter(function(p,i){return !have[p]&&dels.indexOf(p)===i});
+        return{files:files,dels:dels};
+      });
+    });
+  }
+
+  /* ---------- ZIP ---------- */
+  var CT=(function(){var t=[];for(var n=0;n<256;n++){var c=n;for(var k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+  function crc32(u){var c=0xFFFFFFFF;for(var i=0;i<u.length;i++)c=CT[(c^u[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0}
+  function makeZip(list){
+    var enc=new TextEncoder(),d=new Date(),
+        tm=(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1),
+        dt=((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate(),
+        parts=[],cen=[],off=0;
+    list.forEach(function(f){
+      var nm=enc.encode(f.name),c=crc32(f.data),n=f.data.length;
+      var h=new DataView(new ArrayBuffer(30));
+      h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(8,0,true);
+      h.setUint16(10,tm,true);h.setUint16(12,dt,true);h.setUint32(14,c,true);h.setUint32(18,n,true);h.setUint32(22,n,true);
+      h.setUint16(26,nm.length,true);h.setUint16(28,0,true);
+      parts.push(new Uint8Array(h.buffer),nm,f.data);
+      var e=new DataView(new ArrayBuffer(46));
+      e.setUint32(0,0x02014b50,true);e.setUint16(4,20,true);e.setUint16(6,20,true);e.setUint16(8,0x0800,true);e.setUint16(10,0,true);
+      e.setUint16(12,tm,true);e.setUint16(14,dt,true);e.setUint32(16,c,true);e.setUint32(20,n,true);e.setUint32(24,n,true);
+      e.setUint16(28,nm.length,true);e.setUint32(42,off,true);
+      cen.push(new Uint8Array(e.buffer),nm);
+      off+=30+nm.length+n;
+    });
+    var csz=0;cen.forEach(function(x){csz+=x.length});
+    var z=new DataView(new ArrayBuffer(22));
+    z.setUint32(0,0x06054b50,true);z.setUint16(8,list.length,true);z.setUint16(10,list.length,true);z.setUint32(12,csz,true);z.setUint32(16,off,true);
+    return new Blob(parts.concat(cen,[new Uint8Array(z.buffer)]),{type:'application/zip'});
+  }
+  document.getElementById('ex').addEventListener('click',function(){
+    st('書き出し中…');
+    collect(true).then(function(r){
+      var blob=makeZip(r.files.map(function(f){return{name:'data/demo/'+f.path,data:f.data}})),a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);a.download='demo-data.zip';
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(function(){URL.revokeObjectURL(a.href)},5000);
+      st(r.files.length+'ファイルを書き出しました');
+    }).catch(function(e){st('書き出しに失敗: '+(e&&e.message||e),1)});
+  });
+
+  /* ---------- GitHub に直接保存 ---------- */
+  var dlg=document.getElementById('ghd'),$g=function(i){return document.getElementById(i)},logEl=$g('ghl'),goBtn=$g('ghg');
+  function log(m,err){logEl.textContent=m;logEl.className='log'+(err?' e':'')}
+  function guess(){
+    var h=location.hostname,m=/^([^.]+)\.github\.io$/i.exec(h),seg=location.pathname.split('/').filter(Boolean)[0];
+    return m?m[1]+'/'+(seg&&!/\.html?$/i.test(seg)?seg:m[1]+'.github.io'):'';
+  }
+  function loadCfg(){
+    var c={};try{c=JSON.parse(localStorage.getItem(GS)||'{}')||{}}catch(e){}
+    var tk='';try{tk=sessionStorage.getItem(TK)||localStorage.getItem(TK)||''}catch(e){}
+    $g('ghr').value=c.repo||guess();$g('ghb').value=c.branch||'main';$g('ghp').value=c.dir||'data/demo/';
+    $g('ghm').value=c.msg||'デモデータを更新';$g('ght').value=tk;$g('ghk').checked=!!(function(){try{return localStorage.getItem(TK)}catch(e){}})();
+  }
+  $g('gh').addEventListener('click',function(){loadCfg();log('');goBtn.disabled=false;dlg.showModal()});
+  $g('ghc').addEventListener('click',function(){dlg.close()});
+
+  async function gitSha(u8){
+    var h=new TextEncoder().encode('blob '+u8.length+'\0'),b=new Uint8Array(h.length+u8.length);b.set(h);b.set(u8,h.length);
+    var d=await crypto.subtle.digest('SHA-1',b);
+    return Array.from(new Uint8Array(d)).map(function(x){return x.toString(16).padStart(2,'0')}).join('');
+  }
+  async function push(c){
+    var api='https://api.github.com/repos/'+c.repo,
+        H={Authorization:'Bearer '+c.token,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};
+    async function req(path,method,body){
+      var o={method:method||'GET',headers:Object.assign({},H)};
+      if(body){o.headers['Content-Type']='application/json';o.body=JSON.stringify(body)}
+      var r=await fetch(api+path,o);
+      if(!r.ok){
+        var m='';try{m=(await r.json()).message}catch(e){}
+        if(r.status===401)m='トークンが正しくないか、期限切れです';
+        else if(r.status===403||r.status===404)m=(m||'')+'(リポジトリ名・ブランチ名・トークンの権限(Contents: Read and write)を確認してください)';
+        throw new Error('HTTP '+r.status+' '+m);
+      }
+      return r.status===204?null:r.json();
+    }
+    var br=c.branch.split('/').map(encodeURIComponent).join('/');
+    log('変更内容をまとめています…');
+    var col=await collect(false);
+    log('GitHub の最新の状態を確認しています…');
+    var ref=await req('/git/ref/heads/'+br),parent=ref.object.sha;
+    var cm=await req('/git/commits/'+parent),baseTree=cm.tree.sha;
+    var tr=await req('/git/trees/'+baseTree+'?recursive=1'),exist={};
+    (tr.tree||[]).forEach(function(t){if(t.type==='blob')exist[t.path]=t.sha});
+    var full=function(p){return c.dir+p},tree=[],sent=0,same=0,hasSub=!!(crypto&&crypto.subtle);
+    var todo=[];
+    for(var i=0;i<col.files.length;i++){
+      var f=col.files[i],fp=full(f.path);
+      if(hasSub&&!tr.truncated&&exist[fp]===await gitSha(f.data)){same++;continue}
+      todo.push({fp:fp,data:f.data});
+    }
+    var dels=col.dels.map(full).filter(function(p){return exist[p]});
+    if(!todo.length&&!dels.length)return{none:true,same:same};
+    var n=0;
+    async function worker(){
+      while(todo.length){
+        var t=todo.shift();
+        var b=await req('/git/blobs','POST',{content:bytesB64(t.data),encoding:'base64'});
+        tree.push({path:t.fp,mode:'100644',type:'blob',sha:b.sha});
+        n++;log('アップロード中… '+n+' / '+(n+todo.length));
+      }
+    }
+    var ws=[];for(var k=0;k<4;k++)ws.push(worker());
+    await Promise.all(ws);
+    dels.forEach(function(p){tree.push({path:p,mode:'100644',type:'blob',sha:null})});
+    log('コミットを作成しています…');
+    var nt=await req('/git/trees','POST',{base_tree:baseTree,tree:tree});
+    var nc=await req('/git/commits','POST',{message:c.msg||'デモデータを更新',tree:nt.sha,parents:[parent]});
+    await req('/git/refs/heads/'+br,'PATCH',{sha:nc.sha});
+    return{sent:tree.length-dels.length,del:dels.length,same:same,url:'https://github.com/'+c.repo+'/commit/'+nc.sha};
+  }
+  goBtn.addEventListener('click',async function(){
+    var c={repo:$g('ghr').value.trim(),branch:$g('ghb').value.trim()||'main',dir:$g('ghp').value.trim().replace(/^\/+/,''),token:$g('ght').value.trim(),msg:$g('ghm').value.trim()};
+    if(!/^[\w.-]+\/[\w.-]+$/.test(c.repo)){log('リポジトリは「ユーザー名/リポジトリ名」の形で入力してください',1);return}
+    if(!c.token){log('トークンを入力してください',1);return}
+    if(c.dir&&!/\/$/.test(c.dir))c.dir+='/';
+    try{
+      localStorage.setItem(GS,JSON.stringify({repo:c.repo,branch:c.branch,dir:c.dir,msg:c.msg}));
+      if($g('ghk').checked){localStorage.setItem(TK,c.token);sessionStorage.removeItem(TK)}
+      else{localStorage.removeItem(TK);sessionStorage.setItem(TK,c.token)}
+    }catch(e){}
+    goBtn.disabled=true;
+    try{
+      var r=await push(c);
+      if(r.none)log('変更はありませんでした(GitHub と同じ内容です)');
+      else log('保存しました: '+r.sent+'ファイル更新'+(r.del?'、'+r.del+'ファイル削除':'')+(r.same?'(変更なし '+r.same+')':'')+'\n'+r.url+'\nGitHub Pages に反映されるまで1〜2分かかることがあります。');
+    }catch(e){log('保存できませんでした: '+(e&&e.message||e),1)}
+    goBtn.disabled=false;
+  });
+
+  /* ---------- 読み込み ---------- */
+  Promise.all([get('index.html').then(function(r){if(!r.ok)throw new Error('index.html');return r.text()}),json('works.json'),json('characters.json'),json('gallery.json').catch(function(){return null}),json('presets.json').catch(function(){return[]})]).then(function(a){
+    var html=a[0],works=a[1],chars=a[2],gal=a[3],before={};
+    works.forEach(function(w){fixDate(w);(w.notes||[]).forEach(fixDate);(w.memos||[]).forEach(fixDate)});
+    if(gal)gal.forEach(fixDate);
+    (Array.isArray(a[4])?a[4]:[]).forEach(function(n){if(typeof n==='string')META.presets[n]=1});
+    chars.forEach(function(c){((c.sheets&&c.sheets.list)||[]).forEach(function(x){if(x&&x.src==='user'&&x.file)META.presets[x.file]=1})});
+    Object.keys(ED.over).forEach(function(k){var q=/^data\/preset\/([^/]+)$/.exec(k);if(q&&ED.over[k]!==null)META.presets[q[1]]=1});
+    return Promise.all(chars.map(function(c){
+      fixDate(c);
+      var jobs=[];
+      if(c.bodyFile){META.bodyNames[c.id]=c.bodyFile;jobs.push(text(c.bodyFile).then(function(t){c.body=t}))}
+      if(c.beforeFile){META.beforeNames[c.id]=c.beforeFile;jobs.push(text(c.beforeFile).then(function(t){if(t)before[c.id]=t}))}
+      delete c.bodyFile;delete c.beforeFile;
+      return Promise.all(jobs);
+    })).then(function(){
+      META.works=works;META.chars=JSON.parse(JSON.stringify(chars));META.before=before;META.gal=gal;
+      return{html:html,cfg:{works:works,chars:chars,gal:gal,before:before,base:new URL(DATA,location.href).href,over:ED.over,presets:Object.keys(META.presets)}};
+    });
+  }).then(function(o){
+    var json=JSON.stringify(o.cfg).replace(/</g,'\\u003c');
+    var inj='<script>('+demoPrelude.toString()+')('+json+');<\/script>',html=o.html;
+    html=/<head[^>]*>/i.test(html)?html.replace(/<head[^>]*>/i,function(m){return m+inj}):inj+html;
+    fr.srcdoc=html;
+  }).catch(function(e){
+    fail('必要なファイル('+(e&&e.message||'')+')を読み込めませんでした。demo-editor.html・index.html・data/demo フォルダを同じ場所に置いて、https(GitHub Pages など)から開いてください。');
+  });
+})();
+</script>
+</body>
+</html>
