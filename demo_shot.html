@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>創作まとめ デモ</title>
+<meta name="description" content="ログイン不要。サンプルデータで「創作まとめ」の実際の画面を試せるデモです。">
+<style>
+:root{--bg:#f3f4f8;--fg:#262a33;--mut:#6b7280;--ac:#4a78c9;--bd:#d9dce4}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1d24;--fg:#e8eaf0;--mut:#9aa1b0;--ac:#7aa2e8;--bd:#343846}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{display:flex;flex-direction:column;height:100vh;height:100dvh;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif}
+iframe{flex:1;min-height:0;width:100%;border:0;background:var(--bg)}
+.err{padding:28px 20px;line-height:1.8;max-width:34em;margin:0 auto}
+</style>
+</head>
+<body>
+<iframe id="fr" title="創作まとめ デモ" allow="clipboard-write; fullscreen"></iframe>
+
+<script>
+/* ============================================================
+   デモ用の差し込みコード。index.html を読み込むとき、いちばん最初に実行されます。
+   ・通信(ログイン・GitHub)を、data/demo のサンプルデータへすり替える
+   ・保存先(localStorage / IndexedDB)を、本物のアプリとは別の名前にする
+   ・キャラ本文に「AI整形前 / 整形後」の切り替えを付ける
+   index.html 本体は書き換えないので、アプリを更新すればデモにも自動で反映されます。
+   cfg = { works, chars, gal, before, base, presets, over }
+   ============================================================ */
+function demoPrelude(cfg){
+  'use strict';
+  var REPO='demo/sample';
+
+  /* ---- 1) 本物のアプリのログイン情報・端末の控えと混ざらないよう、保存先の名前を分ける ---- */
+  var SP=Storage.prototype,_g=SP.getItem,_s=SP.setItem,_r=SP.removeItem,PF='demo:';
+  SP.getItem=function(k){return _g.call(this,PF+k)};
+  SP.setItem=function(k,v){return _s.call(this,PF+k,v)};
+  SP.removeItem=function(k){return _r.call(this,PF+k)};
+  try{localStorage.setItem('sm_sess','demo')}catch(e){} /* ログイン済みの状態にする(中身はダミー) */
+  var _open=IDBFactory.prototype.open;
+  IDBFactory.prototype.open=function(n,v){return _open.call(this,n==='sm_cache'?'sm_cache_demo':n,v)};
+
+  /* ---- 2) GitHub の代わりになる、メモリ上のファイル置き場 ----
+     作品・キャラのJSONはここに入れる。画像などは、まず編集で追加されたものを探し、
+     なければ data/demo/ のファイルを読みにいく。 */
+  var F={},SEQ=1;
+  function typeOf(p){return /\.svg$/i.test(p)?'image/svg+xml':/\.webp$/i.test(p)?'image/webp':/\.png$/i.test(p)?'image/png':/\.jpe?g$/i.test(p)?'image/jpeg':/\.gif$/i.test(p)?'image/gif':/\.json$/i.test(p)?'application/json':'application/octet-stream'}
+  function seed(p,t){F[p]={t:t,type:typeOf(p),sha:'s'+(SEQ++)}}
+  seed('works.json',JSON.stringify(cfg.works,null,1));
+  seed('characters.json',JSON.stringify(cfg.chars,null,1));
+  if(cfg.gal)seed('gallery.json',JSON.stringify(cfg.gal,null,1));
+  var DEL={};
+  function hook(k,p,b){try{parent.__demoEd&&parent.__demoEd[k](p,b)}catch(e){}}
+
+  function J(o,st){return new Response(JSON.stringify(o),{status:st||200,headers:{'Content-Type':'application/json'}})}
+  function b64enc(t){var u=new TextEncoder().encode(t),s='';for(var i=0;i<u.length;i++)s+=String.fromCharCode(u[i]);return btoa(s)}
+  function b64blob(b,type){var s=atob(b),a=new Uint8Array(s.length);for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return new Blob([a],{type:type})}
+
+  var _fetch=window.fetch.bind(window);
+  window.fetch=function(input,init){
+    init=init||{};
+    var url=typeof input==='string'?input:(input&&input.url)||String(input);
+    if(/^(blob|data):/i.test(url))return _fetch(input,init);
+    var u;try{u=new URL(url,location.href)}catch(e){return _fetch(input,init)}
+    if(u.host===location.host)return _fetch(input,init);
+    var p=u.pathname,hd=init.headers||{},accept=String(hd.Accept||hd.accept||'');
+    if(p==='/me')return Promise.resolve(J({username:'demo',repo:REPO}));
+    if(p==='/login'||p==='/register'||p==='/ai')return Promise.resolve(J({error:'demo'},403));
+    var m=/^\/gh\/repos\/([^/]+)\/([^/]+)\/contents\/(.*)$/.exec(p);
+    if(!m)return _fetch(input,init);
+    var repo=decodeURIComponent(m[1])+'/'+decodeURIComponent(m[2]),path=decodeURIComponent(m[3]);
+    var meth=String(init.method||'GET').toUpperCase(),f=F[path];
+    /* 基本シート: 読み取りだけ。サイト直下の data/preset/ を先に見て、なければ本物(API)から取得する */
+    if(repo!==REPO){
+      if(meth!=='GET')return Promise.resolve(J({message:'demo'},403));
+      var nf=function(){return J({message:'Not Found'},404)};
+      if(/^data\/preset\/?$/.test(path)){
+        return _fetch(input,init).then(function(r){if(r.ok)return r;throw 0}).catch(function(){
+          return _fetch('https://api.github.com/repos/'+repo+'/contents/'+path,{headers:{Accept:'application/vnd.github+json'}}).then(function(r){if(r.ok)return r;throw 0});
+        }).catch(function(){
+          return J((cfg.basePresets||[]).map(function(n){return{type:'file',name:n,path:'data/preset/'+n,sha:'b'+n.length}}));
+        });
+      }
+      if(/^data\/preset\/./.test(path)&&/raw/i.test(accept)){
+        return _fetch(cfg.site+path.split('/').map(encodeURIComponent).join('/')).then(function(r){return r.ok?r:_fetch(input,init)}).catch(function(){return _fetch(input,init)}).catch(nf);
+      }
+      return _fetch(input,init).catch(nf);
+    }
+    /* チェックシート一覧: data/preset を一覧として返す */
+    if(meth==='GET'&&/^data\/preset\/?$/.test(path)&&!/raw/i.test(accept)){
+      var nm={};(cfg.presets||[]).forEach(function(n){nm[n]=1});
+      Object.keys(F).forEach(function(k){var q=/^data\/preset\/([^/]+)$/.exec(k);if(q)nm[q[1]]=1});
+      Object.keys(DEL).forEach(function(k){var q=/^data\/preset\/([^/]+)$/.exec(k);if(q)delete nm[q[1]]});
+      return Promise.resolve(J(Object.keys(nm).map(function(n){return{type:'file',name:n,path:'data/preset/'+n,sha:'p'+n.length}})));
+    }
+    if(meth==='GET'){
+      if(!f){
+        if(DEL[path])return Promise.resolve(J({message:'Not Found'},404));
+        if(!/raw/i.test(accept))return Promise.resolve(J({message:'Not Found'},404));
+        /* 画像など: data/demo/ に同じパスのファイルがあればそれを返す */
+        var enc=path.split('/').map(encodeURIComponent).join('/'),nf=function(){return J({message:'Not Found'},404)};
+        return _fetch(cfg.base+enc).then(function(r){return r.ok?r:Promise.reject()}).catch(function(){
+          return /^data\/preset\//.test(path)?_fetch(cfg.site+enc).then(function(r){return r.ok?r:nf()}):nf();
+        }).catch(nf);
+      }
+      if(/raw/i.test(accept))return Promise.resolve(new Response(f.t!=null?new Blob([f.t],{type:f.type}):b64blob(f.b,f.type),{status:200,headers:{'Content-Type':f.type}}));
+      return Promise.resolve(J({type:'file',path:path,sha:f.sha,size:(f.t!=null?f.t.length:f.b.length),encoding:'base64',content:f.t!=null?b64enc(f.t):f.b}));
+    }
+    if(meth==='PUT'){
+      var b={};try{b=JSON.parse(init.body)}catch(e){}
+      F[path]={b:b.content||'',type:typeOf(path),sha:'s'+(SEQ++)};delete DEL[path];hook('put',path,F[path].b);
+      return Promise.resolve(J({content:{path:path,sha:F[path].sha}},f?200:201));
+    }
+    if(meth==='DELETE'){delete F[path];DEL[path]=1;hook('del',path);return Promise.resolve(J({commit:{}}))}
+    return Promise.resolve(J({message:'Method Not Allowed'},405));
+  };
+
+  /* ---- 3) キャラ本文の「AI整形 前/後」切り替え ----
+     アプリが描いたキャラ詳細の「詳細情報」の上に切り替えボタンを足し、本文だけを差し替える。
+     整形前の文章があるキャラ(cfg.before)だけに出る。 */
+  var BEF=cfg.before||{},MODE='after';
+  var CAP={
+    before:'整形前:「質問から作る」の回答から、自動で組み立てた文章です。',
+    after:'整形後:AIが、回答を一人の人物像としてまとめ直した文章です。'
+  };
+  function demoCmp(c){
+    var bef=c&&BEF[c.id];if(!bef)return;
+    var app=document.getElementById('app');if(!app)return;
+    var sec=null,hs=app.querySelectorAll('section.pc>h4');
+    for(var i=0;i<hs.length;i++)if(hs[i].textContent.trim()==='詳細情報')sec=hs[i].parentNode;
+    var rd=sec&&sec.querySelector('.rd');if(!rd)return;
+    var aft=rd.innerHTML,bh=null,bar=document.createElement('div');
+    bar.style.cssText='margin:2px 0 14px';
+    bar.innerHTML='<div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" class="btn chip" data-m="before">整形前</button><button type="button" class="btn chip" data-m="after">整形後</button></div><div class="mut" data-cap style="font-size:12px;line-height:1.6;margin-top:8px"></div>';
+    sec.insertBefore(bar,rd);
+    var cap=bar.querySelector('[data-cap]');
+    function paint(){
+      var bs=bar.querySelectorAll('button');
+      for(var i=0;i<bs.length;i++){var on=bs[i].getAttribute('data-m')===MODE;bs[i].className='btn chip'+(on?'':' sub');bs[i].setAttribute('aria-pressed',on?'true':'false')}
+      if(MODE==='before'){
+        if(bh===null){try{bh=rich(bef)}catch(e){bh=''}}
+        if(bh)rd.innerHTML=bh;else rd.textContent=bef;
+      }else rd.innerHTML=aft;
+      cap.textContent=CAP[MODE];
+    }
+    bar.addEventListener('click',function(e){var b=e.target.closest('button[data-m]');if(!b)return;MODE=b.getAttribute('data-m');paint()});
+    paint();
+  }
+
+  /* ---- 4) 差し替え(アプリの読み込み後) ---- */
+  addEventListener('load',function(){
+    if(typeof window.charRead==='function'){
+      var orig=window.charRead;
+      window.charRead=function(w,c){var r=orig.apply(this,arguments);try{demoCmp(c)}catch(e){}return r};
+    }
+    /* デモでは使えない操作を、わかりやすい案内に */
+    window.qzAi=function(){try{qzMsg('デモではAIによる整形は使えません。ログイン後にお試しください',1)}catch(e){}};
+    window.logout=function(){try{status('デモでは切断できません')}catch(e){}};
+  });
+}
+
+(function(){
+  var DATA='data/demo/',fr=document.getElementById('fr');
+  if(/[?&]reset\b/.test(location.search)){
+    try{Object.keys(localStorage).filter(function(k){return k.indexOf('demo:')===0}).forEach(function(k){localStorage.removeItem(k)})}catch(e){}
+  }
+  function fail(msg){
+    fr.hidden=true;
+    var d=document.createElement('div');d.className='err';
+    d.innerHTML='<h2>デモを開けませんでした</h2><p>'+msg+'</p><p><a href="index.html">アプリのページへ</a></p>';
+    document.body.appendChild(d);
+  }
+  function get(p){return fetch(p,{cache:'no-store'})}
+  function json(p){return get(DATA+p).then(function(r){if(!r.ok)throw new Error(DATA+p);return r.json()})}
+  /* 文章ファイル。ないときは空文字 */
+  function text(p){return get(DATA+p).then(function(r){return r.ok?r.text():''}).then(function(t){return t.replace(/\r\n?/g,'\n').replace(/\s+$/,'')}).catch(function(){return ''})}
+  /* JSON の "date": "2026-09-20" を、アプリが使う作成日(ts)に変換する */
+  function fixDate(x){
+    if(x&&typeof x.date==='string'){var m=/^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(x.date.trim());if(m)x.ts=Date.UTC(+m[1],+m[2]-1,+m[3],12);delete x.date}
+  }
+  Promise.all([get('index.html').then(function(r){if(!r.ok)throw new Error('index.html');return r.text()}),json('works.json'),json('characters.json'),json('gallery.json').catch(function(){return null}),json('presets.json').catch(function(){return[]})]).then(function(a){
+    var html=a[0],works=a[1],chars=a[2],gal=a[3],before={},presets={},bpre={};
+    if(gal)gal.forEach(fixDate);
+    (Array.isArray(a[4])?a[4]:[]).forEach(function(n){if(typeof n==='string')presets[n]=1});
+    chars.forEach(function(c){((c.sheets&&c.sheets.list)||[]).forEach(function(x){if(x&&x.file){if(x.src==='user')presets[x.file]=1;else if(x.src==='base')bpre[x.file]=1}})});
+    works.forEach(function(w){fixDate(w);(w.notes||[]).forEach(fixDate);(w.memos||[]).forEach(fixDate)});
+    return Promise.all(chars.map(function(c){
+      fixDate(c);
+      var jobs=[];
+      /* 本文は bodyFile(整形後)の文章ファイル、整形前は beforeFile。どちらも省略可。"body" に直接書いてもよい */
+      if(c.bodyFile)jobs.push(text(c.bodyFile).then(function(t){c.body=t}));
+      if(c.beforeFile)jobs.push(text(c.beforeFile).then(function(t){if(t)before[c.id]=t}));
+      delete c.bodyFile;delete c.beforeFile;
+      return Promise.all(jobs);
+    })).then(function(){return{html:html,cfg:{works:works,chars:chars,gal:gal,before:before,base:new URL(DATA,location.href).href,site:new URL('./',location.href).href,presets:Object.keys(presets),basePresets:Object.keys(bpre)}}});
+  }).then(function(o){
+    var json=JSON.stringify(o.cfg).replace(/</g,'\\u003c');
+    var inj='<script>('+demoPrelude.toString()+')('+json+');<\/script>',html=o.html;
+    html=/<head[^>]*>/i.test(html)?html.replace(/<head[^>]*>/i,function(m){return m+inj}):inj+html;
+    fr.srcdoc=html;
+  }).catch(function(e){
+    fail('必要なファイル('+(e&&e.message||'')+')を読み込めませんでした。demo.html・index.html・data/demo フォルダを同じ場所に置いて、https(GitHub Pages など)から開いてください。');
+  });
+})();
+</script>
+</body>
+</html>
