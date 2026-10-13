@@ -770,6 +770,8 @@ dialog:has(.gv){width:min(900px,96vw)}
 .shed .shcard{border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px;background:var(--card)}
 .shed .ed .mini{color:var(--fg)}
 .shed .ed select{color:var(--fg)}
+/* チェックシートのプルダウンに「v」の矢印を付ける(各所の background 指定で矢印が消えていたため、画像だけ後から重ねる) */
+.shed .ed select,.shed #shSel,.shed .hw .csw-sel,.shed .hw .cs-picker select{-webkit-appearance:none;appearance:none;padding-right:34px;background-image:linear-gradient(45deg,transparent 50%,var(--mut) 50%),linear-gradient(135deg,var(--mut) 50%,transparent 50%);background-position:calc(100% - 19px) 52%,calc(100% - 14px) 52%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
 #dlg .shpicks{display:grid;gap:8px;margin:10px 0;max-height:55vh;overflow:auto}
 #dlg .shpick{text-align:left}
 /* 見た目は本体(キャラ詳細の .pc カード)に合わせる: 見出し文字は本文色、枠はカード1枚だけ */
