@@ -1,0 +1,209 @@
+[
+ {
+  "id": "cdemo1",
+  "workId": "wdemo1",
+  "cat": "kd1",
+  "o": 0,
+  "name": "月城 ミオ",
+  "ruby": "つきしろ みお",
+  "color": "#8fb8de",
+  "icon": "pic/mio.svg",
+  "tags": [
+   "図書委員",
+   "高校生",
+   "物静か"
+  ],
+  "memo": "無口で一人を好む、慎重な人物",
+  "info": [
+   {
+    "k": "年齢",
+    "v": "16歳"
+   },
+   {
+    "k": "所属",
+    "v": "高校一年・図書委員"
+   },
+   {
+    "k": "誕生日",
+    "v": "11月3日"
+   }
+  ],
+  "voice": {
+   "one": "わたし",
+   "two": "あなた",
+   "three": "",
+   "text": "「……雨、止まないね」\n「本の端、折れてる。直してもいい?」"
+  },
+  "stands": [
+   {
+    "name": "制服",
+    "path": "pic/mio.svg",
+    "faces": []
+   }
+  ],
+  "date": "2026-09-20",
+  "bodyFile": "chars/mio.txt",
+  "beforeFile": "chars/mio.before.txt"
+ },
+ {
+  "id": "cdemo2",
+  "workId": "wdemo1",
+  "cat": "kd1",
+  "o": 1,
+  "name": "白石 ハル",
+  "ruby": "しらいし はる",
+  "color": "#f2a65a",
+  "icon": "pic/haru.svg",
+  "tags": [
+   "幼なじみ",
+   "元気",
+   "助っ人"
+  ],
+  "memo": "明るく世話焼きなムードメーカー",
+  "info": [
+   {
+    "k": "年齢",
+    "v": "16歳"
+   },
+   {
+    "k": "所属",
+    "v": "高校一年・図書委員"
+   }
+  ],
+  "voice": {
+   "one": "あたし",
+   "two": "ミオ",
+   "three": "",
+   "text": "「ミオー! 今日も雨宿りする?」"
+  },
+  "stands": [
+   {
+    "name": "制服",
+    "path": "pic/haru.svg",
+    "faces": []
+   }
+  ],
+  "date": "2026-09-25",
+  "bodyFile": "chars/haru.txt",
+  "beforeFile": "chars/haru.before.txt"
+ },
+ {
+  "id": "cdemo3",
+  "workId": "wdemo1",
+  "cat": "kd2",
+  "o": 2,
+  "name": "椿",
+  "ruby": "つばき",
+  "color": "#9bc59d",
+  "icon": "pic/tsubaki.svg",
+  "tags": [
+   "古書店",
+   "店主"
+  ],
+  "memo": "飄々とした古書店の店主",
+  "info": [
+   {
+    "k": "年齢",
+    "v": "34歳"
+   },
+   {
+    "k": "職業",
+    "v": "古書店「ことのは堂」店主"
+   }
+  ],
+  "voice": {
+   "one": "わたし",
+   "two": "お客さん",
+   "three": "",
+   "text": "「探してるのは、これじゃない? ……値段? あー、今日は気分がいいから安くしとく」"
+  },
+  "stands": [
+   {
+    "name": "店先",
+    "path": "pic/tsubaki.svg",
+    "faces": []
+   }
+  ],
+  "date": "2026-09-26",
+  "bodyFile": "chars/tsubaki.txt",
+  "beforeFile": "chars/tsubaki.before.txt"
+ },
+ {
+  "id": "cdemo4",
+  "workId": "wdemo2",
+  "cat": null,
+  "o": 0,
+  "name": "凪沢 渚",
+  "ruby": "なぎさわ なぎさ",
+  "color": "#7ed0c4",
+  "icon": "pic/nagisa.svg",
+  "tags": [
+   "港町",
+   "行動派"
+  ],
+  "memo": "港を走り回る、おおらかな少女",
+  "info": [
+   {
+    "k": "年齢",
+    "v": "15歳"
+   }
+  ],
+  "voice": {
+   "one": "わたし",
+   "two": "",
+   "three": "",
+   "text": ""
+  },
+  "stands": [
+   {
+    "name": "普段着",
+    "path": "pic/nagisa.svg",
+    "faces": []
+   }
+  ],
+  "date": "2026-09-28",
+  "bodyFile": "chars/nagisa.txt",
+  "beforeFile": "chars/nagisa.before.txt"
+ },
+ {
+  "id": "cdemo5",
+  "workId": "wdemo2",
+  "cat": null,
+  "o": 1,
+  "name": "灯台守のゲン",
+  "ruby": "とうだいもりのげん",
+  "color": "#a9b4c6",
+  "icon": "pic/gen.svg",
+  "tags": [
+   "灯台",
+   "老人"
+  ],
+  "memo": "寡黙で頑固な灯台守",
+  "info": [
+   {
+    "k": "年齢",
+    "v": "72歳"
+   },
+   {
+    "k": "職業",
+    "v": "灯台守"
+   }
+  ],
+  "voice": {
+   "one": "わし",
+   "two": "",
+   "three": "",
+   "text": ""
+  },
+  "stands": [
+   {
+    "name": "制服",
+    "path": "pic/gen.svg",
+    "faces": []
+   }
+  ],
+  "date": "2026-09-30",
+  "bodyFile": "chars/gen.txt",
+  "beforeFile": "chars/gen.before.txt"
+ }
+]
