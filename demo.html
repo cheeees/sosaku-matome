@@ -38,7 +38,7 @@ iframe{flex:1;min-height:0;width:100%;border:0;background:var(--bg)}
    ・保存先(localStorage / IndexedDB)を、本物のアプリとは別の名前にする
    ・キャラ本文に「AI整形前 / 整形後」の切り替えを付ける
    index.html 本体は書き換えないので、アプリを更新すればデモにも自動で反映されます。
-   cfg = { works, chars, before:{キャラid:整形前の文章}, base:'data/demo/ の絶対URL' }
+   cfg = { works, chars, gal, before, base, presets, over }
    ============================================================ */
 function demoPrelude(cfg){
   'use strict';
@@ -61,6 +61,9 @@ function demoPrelude(cfg){
   function seed(p,t){F[p]={t:t,type:typeOf(p),sha:'s'+(SEQ++)}}
   seed('works.json',JSON.stringify(cfg.works,null,1));
   seed('characters.json',JSON.stringify(cfg.chars,null,1));
+  if(cfg.gal)seed('gallery.json',JSON.stringify(cfg.gal,null,1));
+  var DEL={};
+  function hook(k,p,b){try{parent.__demoEd&&parent.__demoEd[k](p,b)}catch(e){}}
 
   function J(o,st){return new Response(JSON.stringify(o),{status:st||200,headers:{'Content-Type':'application/json'}})}
   function b64enc(t){var u=new TextEncoder().encode(t),s='';for(var i=0;i<u.length;i++)s+=String.fromCharCode(u[i]);return btoa(s)}
@@ -79,10 +82,22 @@ function demoPrelude(cfg){
     var m=/^\/gh\/repos\/([^/]+)\/([^/]+)\/contents\/(.*)$/.exec(p);
     if(!m)return _fetch(input,init);
     var repo=decodeURIComponent(m[1])+'/'+decodeURIComponent(m[2]),path=decodeURIComponent(m[3]);
-    if(repo!==REPO)return Promise.resolve(J({message:'Not Found'},404));
     var meth=String(init.method||'GET').toUpperCase(),f=F[path];
+    /* 基本シート(公開リポジトリ)は読み取りだけ、そのまま本物から取得する */
+    if(repo!==REPO){
+      if(meth!=='GET')return Promise.resolve(J({message:'demo'},403));
+      return _fetch(input,init).catch(function(){return J({message:'Not Found'},404)});
+    }
+    /* チェックシート一覧: data/preset を一覧として返す */
+    if(meth==='GET'&&/^data\/preset\/?$/.test(path)&&!/raw/i.test(accept)){
+      var nm={};(cfg.presets||[]).forEach(function(n){nm[n]=1});
+      Object.keys(F).forEach(function(k){var q=/^data\/preset\/([^/]+)$/.exec(k);if(q)nm[q[1]]=1});
+      Object.keys(DEL).forEach(function(k){var q=/^data\/preset\/([^/]+)$/.exec(k);if(q)delete nm[q[1]]});
+      return Promise.resolve(J(Object.keys(nm).map(function(n){return{type:'file',name:n,path:'data/preset/'+n,sha:'p'+n.length}})));
+    }
     if(meth==='GET'){
       if(!f){
+        if(DEL[path])return Promise.resolve(J({message:'Not Found'},404));
         if(!/raw/i.test(accept))return Promise.resolve(J({message:'Not Found'},404));
         /* 画像など: data/demo/ に同じパスのファイルがあればそれを返す */
         return _fetch(cfg.base+path.split('/').map(encodeURIComponent).join('/')).then(function(r){return r.ok?r:J({message:'Not Found'},404)},function(){return J({message:'Not Found'},404)});
@@ -92,10 +107,10 @@ function demoPrelude(cfg){
     }
     if(meth==='PUT'){
       var b={};try{b=JSON.parse(init.body)}catch(e){}
-      F[path]={b:b.content||'',type:typeOf(path),sha:'s'+(SEQ++)};
+      F[path]={b:b.content||'',type:typeOf(path),sha:'s'+(SEQ++)};delete DEL[path];hook('put',path,F[path].b);
       return Promise.resolve(J({content:{path:path,sha:F[path].sha}},f?200:201));
     }
-    if(meth==='DELETE'){delete F[path];return Promise.resolve(J({commit:{}}))}
+    if(meth==='DELETE'){delete F[path];DEL[path]=1;hook('del',path);return Promise.resolve(J({commit:{}}))}
     return Promise.resolve(J({message:'Method Not Allowed'},405));
   };
 
@@ -163,8 +178,11 @@ function demoPrelude(cfg){
   function fixDate(x){
     if(x&&typeof x.date==='string'){var m=/^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(x.date.trim());if(m)x.ts=Date.UTC(+m[1],+m[2]-1,+m[3],12);delete x.date}
   }
-  Promise.all([get('index.html').then(function(r){if(!r.ok)throw new Error('index.html');return r.text()}),json('works.json'),json('characters.json')]).then(function(a){
-    var html=a[0],works=a[1],chars=a[2],before={};
+  Promise.all([get('index.html').then(function(r){if(!r.ok)throw new Error('index.html');return r.text()}),json('works.json'),json('characters.json'),json('gallery.json').catch(function(){return null}),json('presets.json').catch(function(){return[]})]).then(function(a){
+    var html=a[0],works=a[1],chars=a[2],gal=a[3],before={},presets={};
+    if(gal)gal.forEach(fixDate);
+    (Array.isArray(a[4])?a[4]:[]).forEach(function(n){if(typeof n==='string')presets[n]=1});
+    chars.forEach(function(c){((c.sheets&&c.sheets.list)||[]).forEach(function(x){if(x&&x.src==='user'&&x.file)presets[x.file]=1})});
     works.forEach(function(w){fixDate(w);(w.notes||[]).forEach(fixDate);(w.memos||[]).forEach(fixDate)});
     return Promise.all(chars.map(function(c){
       fixDate(c);
@@ -174,7 +192,7 @@ function demoPrelude(cfg){
       if(c.beforeFile)jobs.push(text(c.beforeFile).then(function(t){if(t)before[c.id]=t}));
       delete c.bodyFile;delete c.beforeFile;
       return Promise.all(jobs);
-    })).then(function(){return{html:html,cfg:{works:works,chars:chars,before:before,base:new URL(DATA,location.href).href}}});
+    })).then(function(){return{html:html,cfg:{works:works,chars:chars,gal:gal,before:before,base:new URL(DATA,location.href).href,presets:Object.keys(presets)}}});
   }).then(function(o){
     var json=JSON.stringify(o.cfg).replace(/</g,'\\u003c');
     var inj='<script>('+demoPrelude.toString()+')('+json+');<\/script>',html=o.html;
