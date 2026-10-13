@@ -407,7 +407,7 @@
   "name": "椿",
   "ruby": "つばき",
   "color": "#9bc59d",
-  "icon": "pic/char/amv6ld77bdkc.webp",
+  "icon": "pic/char/amv6lqhksa7r.webp",
   "tags": [
    "古書店",
    "店主"
@@ -431,29 +431,23 @@
   },
   "stands": [
    {
-    "id": "tmv6ldhx5gsw",
+    "id": "tmv6lqofpplt",
     "name": "立ち絵1",
-    "path": "pic/char/stand/smv6ldhx23fh.webp",
+    "path": "pic/char/stand/smv6lqofn11o.webp",
     "faces": [
      {
-      "id": "fmv6ldqegq6z",
-      "path": "pic/char/face/smv6ldqef1uz.webp"
+      "id": "fmv6lqscwqf8",
+      "path": "pic/char/face/smv6lqscvma5.webp"
      },
      {
-      "id": "fmv6ldqenp46",
-      "path": "pic/char/face/smv6ldqem7iz.webp"
+      "id": "fmv6lqsd3u05",
+      "path": "pic/char/face/smv6lqsd20cq.webp"
      },
      {
-      "id": "fmv6ldqetr79",
-      "path": "pic/char/face/smv6ldqetnjx.webp"
+      "id": "fmv6lqsda7aj",
+      "path": "pic/char/face/smv6lqsd97bi.webp"
      }
     ]
-   },
-   {
-    "id": "tmv6ley0msda",
-    "name": "店先",
-    "path": "pic/char/stand/smv6ley0ftv7.webp",
-    "faces": []
    }
   ],
   "sheets": {
@@ -572,7 +566,7 @@
    ]
   },
   "ts": 1790424000000,
-  "up": 1791890633459,
+  "up": 1791891185764,
   "bodyFile": "chars/tsubaki.txt",
   "beforeFile": "chars/tsubaki.before.txt"
  },
@@ -584,7 +578,7 @@
   "name": "凪沢 渚",
   "ruby": "なぎさわ なぎさ",
   "color": "#7ed0c4",
-  "icon": "pic/char/amv6li9czewe.webp",
+  "icon": "pic/nagisa.svg",
   "tags": [
    "港町",
    "行動派"
@@ -604,23 +598,9 @@
   },
   "stands": [
    {
-    "id": "tmv6lij5qgam",
-    "name": "立ち絵1",
-    "path": "pic/char/stand/smv6lij5nya7.webp",
-    "faces": [
-     {
-      "id": "fmv6liut84ml",
-      "path": "pic/char/face/smv6liut89mr.webp"
-     },
-     {
-      "id": "fmv6liute0ud",
-      "path": "pic/char/face/smv6liuteg96.webp"
-     },
-     {
-      "id": "fmv6liutk2ht",
-      "path": "pic/char/face/smv6liutjafs.webp"
-     }
-    ]
+    "name": "普段着",
+    "path": "pic/nagisa.svg",
+    "faces": []
    }
   ],
   "sheets": {
@@ -724,7 +704,6 @@
    ]
   },
   "ts": 1790596800000,
-  "up": 1791890832238,
   "bodyFile": "chars/nagisa.txt",
   "beforeFile": "chars/nagisa.before.txt"
  },
@@ -736,7 +715,7 @@
   "name": "灯台守のゲン",
   "ruby": "とうだいもりのげん",
   "color": "#a9b4c6",
-  "icon": "pic/char/amv6lm3mz4v7.webp",
+  "icon": "pic/gen.svg",
   "tags": [
    "灯台",
    "老人"
@@ -760,42 +739,9 @@
   },
   "stands": [
    {
-    "id": "tmv6lmg2mj5f",
-    "name": "立ち絵1",
-    "path": "pic/char/stand/smv6lmg2krah.webp",
-    "faces": [
-     {
-      "id": "fmv6lnen3i9p",
-      "path": "pic/char/face/smv6lnen2t37.webp"
-     },
-     {
-      "id": "fmv6lnenbf8b",
-      "path": "pic/char/face/smv6lnenaxfi.webp"
-     },
-     {
-      "id": "fmv6lnengbry",
-      "path": "pic/char/face/smv6lnenghgl.webp"
-     }
-    ]
-   },
-   {
-    "id": "tmv6lmndtk8v",
-    "name": "若い頃",
-    "path": "pic/char/stand/smv6lmndrzh7.webp",
-    "faces": [
-     {
-      "id": "fmv6ln85tezt",
-      "path": "pic/char/face/smv6ln85s34g.webp"
-     },
-     {
-      "id": "fmv6ln861i02",
-      "path": "pic/char/face/smv6ln85zw8i.webp"
-     },
-     {
-      "id": "fmv6ln866was",
-      "path": "pic/char/face/smv6ln866752.webp"
-     }
-    ]
+    "name": "制服",
+    "path": "pic/gen.svg",
+    "faces": []
    }
   ],
   "sheets": {
@@ -911,7 +857,6 @@
    ]
   },
   "ts": 1790769600000,
-  "up": 1791891027000,
   "bodyFile": "chars/gen.txt",
   "beforeFile": "chars/gen.before.txt"
  }
