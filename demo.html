@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>創作まとめ デモ</title>
+<meta name="description" content="ログイン不要。サンプルデータで「創作まとめ」の実際の画面を試せるデモです。">
+<style>
+:root{--bg:#f3f4f8;--fg:#262a33;--mut:#6b7280;--ac:#4a78c9;--bd:#d9dce4}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1d24;--fg:#e8eaf0;--mut:#9aa1b0;--ac:#7aa2e8;--bd:#343846}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{display:flex;flex-direction:column;height:100vh;height:100dvh;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif}
+.bn{flex:none;display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top,0px)) 12px 8px;border-bottom:1px solid var(--bd);background:var(--bg);font-size:13px;line-height:1.4}
+.bn .tag{flex:none;font-weight:700;font-size:11px;letter-spacing:.08em;color:#fff;background:var(--ac);border-radius:999px;padding:2px 9px}
+.bn .tx{flex:1;min-width:0;color:var(--mut)}
+.bn .tx b{color:var(--fg);font-weight:600}
+.bn a,.bn button{flex:none;font:inherit;font-size:12.5px;padding:6px 12px;border-radius:8px;border:1px solid var(--bd);background:transparent;color:var(--fg);text-decoration:none;cursor:pointer;white-space:nowrap}
+.bn a.pri{background:var(--ac);border-color:var(--ac);color:#fff}
+@media (max-width:560px){.bn{flex-wrap:wrap;gap:6px 8px}.bn .tx{flex-basis:100%;order:3}}
+iframe{flex:1;min-height:0;width:100%;border:0;background:var(--bg)}
+.err{padding:28px 20px;line-height:1.8;max-width:34em;margin:0 auto}
+</style>
+</head>
+<body>
+<div class="bn">
+  <span class="tag">DEMO</span>
+  <span class="tx"><b>サンプルデータで試せます。</b>編集もできますが、保存はされません(再読み込みで元に戻ります)。</span>
+  <button type="button" id="rs">リセット</button>
+  <a class="pri" href="index.html">ログインして使う</a>
+</div>
+<iframe id="fr" title="創作まとめ デモ" allow="clipboard-write; fullscreen"></iframe>
+
+<script>
+/* ============================================================
+   デモ用の差し込みコード。index.html を読み込むとき、いちばん最初に実行されます。
+   ・通信(ログイン・GitHub)を、このページの中のサンプルデータへすり替える
+   ・保存先(localStorage / IndexedDB)を、本物のアプリとは別の名前にする
+   index.html 本体は書き換えないので、アプリを更新すればデモにも自動で反映されます。
+   ============================================================ */
+function demoPrelude(){
+  'use strict';
+  var REPO='demo/sample';
+
+  /* ---- 1) 本物のアプリのログイン情報・端末の控えと混ざらないよう、保存先の名前を分ける ---- */
+  var SP=Storage.prototype,_g=SP.getItem,_s=SP.setItem,_r=SP.removeItem,PF='demo:';
+  SP.getItem=function(k){return _g.call(this,PF+k)};
+  SP.setItem=function(k,v){return _s.call(this,PF+k,v)};
+  SP.removeItem=function(k){return _r.call(this,PF+k)};
+  try{localStorage.setItem('sm_sess','demo')}catch(e){} /* ログイン済みの状態にする(中身はダミー) */
+  var _open=IDBFactory.prototype.open;
+  IDBFactory.prototype.open=function(n,v){return _open.call(this,n==='sm_cache'?'sm_cache_demo':n,v)};
+
+  /* ---- 2) サンプルの画像(SVG) ---- */
+  function portrait(c1,c2,hair,eye){
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+c1+'"/><stop offset="1" stop-color="'+c2+'"/></linearGradient></defs>'
+      +'<rect width="400" height="600" fill="url(#g)"/><circle cx="326" cy="108" r="74" fill="#fff" opacity=".2"/><circle cx="64" cy="486" r="118" fill="#fff" opacity=".14"/>'
+      +'<path d="M56 600c0-118 62-182 144-182s144 64 144 182z" fill="#fff" opacity=".9"/>'
+      +'<rect x="172" y="352" width="56" height="82" rx="26" fill="#f6e3d4"/>'
+      +'<ellipse cx="200" cy="288" rx="80" ry="92" fill="#f6e3d4"/>'
+      +'<path d="M116 292C98 176 146 138 200 138s102 38 84 154c-8-62-30-100-84-108-54 8-76 46-84 108z" fill="'+hair+'"/>'
+      +'<circle cx="168" cy="300" r="6" fill="'+eye+'"/><circle cx="232" cy="300" r="6" fill="'+eye+'"/>'
+      +'<path d="M186 340q14 10 28 0" fill="none" stroke="#b8837a" stroke-width="4" stroke-linecap="round"/>'
+      +'<text x="200" y="588" text-anchor="middle" font-size="15" fill="#3d4a5c" opacity=".6" font-family="sans-serif">SAMPLE</text></svg>';
+  }
+  function cover(a,b,kind){
+    var s='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="'+a+'"/><stop offset="1" stop-color="'+b+'"/></linearGradient></defs><rect width="800" height="450" fill="url(#g)"/>';
+    if(kind==='rain'){
+      for(var i=0;i<46;i++){var x=(i*97)%800,y=(i*53)%420,l=26+(i*7)%30;s+='<line x1="'+x+'" y1="'+y+'" x2="'+(x-8)+'" y2="'+(y+l)+'" stroke="#fff" stroke-opacity="'+(0.18+(i%4)*0.07)+'" stroke-width="2" stroke-linecap="round"/>'}
+      s+='<rect x="250" y="190" width="300" height="260" fill="#fff" opacity=".16"/><rect x="290" y="150" width="220" height="300" fill="#fff" opacity=".2"/><rect x="330" y="230" width="60" height="220" fill="#fff" opacity=".28"/><rect x="410" y="230" width="60" height="220" fill="#fff" opacity=".28"/>';
+    }else{
+      s+='<circle cx="610" cy="120" r="64" fill="#fff" opacity=".35"/>';
+      for(var k=0;k<5;k++){var y2=250+k*38;s+='<path d="M0 '+y2+'q50-26 100 0t100 0t100 0t100 0t100 0t100 0t100 0t100 0V450H0z" fill="#fff" opacity="'+(0.12+k*0.06)+'"/>'}
+    }
+    return s+'<text x="780" y="436" text-anchor="end" font-size="14" fill="#fff" opacity=".7" font-family="sans-serif">SAMPLE</text></svg>';
+  }
+
+  /* ---- 3) サンプルのデータ(作品・キャラ・設定) ---- */
+  var T=function(y,m,d){return Date.UTC(y,m-1,d,3)};
+  var MIO='# 性格\n普段は口数が少なく、教室の隅から周りの様子を眺めていることが多い。感情を表に出さないせいで冷たい人だと誤解されがちだが、本当は人の変化によく気がつく。慎重で、初めて行く場所では必ず下調べをする。一方で、いったん「やる」と決めたことには驚くほど粘り強い。\n\n'
+    +'# 対人関係\n簡単には心を開かず、親しくなるまでには時間がかかる。ただ、いったん身内と決めた相手には、気づかれないようにさりげなく世話を焼く。\n\n'
+    +'# 行動原理\n何をするにも最悪の事態を想定し、確信が持てるまで動かない。その代わり、決めたことは最後までやり抜く。\n\n'
+    +'# 長所\n・人の話を最後まで聞き、相手を安心させる落ち着きがある\n・決めたことをやり抜く粘り強さがある\n\n'
+    +'# 短所\n・心を開くまでに時間がかかり、孤立しやすい\n・慎重さが、行動の遅さにつながることがある\n\n'
+    +'# 好みと日常\n## 好きなもの\n雨の日の図書室と、古い文庫本の匂い。温かいミルクティーを両手で持ってページをめくる時間が、いちばん落ち着く。\n\n'
+    +'## 趣味・特技\n読書と、傷んだ本の修繕。ページの端を丁寧に直していると、時間を忘れる。\n\n'
+    +'## 普段の過ごし方\n朝は誰よりも早く登校し、人のいない図書室で本の整理をする。放課後は書架の間で本を読み、閉館の音楽で顔を上げるのが日課。休日は古本屋を巡るか、家で読書に没頭している。\n\n'
+    +'# 背景と内面\n## 大切な人・もの\n祖父からもらった革の栞。どの本を読むときも、必ずこの栞を挟んでいる。\n\n'
+    +'## 過去の出来事\n小学生のとき、転校をきっかけに親しい友人と離ればなれになった。それ以来、人との距離の取り方に慎重になり、自分から踏み出すまでに時間がかかるようになった。\n\n'
+    +'## 叶えたいこと\nいつか自分の書いた物語を、図書室の棚に並べること。\n\n'
+    +'## 隠していること\n本当は物語を書いていて、誰にも見せたことがない。';
+  var HARU='# 性格\n誰とでもすぐに打ち解ける、教室のムードメーカー。声が大きく表情もころころ変わるが、誰かが落ち込んでいるときには、さりげなく声のトーンを落とせる繊細さがある。一方で、自分のこととなると急に口が重くなり、冗談でごまかしてしまう。\n\n'
+    +'# 対人関係\n誰に対しても距離が近く、初対面でも名前で呼んでしまう。ミオのことは特別に気にかけていて、無理に話しかけず、隣で本を広げて待つようにしている。\n\n'
+    +'# 行動原理\n迷ったら、とりあえず動いてみる。失敗しても「次はこうしよう」と切り替えが早く、後悔を長く引きずらない。\n\n'
+    +'# 長所\n・場の空気を明るくし、周りが話しやすい雰囲気をつくれる\n・失敗しても立て直しが早く、挑戦をためらわない\n\n'
+    +'# 短所\n・弱さを見せるのが苦手で、冗談でごまかしがちである\n・勢いで引き受けすぎて、予定を詰め込みすぎることがある\n\n'
+    +'# 好みと日常\n## 好きなもの\n放課後の夕焼けと、購買の焼きそばパン。\n\n'
+    +'## 普段の過ごし方\n朝はぎりぎりに滑り込み、昼は購買に走る。放課後は部活の助っ人に呼ばれて校庭を駆け回り、帰りに図書室へ顔を出して、ミオの様子をそっと確かめるのが習慣になっている。\n\n'
+    +'# 背景と内面\n## 叶えたいこと\nミオが書いた物語を、いちばん最初の読者として読むこと。\n\n'
+    +'## 隠していること\n実は、ミオが物語を書いていることに、とっくに気づいている。';
+  var TSUBAKI='# 性格\n飄々としていて、客が来ても読んでいた本から顔を上げないことが多い。無愛想に見えるが、探している本を言い当てる勘の良さがあり、常連からは妙に慕われている。\n\n'
+    +'# 行動原理\n損得よりも、本が行くべき人の手に渡ることを優先する。値段は気分で決まり、ときどき赤字になる。\n\n'
+    +'# 長所\n・本と人を結びつける目利きの確かさがある\n・細かいことにこだわらず、おおらかに構えられる\n\n'
+    +'# 短所\n・帳簿の管理がずさんで、店の経営は常に危うい\n・面倒な話題になると、すぐ奥に引っ込んでしまう\n\n'
+    +'# 背景と内面\n## 大切な人・もの\n先代の店主から受け継いだ、背表紙の剥げた辞書。\n\n'
+    +'## 隠していること\n本当は、店に置いている本の半分以上を、まだ読んだことがない。';
+  var NAGI='# 性格\n海風のようにおおらかで、細かいことは気にしない。思い立ったらすぐ港へ走っていく行動派だが、潮の満ち引きだけは毎日きちんと確かめる几帳面さがある。\n\n'
+    +'# 長所\n・どんな天気でも前向きに動ける明るさがある\n・町の人の顔と名前を、ほとんど覚えている\n\n'
+    +'# 短所\n・夢中になると、時間の感覚がなくなる\n・頼まれると断れず、いつも忙しい\n\n'
+    +'# 好みと日常\n## 好きなもの\n朝いちばんの港の匂いと、漁師さんがくれる揚げたての天ぷら。\n\n'
+    +'# 背景と内面\n## 叶えたいこと\n灯台の上から、町全体を描いた地図をつくること。';
+  var GEN='# 性格\n寡黙で頑固。口を開けば天気と潮の話ばかりだが、町の子どもたちが困っているときだけは、不器用に手を貸す。\n\n'
+    +'# 長所\n・長年の経験にもとづく、確かな読みがある\n\n'
+    +'# 短所\n・新しいやり方を、なかなか受け入れない\n\n'
+    +'# 背景と内面\n## 隠していること\n本当は、灯りが消える夜がいちばん怖い。';
+
+  var works=[
+    {id:'wdemo1',title:'雨宿りの図書室',color:'#8fb8de',o:0,ts:T(2026,9,20),
+     overview:'雨の日だけ開く、古い校舎の小さな図書室。\n人付き合いが苦手な図書委員のミオと、その幼なじみのハル、町の古書店「ことのは堂」の店主・椿を中心に、本をめぐる静かな日常を描く。\n\n・舞台:海沿いの小さな町の高校\n・季節:梅雨から夏の初めまで\n・雰囲気:穏やか、少しだけ切ない',
+     covers:[{id:'cvd1',path:'pic/demo/cover-rain.svg'}],
+     cats:[{id:'kd1',title:'図書委員会'},{id:'kd2',title:'町の人々'}],
+     notes:[
+       {id:'nd1',t:'f',title:'世界観',o:0,ts:T(2026,9,21)},
+       {id:'nd2',p:'nd1',title:'雨宿りの図書室',o:0,ts:T(2026,9,21),body:'# 概要\n旧校舎の一階にある、閉架書庫を改装した小さな図書室。蔵書は約三千冊で、古い文庫本が多い。\n\n# ルール\n・雨の日の放課後だけ、一般開放される\n・本の貸出は一人二冊まで\n・閉館は、校内放送の短いチャイムが鳴ったとき\n\n# 雰囲気\n窓際の席は雨音がよく聞こえ、ミオのお気に入りになっている。'},
+       {id:'nd3',p:'nd1',title:'古書店「ことのは堂」',o:1,ts:T(2026,9,22),body:'# 概要\n商店街の端にある、間口の狭い古書店。店主は椿。\n\n# 品ぞろえ\n文庫本と古い児童書が中心。値札はなく、値段は店主の気分で決まる。\n\n# 常連\nミオは休日になると、開店と同時に通っている。'},
+       {id:'nd4',title:'用語集',o:1,ts:T(2026,9,23),body:'# 雨宿り\n雨の日の放課後に図書室へ集まること。校内では、いつの間にかそう呼ばれている。\n\n# 閉館の音楽\n図書室の閉館を知らせる、短いオルゴール調のチャイム。'}
+     ],
+     memos:[{id:'md1',cat:'kd1',title:'ミオの口調メモ',o:0,ts:T(2026,9,24),body:'# 話し方\n・語尾は短く、「……うん」「そう」など相づちが多い\n・親しい相手には、ときどき柔らかい敬語が混ざる\n\n# 例\n「……雨、止まないね」\n「本の端、折れてる。直してもいい?」'}]},
+    {id:'wdemo2',title:'潮騒の町',color:'#7ed0c4',o:1,ts:T(2026,9,28),
+     overview:'灯台のある港町を舞台にした、短編連作の構想。\n町の人々の日常と、海にまつわる小さな出来事を拾っていく。',
+     covers:[{id:'cvd2',path:'pic/demo/cover-sea.svg'}],
+     cats:[],
+     notes:[{id:'nd5',title:'町の地図メモ',o:0,ts:T(2026,9,29),body:'# 港\n朝市が立つ、町でいちばんにぎやかな場所。\n\n# 灯台\n町の北の岬に立つ。夜は十五秒ごとに光が回る。'}],
+     memos:[]}
+  ];
+  var chars=[
+    {id:'cdemo1',workId:'wdemo1',cat:'kd1',o:0,ts:T(2026,9,20),name:'月城 ミオ',ruby:'つきしろ みお',color:'#8fb8de',icon:'pic/demo/mio.svg',tags:['図書委員','高校生','物静か'],memo:'無口で一人を好む、慎重な人物',
+     info:[{k:'年齢',v:'16歳'},{k:'所属',v:'高校一年・図書委員'},{k:'誕生日',v:'11月3日'}],
+     voice:{one:'わたし',two:'あなた',three:'',text:'「……雨、止まないね」\n「本の端、折れてる。直してもいい?」'},
+     stands:[{name:'制服',path:'pic/demo/mio.svg',faces:[]}],body:MIO},
+    {id:'cdemo2',workId:'wdemo1',cat:'kd1',o:1,ts:T(2026,9,25),name:'白石 ハル',ruby:'しらいし はる',color:'#f2a65a',icon:'pic/demo/haru.svg',tags:['幼なじみ','元気','助っ人'],memo:'明るく世話焼きなムードメーカー',
+     info:[{k:'年齢',v:'16歳'},{k:'所属',v:'高校一年・図書委員'}],
+     voice:{one:'あたし',two:'ミオ',three:'',text:'「ミオー! 今日も雨宿りする?」'},
+     stands:[{name:'制服',path:'pic/demo/haru.svg',faces:[]}],body:HARU},
+    {id:'cdemo3',workId:'wdemo1',cat:'kd2',o:2,ts:T(2026,9,26),name:'椿',ruby:'つばき',color:'#9bc59d',icon:'pic/demo/tsubaki.svg',tags:['古書店','店主'],memo:'飄々とした古書店の店主',
+     info:[{k:'年齢',v:'34歳'},{k:'職業',v:'古書店「ことのは堂」店主'}],
+     voice:{one:'わたし',two:'お客さん',three:'',text:'「探してるのは、これじゃない? ……値段? あー、今日は気分がいいから安くしとく」'},
+     stands:[{name:'店先',path:'pic/demo/tsubaki.svg',faces:[]}],body:TSUBAKI},
+    {id:'cdemo4',workId:'wdemo2',cat:null,o:0,ts:T(2026,9,28),name:'凪沢 渚',ruby:'なぎさわ なぎさ',color:'#7ed0c4',icon:'pic/demo/nagisa.svg',tags:['港町','行動派'],memo:'港を走り回る、おおらかな少女',
+     info:[{k:'年齢',v:'15歳'}],
+     voice:{one:'わたし',two:'',three:'',text:''},
+     stands:[{name:'普段着',path:'pic/demo/nagisa.svg',faces:[]}],body:NAGI},
+    {id:'cdemo5',workId:'wdemo2',cat:null,o:1,ts:T(2026,9,30),name:'灯台守のゲン',ruby:'とうだいもりのげん',color:'#a9b4c6',icon:'pic/demo/gen.svg',tags:['灯台','老人'],memo:'寡黙で頑固な灯台守',
+     info:[{k:'年齢',v:'72歳'},{k:'職業',v:'灯台守'}],
+     voice:{one:'わし',two:'',three:'',text:''},
+     stands:[{name:'制服',path:'pic/demo/gen.svg',faces:[]}],body:GEN}
+  ];
+
+  /* ---- 4) GitHub の代わりになる、メモリ上のファイル置き場 ---- */
+  var F={},SEQ=1;
+  function typeOf(p){return /\.svg$/i.test(p)?'image/svg+xml':/\.webp$/i.test(p)?'image/webp':/\.png$/i.test(p)?'image/png':/\.jpe?g$/i.test(p)?'image/jpeg':/\.json$/i.test(p)?'application/json':'application/octet-stream'}
+  function seed(p,t){F[p]={t:t,type:typeOf(p),sha:'s'+(SEQ++)}}
+  seed('works.json',JSON.stringify(works,null,1));
+  seed('characters.json',JSON.stringify(chars,null,1));
+  seed('pic/demo/cover-rain.svg',cover('#9fc3e6','#5d86b8','rain'));
+  seed('pic/demo/cover-sea.svg',cover('#8fe0d2','#4a9fb8','sea'));
+  seed('pic/demo/mio.svg',portrait('#cfe3f6','#8fb8de','#2c3550','#2c3550'));
+  seed('pic/demo/haru.svg',portrait('#fde0bd','#f2a65a','#7a4a2a','#4a3020'));
+  seed('pic/demo/tsubaki.svg',portrait('#d8ecd4','#9bc59d','#3a3a3a','#2a2a2a'));
+  seed('pic/demo/nagisa.svg',portrait('#c9f0ea','#7ed0c4','#27506a','#27506a'));
+  seed('pic/demo/gen.svg',portrait('#dde3ee','#a9b4c6','#d8d8d8','#3a3f4a'));
+
+  function J(o,st){return new Response(JSON.stringify(o),{status:st||200,headers:{'Content-Type':'application/json'}})}
+  function b64enc(t){var u=new TextEncoder().encode(t),s='';for(var i=0;i<u.length;i++)s+=String.fromCharCode(u[i]);return btoa(s)}
+  function b64blob(b,type){var s=atob(b),a=new Uint8Array(s.length);for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return new Blob([a],{type:type})}
+
+  var _fetch=window.fetch.bind(window);
+  window.fetch=function(input,init){
+    init=init||{};
+    var url=typeof input==='string'?input:(input&&input.url)||String(input);
+    if(/^(blob|data):/i.test(url))return _fetch(input,init);
+    var u;try{u=new URL(url,location.href)}catch(e){return _fetch(input,init)}
+    if(u.host===location.host)return _fetch(input,init);
+    var p=u.pathname,hd=init.headers||{},accept=String(hd.Accept||hd.accept||'');
+    if(p==='/me')return Promise.resolve(J({username:'demo',repo:REPO}));
+    if(p==='/login'||p==='/register'||p==='/ai')return Promise.resolve(J({error:'demo'},403));
+    var m=/^\/gh\/repos\/([^/]+)\/([^/]+)\/contents\/(.*)$/.exec(p);
+    if(!m)return _fetch(input,init);
+    var repo=decodeURIComponent(m[1])+'/'+decodeURIComponent(m[2]),path=decodeURIComponent(m[3]);
+    if(repo!==REPO)return Promise.resolve(J({message:'Not Found'},404));
+    var meth=String(init.method||'GET').toUpperCase(),f=F[path];
+    if(meth==='GET'){
+      if(!f)return Promise.resolve(J({message:'Not Found'},404));
+      if(/raw/i.test(accept))return Promise.resolve(new Response(f.t!=null?new Blob([f.t],{type:f.type}):b64blob(f.b,f.type),{status:200,headers:{'Content-Type':f.type}}));
+      return Promise.resolve(J({type:'file',path:path,sha:f.sha,size:(f.t!=null?f.t.length:f.b.length),encoding:'base64',content:f.t!=null?b64enc(f.t):f.b}));
+    }
+    if(meth==='PUT'){
+      var b={};try{b=JSON.parse(init.body)}catch(e){}
+      F[path]={b:b.content||'',type:typeOf(path),sha:'s'+(SEQ++)};
+      return Promise.resolve(J({content:{path:path,sha:F[path].sha}},f?200:201));
+    }
+    if(meth==='DELETE'){delete F[path];return Promise.resolve(J({commit:{}}))}
+    return Promise.resolve(J({message:'Method Not Allowed'},405));
+  };
+
+  /* ---- 5) デモでは使えない操作を、わかりやすい案内に差し替える(アプリの読み込み後) ---- */
+  addEventListener('load',function(){
+    window.qzAi=function(){try{qzMsg('デモではAIによる整形は使えません。ログイン後にお試しください',1)}catch(e){}};
+    window.logout=function(){try{status('デモでは切断できません')}catch(e){}};
+  });
+}
+
+(function(){
+  var fr=document.getElementById('fr');
+  document.getElementById('rs').addEventListener('click',function(){
+    try{Object.keys(localStorage).filter(function(k){return k.indexOf('demo:')===0}).forEach(function(k){localStorage.removeItem(k)})}catch(e){}
+    location.reload();
+  });
+  function fail(msg){
+    fr.hidden=true;
+    var d=document.createElement('div');d.className='err';
+    d.innerHTML='<h2>デモを開けませんでした</h2><p>'+msg+'</p><p><a href="index.html">アプリのページへ</a></p>';
+    document.body.appendChild(d);
+  }
+  fetch('index.html',{cache:'no-store'}).then(function(r){
+    if(!r.ok)throw new Error('http');
+    return r.text();
+  }).then(function(html){
+    var inj='<script>('+demoPrelude.toString()+')();<\/script>';
+    html=/<head[^>]*>/i.test(html)?html.replace(/<head[^>]*>/i,function(m){return m+inj}):inj+html;
+    fr.srcdoc=html;
+  }).catch(function(){
+    fail('index.html を読み込めませんでした。このページは index.html と同じ場所に置いて、https(GitHub Pages など)から開いてください。');
+  });
+})();
+</script>
+</body>
+</html>
