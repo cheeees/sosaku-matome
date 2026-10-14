@@ -229,6 +229,11 @@ label{display:block;font-size:13px;color:var(--mut);margin:12px 0 4px}
 .folder b{display:block;word-break:break-all}
 .folder.add{border-style:dashed;border-top-style:dashed;border-top-color:var(--line);color:var(--mut)}
 .folder.add::before{display:none}
+.wfw{position:relative}
+.wfw .folder{width:100%;padding-right:38px}
+.item.wi .folder{padding-right:72px}
+.wm{position:absolute;right:4px;top:14px;z-index:2;width:34px;height:34px;padding:0}
+.item.wi .wm{right:38px}
 .list{display:grid;gap:10px}
 .card{display:flex;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;cursor:pointer;text-align:left;width:100%}
 .dot{flex:none;width:44px;height:44px;border-radius:50%;background:var(--c);border:1px solid rgba(128,128,128,.35)}
@@ -1288,7 +1293,8 @@ function qBody(){
   return `<div class="bar"><button class="btn ibtn" aria-label="作品を追加" title="作品を追加" onclick="editWork()">${ico(P_FADD)}</button><select onchange="setWSort(this.value)" aria-label="並び替え">${SORTS.map(([k,v])=>`<option value="${k}"${ws==k?' selected':''}>${v}</option>`).join('')}</select></div>
   <div class="grid">${sortBy(S.works.map((x,i)=>({x,i})),w=>w.title,ws).map(w=>{
     const f=`<button class="folder" style="--c:${esc(w.color)}" onclick="openWork('${w.id}')"><b>${esc(w.title)}</b><span class="mut">${S.chars.filter(c=>c.workId==w.id).length} キャラ</span>${dCre(w)}</button>`;
-    return ws=='custom'?`<div class="item wi" data-id="${w.id}" data-t="w"><span class="grip" role="button" aria-label="ドラッグで並び替え" onpointerdown="dragStart(event)">${ico('<path d="M5 8h14M5 12h14M5 16h14"/>')}</span>${f}</div>`:f;
+    const mb=`<button class="ic wm" aria-label="作品のメニュー" title="メニュー" onclick="workMenu('${w.id}')">${ico(DOTS)}</button>`;
+    return ws=='custom'?`<div class="item wi" data-id="${w.id}" data-t="w"><span class="grip" role="button" aria-label="ドラッグで並び替え" onpointerdown="dragStart(event)">${ico('<path d="M5 8h14M5 12h14M5 16h14"/>')}</span>${f}${mb}</div>`:`<div class="wfw">${f}${mb}</div>`;
   }).join('')}</div>`;
 }
 function view(){
@@ -1310,7 +1316,7 @@ function view(){
   }
   const w=S.workId&&S.works.find(x=>x.id==S.workId);
   if(S.workId&&!w){S.workId=null;return render()}
-  app.innerHTML=`${w?workBar(w):''}<div class="bar">${searchBox('名前・タグ・メモで探す')}</div><div id="qbody">${qBody()}</div>`;hydrate(app);
+  app.innerHTML=`${w?workBar(w,1):''}<div class="bar">${searchBox('名前・タグ・メモで探す')}</div><div id="qbody">${qBody()}</div>`;hydrate(app);
 }
 const wsort=()=>{try{const v=localStorage.getItem('sm_wsort');return ['reg-asc','reg-desc','name-asc','name-desc','custom'].includes(v)?v:'reg-asc'}catch(e){return 'reg-asc'}};
 function setWSort(v){try{localStorage.setItem('sm_wsort',v)}catch(e){}render()}
@@ -1326,7 +1332,7 @@ function editWork(id){
   <label>作品名</label><input id="wtd" value="${esc(w.title)}">
   ${dateIn('wcd',id?cTime(w):Date.now())}
   <label>フォルダの色</label>${pickerHTML('wc',w.color)}
-  <div class="row">${id?'<button class="btn del" onclick="delWork(\''+id+'\')">削除</button>':''}<span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="saveWork('${id||''}')">保存</button></div>`);
+  <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="saveWork('${id||''}')">保存</button></div>`);
 }
 function saveWork(id){
   const title=$('#wtd').value.trim();if(!title){$('#wtd').focus();return}
@@ -1346,6 +1352,59 @@ function delWork(id){
   save('works.json');save('characters.json');
   if(cur&&dlgOn&&hi()>=1){dlgOn=false;$('#dlg').close();history.go(-hi());return}
   $('#dlg').close();render();
+}
+function workMenu(id){
+  const w=S.works.find(x=>x.id==id);if(!w)return;
+  open(`<h3 style="margin:0;word-break:break-all">${esc(w.title)}</h3>
+  <div class="menu"><button class="btn sub" onclick="dupWork('${id}')">複製</button><button class="btn del" onclick="delWork('${id}')">削除</button></div>
+  <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`);
+}
+/* 作品の複製: 設定・メモ・キャラ・カテゴリ・カバー画像をぜんぶ別IDでコピー(画像ファイルも別名でコピーして、元と共有しない) */
+async function dupWork(id){
+  const w0=S.works.find(x=>x.id==id);if(!w0)return;
+  const cs0=S.chars.filter(c=>c.workId==id);
+  const pairs=bodyPairs([...(w0.notes||[]),...(w0.memos||[]),...cs0].map(x=>x.body||'').join('\n')),
+    mk=p=>{const d=p.slice(0,p.lastIndexOf('/')+1),fn=p.slice(d.length),e=(fn.match(/\.\w+$/)||['.webp'])[0];return{o:p,n:d+uq(fn[0]||'a')+e}},
+    files=[...new Set([...(w0.covers||[]).map(c=>c.path),...cs0.flatMap(charFiles)])].filter(p=>p&&!isURL(p)).map(mk),
+    all=[...pairs,...files];
+  if(!dupGuard(all.length))return;
+  $('#dlg').close();
+  const done=[],m={};
+  try{
+    for(const q of all){
+      status(`画像をコピー中… (${done.length+1}/${all.length})`);
+      if(await copyImg(q.o,q.n)){done.push(q.n);m[q.o]=q.n}
+    }
+  }catch(e){done.forEach(rmIcon);status(e.message,1);return}
+  const w=S.works.find(x=>x.id==id);
+  if(!w){done.forEach(rmIcon);return}
+  const mp=p=>m[p]||p,cm={},km={},nm={},nw=cl(w);
+  nw.id=uq('w');nw.title=dupT(w.title);delete nw.ts;delete nw.up;
+  nw.o=Math.max(-1,...S.works.map((x,i)=>x.o??i))+1;
+  nw.covers=(w.covers||[]).map(c=>({id:uq('p'),path:mp(c.path)}));
+  (nw.cats||[]).forEach(k=>{const n=uq('k');km[k.id]=n;k.id=n});
+  const cs=S.chars.filter(c=>c.workId==id).map(c=>{const n=cl(c);n.id=uq('c');cm[c.id]=n.id;return n});
+  cs.forEach(c=>{
+    c.workId=nw.id;if(c.cat&&km[c.cat])c.cat=km[c.cat];
+    c.body=bodyRemap(c.body,pairs,m);
+    if(c.icon)c.icon=mp(c.icon);
+    (c.stands||[]).forEach(t=>{t.id=uq('t');t.path=mp(t.path);(t.faces||[]).forEach(f=>{f.id=uq('f');f.path=mp(f.path)})});
+    delete c.ts;delete c.up;
+  });
+  (nw.notes||[]).forEach(x=>{nm[x.id]=uq('n')});
+  (nw.notes||[]).forEach(x=>{
+    x.id=nm[x.id];if(x.p)x.p=nm[x.p]||x.p;
+    if(x.body!=null)x.body=bodyRemap(x.body,pairs,m);
+    (x.events||[]).forEach(e=>{e.id=uq('e');(e.chars||[]).forEach(r=>{if(r.id&&cm[r.id])r.id=cm[r.id]})});
+    delete x.ts;delete x.up;
+  });
+  (nw.memos||[]).forEach(x=>{
+    x.id=uq('m');if(x.cat&&km[x.cat])x.cat=km[x.cat];
+    x.body=bodyRemap(x.body,pairs,m);delete x.ts;delete x.up;
+  });
+  S.works.push(nw);cs.forEach(c=>S.chars.push(c));
+  save('works.json');if(cs.length)save('characters.json');
+  render();status(`「${nw.title}」を作りました`);
 }
 /* ---- キャラ ---- */
 const P_CAT='<path d="M4 6h16M4 18h16M4 12h8"/><path d="M15 10.5l3 3 3-3"/>';
@@ -1828,7 +1887,7 @@ function rootNav(fn,depth){
 function goWorks(){rootNav(()=>{S.workId=null;if(S.tab=='cmp'||S.tab=='gal'||S.tab=='shed')S.tab=lastTab();S.nf=null;S.rd=null;S.q=''},0)}
 function goTab(t){const wid=S.workId;rootNav(()=>{S.workId=wid;S.tab=t;S.nf=null;S.rd=null;S.q=''},1)}
 function openWork(id){navTo(()=>{S.workId=id;S.nf=null;S.rd=null;S.tab=lastTab();S.q=''})}
-function workBar(w){return `<h2 id="wt" style="margin:0 0 12px;border-left:6px solid ${esc(w.color)};padding-left:10px">${esc(w.title)}</h2>`}
+function workBar(w,mn){const m=mn&&w&&S.works.some(x=>x.id==w.id)?`<button class="ic" aria-label="作品のメニュー" title="メニュー" onclick="workMenu('${w.id}')">${ico(DOTS)}</button>`:'';return `<div style="display:flex;align-items:center;gap:6px;margin:0 0 12px;border-left:6px solid ${esc(w.color)};padding-left:10px"><h2 id="wt" style="margin:0;flex:1;min-width:0;overflow-wrap:anywhere">${esc(w.title)}</h2>${m}</div>`}
 const P_BACK='<path d="M15 5l-7 7 7 7"/>',P_PEN='<path d="M4 20l1-4L16.5 4.5a2 2 0 0 1 3 3L8 19z"/><path d="M14.5 6.5l3 3"/>',P_IMG='<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 16l-5-5-8 8"/>';
 const P_SAVE='<path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3M7 21v-7h10v7"/>',P_X='<path d="M6 6l12 12M18 6L6 18"/>',P_QT='<path d="M5 5v14M10 9h10M10 15h8"/>',P_CARD='<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 10h8M8 14h5"/>',P_FIND='<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
  T_H='<path d="M6 5v14M18 5v14M6 12h12"/>',
@@ -2769,7 +2828,7 @@ function dataView(){
   ${cv.length?`<div class="cov"><div class="slides"${cv.length>1?' data-loop="1"':''} onscroll="covCount(this)">${(cv.length>1?[cv[cv.length-1],...cv,cv[0]]:cv).map(c=>`<img data-p="${esc(c.path)}" alt="カバー画像" onclick="coverZoom(this)">`).join('')}</div>${cv.length>1?`<button class="cn prev" aria-label="前の画像" onclick="covGo(this,-1)">${chev('M15 5l-7 7 7 7')}</button><button class="cn next" aria-label="次の画像" onclick="covGo(this,1)">${chev('M9 5l7 7-7 7')}</button><span class="cc">1 / ${cv.length}</span>`:''}</div>`:''}
   <label for="wo">概要</label><textarea id="wo" rows="8" oninput="setWork('overview',this.value)">${esc(w.overview||'')}</textarea>
   <hr class="div">`;
-  $('#app').innerHTML=`${workBar(w)}${top}
+  $('#app').innerHTML=`${workBar(w,1)}${top}
   <div class="bar">${searchBox('タイトル・本文で探す')}</div><div id="qbody">${dataBody(w)}</div>`;
   hydrate($('#app'));covInit();
 }
