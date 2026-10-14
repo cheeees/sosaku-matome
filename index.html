@@ -230,9 +230,10 @@ label{display:block;font-size:13px;color:var(--mut);margin:12px 0 4px}
 .folder.add{border-style:dashed;border-top-style:dashed;border-top-color:var(--line);color:var(--mut)}
 .folder.add::before{display:none}
 .wfw{position:relative}
-.wfw .folder{width:100%;padding-right:38px}
+.wfw .folder{width:100%;padding-right:32px}
 .item.wi .folder{padding-right:72px}
-.wm{position:absolute;right:4px;top:14px;z-index:2;width:34px;height:34px;padding:0}
+.wm{position:absolute;right:4px;top:14px;z-index:2;width:26px;height:26px;padding:0;opacity:.6}
+.wm svg{width:14px;height:14px}
 .item.wi .wm{right:38px}
 .list{display:grid;gap:10px}
 .card{display:flex;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;cursor:pointer;text-align:left;width:100%}
@@ -1783,9 +1784,20 @@ function charMenu(id){
 }
 function moveCharDlg(id){
   const c=S.chars.find(x=>x.id==id),w=S.works.find(x=>x.id==c.workId),cats=(w&&w.cats)||[];
+  const ows=S.works.filter(v=>v.id!=c.workId);
   open(`<h3 style="margin:0">移動</h3><p class="mut">「${esc(c.name)}」のカテゴリを選びます。</p>
   <label>移動先</label><select id="mv"><option value="">カテゴリなし</option>${cats.map(k=>`<option value="${k.id}"${c.cat==k.id?' selected':''}>${esc(k.title)}</option>`).join('')}</select>
-  <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="doMoveChar('${id}')">移動する</button></div>`);
+  ${ows.length?`<div class="row"><span class="sp"></span><button class="btn" onclick="doMoveChar('${id}')">移動する</button></div>
+  <hr class="div"><label>別の作品へ移動</label><select id="mvw">${ows.map(v=>`<option value="${v.id}">${esc(v.title)}</option>`).join('')}</select>
+  <p class="mut" style="margin:6px 0 0">カテゴリは「なし」になります。</p>
+  <div class="row"><span class="sp"></span><button class="btn" onclick="doMoveCharWork('${id}')">作品を移動する</button></div>
+  <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`:`<div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="doMoveChar('${id}')">移動する</button></div>`}`);
+}
+function doMoveCharWork(id){
+  const c=S.chars.find(x=>x.id==id),nw=S.works.find(x=>x.id==$('#mvw').value);
+  if(!c||!nw||nw.id==c.workId)return;
+  c.workId=nw.id;c.cat=null;c.o=nextCO(nw);
+  save('characters.json');$('#dlg').close();render();status(`「${nw.title}」に移動しました`);
 }
 function doMoveChar(id){
   const c=S.chars.find(x=>x.id==id),w=S.works.find(x=>x.id==c.workId);
