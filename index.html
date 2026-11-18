@@ -78,7 +78,8 @@ nav svg{width:24px;height:24px}
 .item .card,.item .folder{flex:1;min-width:0}
 .folder.wide{--c:var(--mut);min-height:0;display:flex;align-items:center;gap:8px;padding:12px;cursor:default}
 .folder.wide .fo{flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;cursor:pointer;color:inherit}
-.wdot{display:inline-block;flex:none;width:11px;height:11px;border-radius:50%;background:var(--c);border:1px solid rgba(128,128,128,.4);margin-right:6px;vertical-align:-1px}
+.folder.wk::after{content:"";position:absolute;left:-1px;top:-5px;bottom:-1px;width:5px;background:var(--wc);border-radius:0 0 0 8px;pointer-events:none}
+.gc.wk{position:relative}.gc.wk::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--wc);z-index:2;pointer-events:none}
 .fcw .cpk{transition:opacity .15s}.fcw.def .cpk{opacity:.4}
 .ic{flex:none;display:grid;place-items:center;background:none;border:0;color:var(--mut);cursor:pointer;padding:6px}
 .ic svg,.grip svg{width:20px;height:20px;display:block}
@@ -2076,10 +2077,11 @@ function crumb(w){const r=[];let c=w.notes.find(x=>x.id==S.nf);while(c){r.unshif
 const DOTS='<circle cx="12" cy="5" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="19" r="1.7" fill="currentColor"/>';
 /* ---- フォルダの色 / 作品カラー ----
    フォルダの color が未設定なら今までの色(--mut)のまま。作品カラーは、作品に紐づくギャラリーのフォルダ・作品に丸で付ける(設定でオンオフ) */
-const fcSt=x=>x&&/^#[0-9a-f]{6}$/i.test(x.color||'')?` style="--c:${x.color}"`:'';
 const wcolOn=()=>{try{return localStorage.getItem('sm_wcol')!=='0'}catch(e){return true}};
-const wDotW=w=>w&&wcolOn()?`<i class="wdot" style="--c:${esc(w.color||'#9aa0a6')}" title="${esc(w.title)}"></i>`:'';
-const wDot=x=>x&&x.workId?wDotW(S.works.find(w=>w.id==x.workId)):'';
+const wCol=x=>{if(!x||!x.workId||!wcolOn())return '';const w=S.works.find(v=>v.id==x.workId);return w&&w.color?w.color:''};
+const wCls=x=>wCol(x)?' wk':'';
+const wSty=x=>{const c=wCol(x);return c?` style="--wc:${esc(c)}"`:''};
+const fcSt=(x,wk)=>{const a=[];if(x&&/^#[0-9a-f]{6}$/i.test(x.color||''))a.push('--c:'+x.color);const c=wk?wCol(x):'';if(c)a.push('--wc:'+esc(c));return a.length?` style="${a.join(';')}"`:''};
 function setWcol(v){try{localStorage.setItem('sm_wcol',v?'1':'0')}catch(e){}render();themeDlg()}
 function fcolHTML(id,v){
   const ok=/^#[0-9a-f]{6}$/i.test(v||'');
@@ -3232,7 +3234,7 @@ function themeDlg(){
   open(`<h3 style="margin:0">設定</h3>${S.repo?`<p class="mut">接続中: ${esc(S.repo.split('/')[1])}</p>`:''}<label>テーマ</label>
   <div class="themes">${Object.entries(TH).map(([k,v])=>`<button class="btn ${k==t?'':'sub'}" onclick="setTheme('${k}')">${v}</button>`).join('')}</div>
   ${t=='custom'?`<div class="chips">${Object.keys(CL).map(k=>`<button class="btn ${k==S.ck?'':'sub'}" onclick="S.ck='${k}';themeDlg()"><i class="sw" data-sw="${k}" style="background:${c[k]}"></i>${CL[k]}</button>`).join('')}</div>${pickerHTML('cpt',c[S.ck],S.ck)}<div class="row"><button class="btn sub" onclick="resetCustom()">初期色に戻す</button></div>`:''}
-  ${S.repo?`<label>作品カラーの表示</label><div class="themes" style="margin-top:6px"><button class="btn ${wcolOn()?'':'sub'}" onclick="setWcol(1)">オン</button><button class="btn ${wcolOn()?'sub':''}" onclick="setWcol(0)">オフ</button></div><p class="mut" style="margin:6px 0 0">作品に紐づくギャラリーのフォルダ・作品に、作品の色の丸を付けます。</p>`:''}
+  ${S.repo?`<label>作品カラーの表示</label><div class="themes" style="margin-top:6px"><button class="btn ${wcolOn()?'':'sub'}" onclick="setWcol(1)">オン</button><button class="btn ${wcolOn()?'sub':''}" onclick="setWcol(0)">オフ</button></div><p class="mut" style="margin:6px 0 0">作品に紐づくギャラリーのフォルダ・作品の左端に、作品の色の線を付けます。</p>`:''}
   ${S.repo?'<div class="row"><button class="btn sub" onclick="goShed()">チェックシートの編集</button></div>':''}
   ${S.repo?`<label>オフライン</label><p class="mut" style="margin:0">${S.off?(S.cfHold?'競合の確認待ちです。「再接続」を押すと、競合している箇所を選べます。選ぶまでの編集は、この端末に保存されます。':'オフラインです。<br>前回読み込んだデータを表示しています。<br>編集はこの端末に保存され、つながると自動でGitHubに送られます。'):'読み込んだデータと一度表示した画像は、<br>オフラインでも見られ、編集もできます。<br>(つながると自動で送ります)<br>まだ見ていない画像もまとめて保存できます。'}</p><div class="row">${S.off?'<button class="btn sub" onclick="reconnect()">再接続</button>':'<button class="btn sub" onclick="offlineAll()">画像をすべてオフライン用に保存</button>'}</div>`:''}
   ${isApp()?'':'<div class="row"><button class="btn sub" onclick="installApp()">アプリとしてインストール</button></div>'}
@@ -3402,7 +3404,7 @@ function galFolderRow(x,cust){
   const wk=galWk();
   /* 作品で絞り込み中は、中(サブフォルダ含む)にある、その作品に合う作品の数を出す */
   const n=wk=='all'?S.gal.filter(g=>par(g)==x.id).length:(ids=>S.gal.filter(g=>!gIsF(g)&&ids.has(par(g))&&galWkOk(g,wk)).length)(gsub(x.id));
-  return `<div class="item" data-id="${x.id}" data-t="gf">${cust?galGrip:''}<div class="folder wide"${fcSt(x)}><button class="fo" onclick="openF('${x.id}')"><b>${wDot(x)}${esc(x.title)}</b><span class="mut">${n} 件</span>${dCre(x)}</button><button class="ic" aria-label="フォルダのメニュー" onclick="galFolderMenu('${x.id}')">${ico(DOTS)}</button></div></div>`;
+  return `<div class="item" data-id="${x.id}" data-t="gf">${cust?galGrip:''}<div class="folder wide${wCls(x)}"${fcSt(x,1)}><button class="fo" onclick="openF('${x.id}')"><b>${esc(x.title)}</b><span class="mut">${n} 件</span>${dCre(x)}</button><button class="ic" aria-label="フォルダのメニュー" onclick="galFolderMenu('${x.id}')">${ico(DOTS)}</button></div></div>`;
 }
 function upGF(){goBack(()=>{const c=gFolder(S.nf);S.nf=c?par(c):null})}
 function galFolderDlg(id){
@@ -3480,7 +3482,7 @@ function galCard(g,cust){
   if(g.type=='image')t=`<div class="gt">${n?`<img data-p="${esc(g.imgs[0].t||g.imgs[0].p)}" alt="">`:''}${n>1?`<span class="gbadge gcnt">${n}枚</span>`:''}</div>`;
   else if(g.type=='novel')t=`<div class="gt tx">${esc(String(g.body||'').replace(/\s+/g,' ').slice(0,140))}<span class="gbadge gcnt">${galLen(g).toLocaleString()}文字</span></div>`;
   else{const v=galVid(g.url);t=`<div class="gt">${v&&v.thumb?`<img src="${esc(v.thumb)}" alt="" loading="lazy">`:''}<span class="gplay">▶</span></div>`}
-  const c=`<div class="gc"><div class="gh">${cust?galGrip:''}<div class="gm"><button class="gl" onclick="galRd('${g.id}')">${wDot(g)}${esc(g.title)}</button>${dCre(g)}</div><button class="ic" aria-label="メニュー" onclick="galMenu('${g.id}')">${ico(DOTS)}</button></div><button class="gth" aria-label="${esc(g.title)}を開く" onclick="galRd('${g.id}')">${t}</button>${galTagLine(g)}</div>`;
+  const c=`<div class="gc${wCls(g)}"${wSty(g)}><div class="gh">${cust?galGrip:''}<div class="gm"><button class="gl" onclick="galRd('${g.id}')">${esc(g.title)}</button>${dCre(g)}</div><button class="ic" aria-label="メニュー" onclick="galMenu('${g.id}')">${ico(DOTS)}</button></div><button class="gth" aria-label="${esc(g.title)}を開く" onclick="galRd('${g.id}')">${t}</button>${galTagLine(g)}</div>`;
   return cust==null?c:`<div class="item" data-id="${g.id}" data-t="gi">${c}</div>`;
 }
 const galW=x=>S.works.find(w=>w.id==x.workId)||{title:'ギャラリー',color:'#9aa0a6'};
