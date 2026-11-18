@@ -78,8 +78,8 @@ nav svg{width:24px;height:24px}
 .item .card,.item .folder{flex:1;min-width:0}
 .folder.wide{--c:var(--mut);min-height:0;display:flex;align-items:center;gap:8px;padding:12px;cursor:default}
 .folder.wide .fo{flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;cursor:pointer;color:inherit}
-.folder.wk::after{content:"";position:absolute;left:-1px;top:-5px;bottom:-1px;width:5px;background:var(--wc);border-radius:0 0 0 8px;pointer-events:none}
-.gc.wk{position:relative}.gc.wk::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--wc);z-index:2;pointer-events:none}
+.folder.wk::after{content:"";position:absolute;left:4px;top:10px;bottom:10px;width:3px;background:var(--wc);border-radius:2px;pointer-events:none}
+.gc.wk .gh{position:relative}.gc.wk .gh::before{content:"";position:absolute;left:3px;top:7px;bottom:7px;width:3px;background:var(--wc);border-radius:2px;pointer-events:none}
 .fcw .cpk{transition:opacity .15s}.fcw.def .cpk{opacity:.4}
 .ic{flex:none;display:grid;place-items:center;background:none;border:0;color:var(--mut);cursor:pointer;padding:6px}
 .ic svg,.grip svg{width:20px;height:20px;display:block}
@@ -5367,6 +5367,24 @@ $('#app').addEventListener('click',e=>{
     bar.dataset.v=(bar.dataset.v==n)?'0':String(n);CW.chg=true;cwSync();
   }
 });
+})();
+</script>
+<script>
+/* 入力欄に autocomplete="off" を付ける(キーボード上の鍵・カード・位置の自動入力の帯を出にくくする)。あとから作られる欄にも付ける。ログイン欄など、すでに指定がある欄は触らない */
+(function(){
+  var SKIP={hidden:1,checkbox:1,radio:1,file:1,color:1,range:1,button:1,submit:1};
+  function fix(el){
+    if(!el||el.nodeType!==1)return;
+    var q=(el.matches&&el.matches('input,textarea'))?[el]:[];
+    if(el.querySelectorAll)q=q.concat([].slice.call(el.querySelectorAll('input,textarea')));
+    q.forEach(function(x){
+      if(x.hasAttribute('autocomplete'))return;
+      if(x.tagName==='INPUT'&&SKIP[(x.type||'').toLowerCase()])return;
+      x.setAttribute('autocomplete','off');
+    });
+  }
+  fix(document.body);
+  new MutationObserver(function(ms){ms.forEach(function(m){[].forEach.call(m.addedNodes,fix)})}).observe(document.documentElement,{childList:true,subtree:true});
 })();
 </script>
 </body>
