@@ -402,6 +402,10 @@ details.cdet{margin-top:12px}
 .gh .grip{width:24px;height:28px;margin:0 0 0 -4px}
 .gh .grip svg{width:18px;height:18px}
 .gpk{margin:0 0 6px;font-size:14px;font-weight:700}
+.gtgs{display:flex;flex-wrap:wrap;gap:2px 8px;padding:5px 8px 6px;border-top:1px solid var(--line);font-size:11px;line-height:1.4;max-height:4.4em;overflow:hidden}
+.gtag{background:none;border:0;padding:0;font:inherit;color:var(--mut);cursor:pointer;word-break:break-all;text-align:left}
+.gtag:hover{color:var(--ink);text-decoration:underline}
+.gpf{width:100%;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gplay{position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%);border-radius:50%;background:rgba(0,0,0,.6);color:#fff;display:grid;place-items:center;font-size:18px;padding-left:3px}
 .gh{display:flex;align-items:center;gap:2px;padding:2px 2px 2px 10px;border-bottom:1px solid var(--line)}
 .dt{display:block;font-size:12px;line-height:1.4;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1334,6 +1338,7 @@ function qHtml(q){
 const qOk=q=>{const ts=norm(q).split(/\s+/).filter(Boolean);return h=>ts.every(t=>h.includes(t))};
 const searchBox=ph=>`<div style="flex:1;min-width:0"><input id="q" placeholder="${ph}" value="${esc(S.q)}" oninput="qGo(this.value)" oncompositionend="qGo(this.value)" onfocus="qSug()" onblur="qBlur()"><div id="qs" class="tsg"></div></div>`;
 function qBody(){
+  if(S.tab=='gal')return galBody();
   if(S.workId&&S.tab=='data'){const w=S.works.find(x=>x.id==S.workId);if(w)return dataBody(w)}
   const q=S.q.trim();
   if(q)return `<div class="list" id="qres">${qHtml(q)}</div>`;
@@ -1666,6 +1671,12 @@ function tagPick(t){
 }
 function qSug(){
   const b=$('#qs'),i=$('#q');if(!b||!i)return;
+  if(S.tab=='gal'){
+    const q=i.value.trim().toLowerCase().replace(/^[#＃]/,''),wk=galWk();
+    const set=new Set(S.gal.filter(g=>!gIsF(g)&&galWkOk(g,wk)).flatMap(g=>g.tags||[]));
+    b.innerHTML=[...set].filter(t=>t.toLowerCase().includes(q)&&t.toLowerCase()!=q).slice(0,14).map(t=>chipH(t,'qPick')).join('');
+    return;
+  }
   if(S.workId&&S.tab=='data'){b.innerHTML='';return}
   const q=i.value.trim().toLowerCase();
   const tags=[...new Set(S.chars.filter(c=>!S.workId||c.workId==S.workId).flatMap(c=>c.tags||[]))].filter(t=>t.toLowerCase().includes(q)&&t.toLowerCase()!=q).slice(0,14);
@@ -3167,7 +3178,7 @@ function themeDlg(){
 }
 
 /* ===== ギャラリー(イラスト・小説・動画) =====
-   gallery.json: [{id,type:'image'|'novel'|'video',title,ts,workId,chars:[キャラid],
+   gallery.json: [{id,type:'image'|'novel'|'video',title,ts,workId,chars:[キャラid],tags:[タグ],
                    imgs:[{p:原寸,t:サムネ}] / body:本文 / url:動画URL}] */
 const GT={image:'イラスト',novel:'小説',video:'動画'};
 /* ギャラリーのフォルダ: gallery.json に {id,type:'folder',title,p:親フォルダid,ts} を混ぜて持つ。作品・小説などには p:所属フォルダid を付ける */
@@ -3181,13 +3192,15 @@ function gsub(id){
   return ids;
 }
 /* 作品で絞り込み中は、その作品に紐づくフォルダだけ(いまの場所は常に残す) */
-const galWkNow=()=>galWk()=='all'?null:galWk();
-const gVis=(cur,ex)=>{const wk=galWkNow();return gFolders().filter(f=>!(ex&&ex.has(f.id))&&(!wk||f.workId==wk||f.id==cur))};
+const galWkNow=()=>{const v=galWk();return v=='all'||v=='none'?null:v};
+/* 作品の絞り込みに合うか(all=全部 / none=作品なし / それ以外=その作品) */
+const galWkOk=(x,wk)=>{wk=wk||galWk();return wk=='all'||(wk=='none'?!x.workId:x.workId==wk)};
+const gVis=(cur,ex)=>gFolders().filter(f=>!(ex&&ex.has(f.id))&&(galWkOk(f)||f.id==cur));
 /* 作品で絞り込み中に表示するフォルダ: その作品に紐づくフォルダ、またはその作品に紐づくもの(作品・フォルダ)を中に持つフォルダ(外側のフォルダもたどって残す) */
 function gWkF(wk){
   const s=new Set();
   S.gal.forEach(x=>{
-    if(x.workId!=wk)return;
+    if(!galWkOk(x,wk))return;
     let c=gIsF(x)?x:gFolder(par(x)),n=0;
     while(c&&n++<50&&!s.has(c.id)){s.add(c.id);c=gFolder(par(c))}
   });
@@ -3197,11 +3210,11 @@ function gFolderSel(sid,cur,ex){
   const fs=gVis(cur,ex);
   return `<select id="${sid}"><option value="">いちばん上(フォルダの外)</option>${fs.map(f=>`<option value="${f.id}"${cur==f.id?' selected':''}>${esc(gpath(f.id))}</option>`).join('')}</select>`;
 }
-const galWk=()=>{const v=cGet('sm_galw','all');return v=='all'||S.works.some(w=>w.id==v)?v:'all'};
+const galWk=()=>{const v=cGet('sm_galw','all');return v=='all'||v=='none'||S.works.some(w=>w.id==v)?v:'all'};
 const galTy=()=>{const v=cGet('sm_galt','all');return v=='all'||GT[v]?v:'all'};
 const galSo=()=>{let v=cGet('sm_gals','reg-desc');v={new:'reg-desc',old:'reg-asc',title:'name-asc'}[v]||v;return SORTS.some(x=>x[0]==v)?v:'reg-desc'};
 const gNextO=()=>Math.max(-1,...S.gal.map((x,i)=>x.o??i))+1;
-function setGalW(v){cSet('sm_galw',v);S.gch=null;S.nf=null;if(S.workId&&v!='all')S.workId=v;render()}
+function setGalW(v){cSet('sm_galw',v);S.gch=null;if(S.workId&&v!='all'&&v!='none')S.workId=v;render()}
 function setGalT(v){cSet('sm_galt',v);render()}
 function setGalS(v){cSet('sm_gals',v);render()}
 function setGalC(v){S.gch=v||null;render()}
@@ -3262,7 +3275,7 @@ function galSortBy(a,so){
 /* 本日のピックアップ: 日付ごとに固定のランダムで2作品(作品フィルター中はその作品の中から) */
 function galPick(){
   const wk=galWk();
-  const pool=S.gal.filter(g=>!gIsF(g)&&(wk=='all'||g.workId==wk)).sort((a,b)=>String(a.id)<String(b.id)?-1:1);
+  const pool=S.gal.filter(g=>!gIsF(g)&&galWkOk(g,wk)).sort((a,b)=>String(a.id)<String(b.id)?-1:1);
   if(pool.length<=2)return pool;
   const d=new Date(),day=`${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
   /* その日のピックアップは端末に覚えておく(作品を追加しても入れ替わらない)。消された分だけ補充する */
@@ -3282,9 +3295,35 @@ function galPick(){
 }
 /* いま開いているフォルダ(S.nf)直下の作品だけ。フォルダ自体は含めない */
 const galHere=()=>S.gal.filter(g=>!gIsF(g)&&par(g)==(S.nf||null));
+/* ギャラリーの検索: タイトル・タグ・紐づけたキャラ(名前・ふりがな)。#を付けてもOK、空白区切りは全部含むものだけ */
+const GK=[g=>g.title,g=>(g.tags||[]).join(' '),g=>(g.chars||[]).map(i=>{const c=S.chars.find(x=>x.id==i);return c?c.name+' '+(c.ruby||''):''}).join(' ')];
+const galQOk=q=>{const ts=norm(q).split(/\s+/).map(t=>t.replace(/^#/,'')).filter(Boolean);return g=>{const h=hay(g,GK);return ts.every(t=>h.includes(t))}};
+const tagParse=v=>[...new Set(String(v||'').split(/[\s　,、，]+/).map(t=>t.replace(/^[#＃]/,'')).filter(Boolean))];
+function galTags(){const m=new Map();S.gal.forEach(g=>(g.tags||[]).forEach(t=>m.set(t,(m.get(t)||0)+1)));return [...m.entries()].sort((a,b)=>b[1]-a[1]).map(e=>e[0])}
+function galTagSug(){
+  const i=$('#gtg'),b=$('#gtsg');if(!i||!b)return;
+  const v=i.value,tok=TOKEN.exec(v)[0],part=tok.replace(/^[#＃]/,'').toLowerCase();
+  const done=new Set(tagParse(v.slice(0,v.length-tok.length)));
+  b.innerHTML=galTags().filter(t=>!done.has(t)&&t.toLowerCase().includes(part)).slice(0,14).map(t=>chipH(t,'galTagPick')).join('');
+}
+function galTagPick(t){
+  const i=$('#gtg');if(!i)return;
+  const v=i.value;i.value=v.slice(0,v.length-TOKEN.exec(v)[0].length)+t+' ';
+  i.focus();i.setSelectionRange(i.value.length,i.value.length);galTagSug();
+}
+const galTagIn=tags=>`<label for="gtg">タグ(空白かカンマ区切り)</label><input id="gtg" value="${esc((tags||[]).join(' '))}" oninput="galTagSug()" onfocus="galTagSug()" autocomplete="off"><div id="gtsg" class="tsg"></div>`;
+/* 作品を開いたときのタグ: 押すと、そのタグでギャラリーを検索する */
+const galTagChips=x=>(x.tags||[]).length?`<div class="tsg" style="margin:0 0 10px">${x.tags.map(t=>chipH(t,'galTagGo')).join('')}</div>`:'';
+function galTagGo(t){navTo(()=>{S.tab='gal';S.nf=null;S.rd=null;S.ed=null;S.gch=null;S.q=t})}
+function galTagLine(g){
+  const tg=g.tags||[],pf=S.q.trim()&&par(g)&&gFolder(par(g))?`<span class="gpf">${esc(gpath(par(g)))}</span>`:'';
+  if(!tg.length&&!pf)return '';
+  return `<div class="gtgs">${pf}${tg.map(t=>`<button class="gtag" data-t="${esc(t)}" onclick="qPick(this.dataset.t)">#${esc(t)}</button>`).join('')}</div>`;
+}
 function galItems(){
-  const wk=galWk(),ty=galTy(),ch=S.gch,so=galSo();
-  return galSortBy(galHere().filter(g=>(wk=='all'||g.workId==wk)&&(ty=='all'||g.type==ty)&&(!ch||(g.chars||[]).includes(ch))),so);
+  const wk=galWk(),ty=galTy(),ch=S.gch,so=galSo(),q=S.q.trim();
+  const ok=q?galQOk(q):null,base=q?S.gal.filter(g=>!gIsF(g)&&ok(g)):galHere(); /* 検索中は、フォルダの中も含めて全体から探す */
+  return galSortBy(base.filter(g=>galWkOk(g,wk)&&(ty=='all'||g.type==ty)&&(!ch||(g.chars||[]).includes(ch))),so);
 }
 const galGrip=`<span class="grip" role="button" aria-label="ドラッグで並び替え" onpointerdown="dragStart(event)">${ico('<path d="M5 8h14M5 12h14M5 16h14"/>')}</span>`;
 function galFolderRow(x,cust){
@@ -3363,7 +3402,7 @@ function galCard(g,cust){
   if(g.type=='image')t=`<div class="gt">${n?`<img data-p="${esc(g.imgs[0].t||g.imgs[0].p)}" alt="">`:''}${n>1?`<span class="gbadge gcnt">${n}枚</span>`:''}</div>`;
   else if(g.type=='novel')t=`<div class="gt tx">${esc(String(g.body||'').replace(/\s+/g,' ').slice(0,140))}</div>`;
   else{const v=galVid(g.url);t=`<div class="gt">${v&&v.thumb?`<img src="${esc(v.thumb)}" alt="" loading="lazy">`:''}<span class="gplay">▶</span></div>`}
-  const c=`<div class="gc"><div class="gh">${cust?galGrip:''}<div class="gm"><button class="gl" onclick="galRd('${g.id}')">${esc(g.title)}</button>${dCre(g)}</div><button class="ic" aria-label="メニュー" onclick="galMenu('${g.id}')">${ico(DOTS)}</button></div><button class="gth" aria-label="${esc(g.title)}を開く" onclick="galRd('${g.id}')">${t}</button></div>`;
+  const c=`<div class="gc"><div class="gh">${cust?galGrip:''}<div class="gm"><button class="gl" onclick="galRd('${g.id}')">${esc(g.title)}</button>${dCre(g)}</div><button class="ic" aria-label="メニュー" onclick="galMenu('${g.id}')">${ico(DOTS)}</button></div><button class="gth" aria-label="${esc(g.title)}を開く" onclick="galRd('${g.id}')">${t}</button>${galTagLine(g)}</div>`;
   return cust==null?c:`<div class="item" data-id="${g.id}" data-t="gi">${c}</div>`;
 }
 const galW=x=>S.works.find(w=>w.id==x.workId)||{title:'ギャラリー',color:'#9aa0a6'};
@@ -3492,7 +3531,7 @@ function galRead(x){
   const tt=tateOn(),body=x.body?rich(x.body):'<span class="mut">本文がありません。✎から書けます。</span>';
   $('#app').innerHTML=`${workBar(galW(x))}
   <div class="bar"><button class="ic bk" aria-label="戻る" onclick="backRd()">${ico(P_BACK)}</button><span class="rt">${esc(x.title)}</span><button class="ic" aria-label="文字の設定" title="文字サイズ・フォント" onclick="nvDlg()" style="font-size:14px;font-weight:700;min-width:36px">Aa</button><button class="ic" aria-label="${tt?'横書きにする':'縦書きにする'}" title="${tt?'横書きにする':'縦書きにする'}" onclick="toggleTate()" style="font-size:15px;font-weight:700;min-width:36px">${tt?'横':'縦'}</button><button class="ic" aria-label="編集" onclick="startEdit('${x.id}')">${ico(P_PEN)}</button><button class="ic" aria-label="メニュー" onclick="galMenu('${x.id}')">${ico(DOTS)}</button></div>
-  ${dBoth(x)}${tt
+  ${dBoth(x)}${galTagChips(x)}${tt
     ?`<div class="rd tate nv" style="${nvStyle()}">${body}<div id="pgsp" style="width:0;height:1px"></div></div>
   <div class="pgb"><button class="btn sub" id="pgnx" aria-label="次のページ" onclick="pgGo(1)">◀</button><input type="range" id="pgr" min="0" max="0" value="0" aria-label="ページ" oninput="pgTo(+this.value)"><span class="pgn" id="pgn"></span><button class="btn sub" id="pgpv" aria-label="前のページ" onclick="pgGo(-1)">▶</button></div>`
     :`<div class="rd nv" style="${nvStyle()}">${body}</div>`}`;
@@ -3502,7 +3541,7 @@ function galRead(x){
 function galMenu(id){
   const g=S.gal.find(x=>x.id==id&&!gIsF(x));if(!g)return;
   open(`<h3 style="margin:0;word-break:break-all">${esc(g.title)}</h3>
-  <div class="menu"><button class="btn sub" onclick="galMoveDlg('${id}')">移動</button><button class="btn sub" onclick="galLinkDlg('${id}')">紐づけ</button>${g.type=='novel'?`<button class="btn sub" onclick="exportDlg('gal','${id}')">書き出し</button>`:''}<button class="btn del" onclick="galDel('${id}')">削除</button></div>
+  <div class="menu"><button class="btn sub" onclick="galMoveDlg('${id}')">移動</button><button class="btn sub" onclick="galLinkDlg('${id}')">紐づけ・タグ</button>${g.type=='novel'?`<button class="btn sub" onclick="exportDlg('gal','${id}')">書き出し</button>`:''}<button class="btn del" onclick="galDel('${id}')">削除</button></div>
   <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`);
 }
 function galMoveDlg(id){
@@ -3524,7 +3563,7 @@ function galShow(x){
   const body=x.type=='image'?`<div class="gimgs">${(x.imgs||[]).map(i=>`<img data-p="${esc(i.p)}" alt="" onclick="coverZoom(this)">`).join('')}</div>`:galVideoHtml(x.url);
   $('#app').innerHTML=`${workBar(galW(x))}
   <div class="bar"><button class="ic bk" aria-label="戻る" onclick="backRd()">${ico(P_BACK)}</button><span class="rt">${esc(x.title)}</span><button class="ic" aria-label="編集" onclick="galEdit('${x.id}')">${ico(P_PEN)}</button><button class="ic" aria-label="メニュー" onclick="galMenu('${x.id}')">${ico(DOTS)}</button></div>
-  ${dBoth(x)}<div class="mut" style="margin:0 0 10px">${GT[x.type]||''}${w?' ・ '+esc(w.title):''}${par(x)&&gFolder(par(x))?' ・ '+esc(gpath(par(x))):''}</div>${body}
+  ${dBoth(x)}<div class="mut" style="margin:0 0 10px">${GT[x.type]||''}${w?' ・ '+esc(w.title):''}${par(x)&&gFolder(par(x))?' ・ '+esc(gpath(par(x))):''}</div>${galTagChips(x)}${body}
   ${cs.length?`<div class="tsg" style="margin-top:12px">${cs.map(c=>`<button class="btn sub chip" onclick="galChar('${c.id}')">${esc(c.name)}</button>`).join('')}</div>`:''}`;
   hydrate($('#app'));
 }
@@ -3532,21 +3571,29 @@ function galView(){
   if(S.nf&&!gFolder(S.nf))S.nf=null;
   if(S.nf&&!S.rd){const wk0=galWk(),f0=gFolder(S.nf);if(wk0!='all'&&!gWkF(wk0).has(f0.id))S.nf=null}
   if(S.rd){const x=S.gal.find(g=>g.id==S.rd&&!gIsF(g));if(x){if(x.type!='novel'){S.ed=null;return galShow(x)}return S.ed==x.id?editView(galW(x),x):galRead(x)}S.rd=S.ed=null}
-  const app=$('#app'),wk=galWk(),ty=galTy(),so=galSo();
-  const inWk=galHere().filter(g=>wk=='all'||g.workId==wk);
+  const top=S.nf?`<div class="bar"><button class="ic bk" aria-label="上へ" onclick="upGF()">${ico(P_BACK)}</button><b>${esc(gpath(S.nf))}</b></div>`:'';
+  const app=$('#app');
+  app.innerHTML=`${top}<div class="bar">${searchBox('タイトル・タグ・キャラで探す')}</div><div id="qbody">${galBody()}</div>`;
+  hydrate(app);
+}
+/* 一覧の本体(検索欄の下)。検索の入力中はここだけ差し替える */
+function galBody(){
+  if(S.nf&&!gFolder(S.nf))S.nf=null;
+  const wk=galWk(),ty=galTy(),so=galSo(),q=S.q.trim(),ok=q?galQOk(q):null;
+  const base=q?S.gal.filter(g=>!gIsF(g)&&ok(g)):galHere();
+  const inWk=base.filter(g=>galWkOk(g,wk));
   const cids=new Set(inWk.flatMap(g=>g.chars||[])),copts=S.chars.filter(c=>cids.has(c.id));
   if(S.gch&&!cids.has(S.gch))S.gch=null;
-  const cnt=k=>inWk.filter(g=>k=='all'||g.type==k).length,a=galItems();
-  const wf=wk=='all'?null:gWkF(wk),fl=galSortBy(S.gal.filter(x=>gIsF(x)&&par(x)==(S.nf||null)&&(!wf||wf.has(x.id))),so);
-  const top=S.nf?`<div class="bar"><button class="ic bk" aria-label="上へ" onclick="upGF()">${ico(P_BACK)}</button><b>${esc(gpath(S.nf))}</b></div>`:'';
-  const pk=S.nf?[]:galPick();
-  app.innerHTML=`${top}${pk.length?`<div class="gpk">本日のピックアップ</div><div class="gg" style="margin-bottom:16px">${pk.map(g=>galCard(g)).join('')}</div>`:''}<div class="csel"><select aria-label="作品" onchange="setGalW(this.value)"><option value="all"${wk=='all'?' selected':''}>全ての作品</option>${S.works.map(w=>`<option value="${w.id}"${w.id==wk?' selected':''}>${esc(w.title)}</option>`).join('')}</select></div>
+  const cnt=k=>inWk.filter(g=>k=='all'||g.type==k).length,a=galItems(),cust=so=='custom'&&!q;
+  const wf=wk=='all'?null:gWkF(wk);
+  const fl=q?galSortBy(S.gal.filter(x=>gIsF(x)&&ok(x)&&(!wf||wf.has(x.id))),so):galSortBy(S.gal.filter(x=>gIsF(x)&&par(x)==(S.nf||null)&&(!wf||wf.has(x.id))),so);
+  const pk=(S.nf||q)?[]:galPick();
+  return `${pk.length?`<div class="gpk">本日のピックアップ</div><div class="gg" style="margin-bottom:16px">${pk.map(g=>galCard(g)).join('')}</div>`:''}<div class="csel"><select aria-label="作品" onchange="setGalW(this.value)"><option value="all"${wk=='all'?' selected':''}>全ての作品</option><option value="none"${wk=='none'?' selected':''}>作品なし</option>${S.works.map(w=>`<option value="${w.id}"${w.id==wk?' selected':''}>${esc(w.title)}</option>`).join('')}</select></div>
   ${copts.length?`<div class="csel"><select aria-label="キャラ" onchange="setGalC(this.value)"><option value="">全てのキャラ</option>${copts.map(c=>`<option value="${c.id}"${c.id==S.gch?' selected':''}>${esc(c.name)}</option>`).join('')}</select></div>`:''}
   <div class="ctabs">${[['all','すべて'],...Object.entries(GT)].map(([k,l])=>`<button class="btn ${k==ty?'':'sub'}" onclick="setGalT('${k}')">${l} ${cnt(k)}</button>`).join('')}</div>
   <div class="bar"><button class="btn ibtn" aria-label="ギャラリーに追加" title="追加" onclick="galEdit()">${ico(P_PLUS)}</button><button class="btn sub ibtn" aria-label="フォルダを追加" title="フォルダを追加" onclick="galFolderDlg()">${ico(P_FADD)}</button><select aria-label="並び替え" onchange="setGalS(this.value)">${SORTS.map(([k,v])=>`<option value="${k}"${k==so?' selected':''}>${v}</option>`).join('')}</select></div>
-  ${fl.length?`<div class="list" style="margin-top:4px;margin-bottom:14px">${fl.map(x=>galFolderRow(x,so=='custom')).join('')}</div>`:''}
-  ${a.length?`<div class="gg">${a.map(g=>galCard(g,so=='custom')).join('')}</div>`:fl.length?'':`<div class="empty">${inWk.length?'条件に合うものがありません':S.nf?'このフォルダはまだ空です':galHere().length||S.gal.length?'条件に合うものがありません':'まだありません。<br>＋からイラスト・小説・動画を追加できます'}</div>`}`;
-  hydrate(app);
+  ${fl.length?`<div class="list" style="margin-top:4px;margin-bottom:14px">${fl.map(x=>galFolderRow(x,cust)).join('')}</div>`:''}
+  ${a.length?`<div class="gg">${a.map(g=>galCard(g,cust)).join('')}</div>`:fl.length?'':`<div class="empty">${q?'見つかりませんでした':inWk.length?'条件に合うものがありません':S.nf?'このフォルダはまだ空です':galHere().length||S.gal.length?'条件に合うものがありません':'まだありません。<br>＋からイラスト・小説・動画を追加できます'}</div>`}`;
 }
 function galOpen(id){
   const g=S.gal.find(x=>x.id==id);if(!g)return;
@@ -3567,8 +3614,9 @@ const galLinkHtml=cur=>`<label>作品</label><select id="gwk" onchange="galWorkP
 function galLinkDlg(id){
   const g=S.gal.find(x=>x.id==id&&!gIsF(x));if(!g)return;
   S.gd={id,d:{workId:g.workId||null,chars:[...(g.chars||[])]},added:[],removed:[],saved:true};
-  open(`<h3 style="margin:0">紐づけ</h3><p class="mut" style="word-break:break-all">「${esc(g.title)}」</p>
+  open(`<h3 style="margin:0">紐づけ・タグ</h3><p class="mut" style="word-break:break-all">「${esc(g.title)}」</p>
   ${galLinkHtml(g)}
+  ${galTagIn(g.tags)}
   <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="galLinkSave('${id}')">保存</button></div>`);
   galChips();
 }
@@ -3576,7 +3624,9 @@ function galLinkSave(id){
   const g=S.gal.find(x=>x.id==id&&!gIsF(x)),d=S.gd;if(!g||!d)return;
   const wid=$('#gwk').value||null;
   const nc=d.d.chars.filter(i=>S.chars.some(c=>c.id==i&&(!wid||c.workId==wid)));
-  if((g.workId||null)!=wid||JSON.stringify(g.chars||[])!=JSON.stringify(nc))g.up=Date.now();
+  const tg=tagParse($('#gtg')?$('#gtg').value:'');
+  if((g.workId||null)!=wid||JSON.stringify(g.chars||[])!=JSON.stringify(nc)||JSON.stringify(g.tags||[])!=JSON.stringify(tg))g.up=Date.now();
+  if(tg.length)g.tags=tg;else delete g.tags;
   g.workId=wid;
   g.chars=nc;
   if(!g.workId)delete g.workId;
@@ -3584,7 +3634,7 @@ function galLinkSave(id){
 }
 function galEdit(id){
   const g=id&&S.gal.find(x=>x.id==id);
-  const cur=g?JSON.parse(JSON.stringify(g)):{type:galTy()=='all'?'image':galTy(),title:'',body:'',url:'',imgs:[],workId:galWk()=='all'?null:galWk(),chars:[],p:S.nf||null};
+  const cur=g?JSON.parse(JSON.stringify(g)):{type:galTy()=='all'?'image':galTy(),title:'',body:'',url:'',imgs:[],workId:galWkNow(),chars:[],p:S.nf||null};
   cur.chars=cur.chars||[];cur.imgs=cur.imgs||[];
   S.gd={id:id||'',d:cur,added:[],removed:[],saved:false};
   open(`<h3 style="margin:0">${id?'情報を編集':'ギャラリーに追加'}</h3>
@@ -3600,6 +3650,7 @@ function galEdit(id){
     <input id="gtf" type="file" accept=".txt,text/plain" hidden onchange="galTxt(this.files[0]);this.value=''"></div>
   <div id="g-video"><label>動画のURL</label><input id="gur" placeholder="https://www.youtube.com/watch?v=..." value="${esc(cur.url)}"><p class="mut" style="margin:6px 0 0">YouTube・Vimeo・ニコニコ・mp4 などのURLを貼ると、開いたときにそのまま再生できます。</p></div>
   ${id?'':`<div id="g-link">${galLinkHtml(cur)}</div>`}
+  ${galTagIn(cur.tags)}
   <div class="row">${id?`<button class="btn del" onclick="galDel('${id}')">削除</button>`:''}<span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="galSave()">保存</button></div>`);
   galType(cur.type);galChips();galImgPaint();
 }
@@ -3671,6 +3722,7 @@ function galSave(){
   const fd=$('#gfd');if(fd)d.p=fd.value||null;
   d.chars=d.chars.filter(i=>S.chars.some(c=>c.id==i&&(!d.workId||c.workId==d.workId)));
   const out={id:g.id||uid('g'),type:d.type,title:d.title,workId:d.workId,chars:d.chars,ts:dateTs('gcd',d.ts||Date.now())};
+  const tg=tagParse($('#gtg')?$('#gtg').value:(d.tags||[]).join(' '));if(tg.length)out.tags=tg;
   if(d.p&&gFolder(d.p))out.p=d.p;
   if(d.type=='image')out.imgs=d.imgs;else if(d.type=='novel')out.body=d.body;else out.url=d.url;
   const keep=new Set(d.type=='image'?d.imgs.flatMap(m=>[m.p,m.t]):[]);
