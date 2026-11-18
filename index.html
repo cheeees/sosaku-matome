@@ -1663,13 +1663,14 @@ function charAddDlg(){
   <label>一言メモ</label><input id="nm" placeholder="一言でどうぞ">
   ${dateIn('ncd',Date.now())}
   <label>カテゴリ</label><select id="nc"><option value="">カテゴリなし</option>${(w.cats||[]).map(k=>`<option value="${k.id}">${esc(k.title)}</option>`).join('')}</select>
+  <label>イメージカラー</label>${pickerHTML('ncp','#ff8fa3')}
   <div class="row"><button class="btn sub" onclick="qzStart('add')">質問から作る</button><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="addChar()">追加</button></div>`);
 }
 function addChar(){
   const w=S.works.find(x=>x.id==S.workId);if(!w)return;
   const name=$('#nn').value.trim();if(!name){$('#nn').focus();return}
   const id=uid('c');
-  const nc={id,name,ruby:$('#nr').value.trim(),color:'#ff8fa3',tags:[],memo:$('#nm').value.trim(),body:'',workId:w.id,cat:$('#nc').value||null,o:nextCO(w)},nt=dateTs('ncd',Date.now());
+  const nc={id,name,ruby:$('#nr').value.trim(),color:($('#ncp')&&$('#ncp').dataset.v)||'#ff8fa3',tags:[],memo:$('#nm').value.trim(),body:'',workId:w.id,cat:$('#nc').value||null,o:nextCO(w)},nt=dateTs('ncd',Date.now());
   if(isoD(nt)!=isoD(Date.now()))nc.ts=nt;
   S.chars.push(nc);
   save('characters.json');
@@ -3686,6 +3687,8 @@ function pAge(v){
   if(!m||t.charAt(m.index+m[1].length)=='代')return null;
   return{v:+m[1],rough:false};
 }
+/* 「不詳」「不明」「?」など、年齢をあえて決めていない書き方 */
+const isAgeUnk=v=>/不詳|不明|ふしょう|ふめい|unknown|[?？]/i.test(String(v||'').normalize('NFKC').trim());
 function pBd(v){
   const t=String(v||'').normalize('NFKC');
   const m=t.match(/(?:\d{4}\s*[年\/\-.]\s*)?(\d{1,2})\s*[月\/\-.]\s*(\d{1,2})/);
@@ -3793,16 +3796,18 @@ function cmpBd(list){
 
 /* 年齢: 10歳ごと */
 function cmpAge(list){
-  const rows=list.map(c=>({c,a:pAge(cInfo(c,'年齢'))})),ok=rows.filter(r=>r.a),so=cmpSo();
-  const un=cmpUn('年齢が未入力',rows.filter(r=>!r.a).map(r=>r.c));
-  if(!ok.length)return `<div class="empty">年齢が入力されたキャラがいません</div>`+un;
+  const rows=list.map(c=>{const t=cInfo(c,'年齢'),a=pAge(t);return{c,a,unk:!a&&isAgeUnk(t)}}),ok=rows.filter(r=>r.a),so=cmpSo();
+  const uk=rows.filter(r=>r.unk);
+  const un=cmpUn('年齢が未入力',rows.filter(r=>!r.a&&!r.unk).map(r=>r.c));
+  const ukH=uk.length?`<section class="bdm"><h4 class="bdh"><b>年齢不詳</b><i>(${uk.length}人)</i></h4><div class="bdl">${uk.map(r=>cTile(r.c,`<span class="bdd">不詳</span>`)).join('')}</div></section>`:'';
+  if(!ok.length)return (ukH?`<div class="bdg one">${ukH}</div>`:`<div class="empty">年齢が入力されたキャラがいません</div>`)+un;
   const g=new Map();
   ok.forEach(r=>{const k=r.a.v<10?0:Math.floor(r.a.v/10)*10;if(!g.has(k))g.set(k,[]);g.get(k).push(r)});
   const ks=[...g.keys()].sort((a,b)=>a-b);if(so=='desc')ks.reverse();
   return `<div class="bdg one">${ks.map(k=>{
     const a=g.get(k);if(so=='asc')a.sort((p,q)=>p.a.v-q.a.v);else if(so=='desc')a.sort((p,q)=>q.a.v-p.a.v);
     return `<section class="bdm"><h4 class="bdh"><b>${k?k:10}</b><i>${k?'代':'歳未満'}</i></h4><div class="bdl">${a.map(r=>cTile(r.c,`<span class="bdd">${r.a.rough?`${r.a.b}<small>代${r.a.sub}</small>`:`${r.a.v}<small>歳</small>`}</span>`)).join('')}</div></section>`;
-  }).join('')}</div>`+un;
+  }).join('')}${ukH}</div>`+un;
 }
 
 function cmpBase(){
@@ -4117,6 +4122,7 @@ const QZC=[
 function qzGrab(){
   const q=S.qz;if(!q)return;
   [['qzn','name'],['qzr','ruby'],['qza','age'],['qzj','job']].forEach(([id,k])=>{const e=$('#'+id);if(e)q[k]=e.value.trim()});
+  const pc=$('#qzc');if(pc)q.color=pc.dataset.v;
 }
 function qzLv(v){const q=S.qz;if(!q)return;qzGrab();q.lv=v;qzShow()}
 /* 質問の順番を作る。簡単=最初の18問 / 複雑=全軸を順に回しながら45問、そのあと自由記述 */
@@ -4135,7 +4141,7 @@ function qzStart(mode){
   let q;
   if(mode=='add'){
     if(!S.works.find(x=>x.id==S.workId))return;
-    q={mode,name:($('#nn').value||'').trim(),ruby:($('#nr').value||'').trim(),cat:$('#nc').value||null,ts:dateTs('ncd',Date.now())};
+    q={mode,name:($('#nn').value||'').trim(),ruby:($('#nr').value||'').trim(),cat:$('#nc').value||null,ts:dateTs('ncd',Date.now()),color:($('#ncp')&&$('#ncp').dataset.v)||'#ff8fa3'};
   }else{
     if(!S.ic)return;
     q={mode,name:($('#et').value||'').trim(),ruby:($('#ert').value||'').trim()};
@@ -4193,8 +4199,9 @@ function qzShow(){
     <p class="mut" style="margin:8px 0 0">${c?`性格の傾向を11の軸で細かく聞き、好きなものや過去などの自由記述(空欄でスキップできます)も加えて、そのキャラらしい文章を作ります。`:`性格の傾向を6つの軸で聞き、好きなものや過去などの自由記述(空欄でスキップできます)も加えて、文章を作ります。`}結果はあとで直せます。</p>
     <label for="qzn">名前${q.mode=='add'?'(必須)':''}</label><input id="qzn" value="${esc(q.name)}">
     <label for="qzr">ふりがな</label><input id="qzr" value="${esc(q.ruby)}">
-    <label for="qza">年齢(任意)</label><input id="qza" value="${esc(q.age)}" placeholder="例:17歳 / 20代後半">
+    <label for="qza">年齢(任意)</label><input id="qza" value="${esc(q.age)}" placeholder="例:17歳 / 20代後半 / 不詳">
     <label for="qzj">職業(任意)</label><input id="qzj" value="${esc(q.job)}" placeholder="例:学生 / 探偵">
+    ${q.mode=='add'?`<label>イメージカラー</label>${pickerHTML('qzc',q.color||'#ff8fa3')}`:''}
     <div class="row"><span class="sp"></span>${close}<button class="btn" onclick="qzNext()">はじめる</button></div>`);
     return;
   }
@@ -4256,7 +4263,7 @@ function qzDone(){
   const R={memo:$('#qrm').value.trim(),body:$('#qrb').value.trim(),info:q.R?q.R.info:[]};
   if(q.mode=='add'){
     const w=S.works.find(x=>x.id==S.workId);if(!w)return;
-    const id=uid('c'),nc={id,name:q.name,ruby:q.ruby,color:'#ff8fa3',tags:[],memo:R.memo,body:R.body,voice:{one:'',two:'',three:'',text:''},info:R.info,workId:w.id,cat:q.cat,o:nextCO(w)};
+    const id=uid('c'),nc={id,name:q.name,ruby:q.ruby,color:q.color||'#ff8fa3',tags:[],memo:R.memo,body:R.body,voice:{one:'',two:'',three:'',text:''},info:R.info,workId:w.id,cat:q.cat,o:nextCO(w)};
     if(isoD(q.ts)!=isoD(Date.now()))nc.ts=q.ts;
     S.chars.push(nc);save('characters.json');S.qz=null;
     navTo(()=>{S.rd=id});
