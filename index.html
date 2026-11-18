@@ -3134,10 +3134,61 @@ function exJson(kind,id){
 function exportDlg(kind,id){
   const f=exFind(kind,id);if(!f)return;
   open(`<h3 style="margin:0">書き出し</h3><p class="mut" style="word-break:break-all">「${esc(f.title)}」${kind=='note'&&isF(f.x)?'の中の設定をまとめて':'を'}書き出します。</p>
+  <div class="menu"><button class="btn" onclick="doCopy('${kind}','${id}',0)">全文をコピー</button><button class="btn sub" onclick="doCopy('${kind}','${id}',1)">装飾を省いてコピー</button></div>
+  <label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input id="excr" type="checkbox" style="width:auto">装飾を省くとき、ルビ(ふりがな)は残す</label>
+  <p class="mut" style="margin:6px 0 0">小説・設定などは本文だけをコピーします。「装飾を省く」は、太字・斜体・傍点・注意書き・ルビ・見出し・引用・折りたたみ・カードの記号と、脚注を取り除きます(字下げは全角スペースに変えます)。</p>
+  <hr class="div">
   <div class="menu"><button class="btn" onclick="doExport('${kind}','${id}','html')">HTML(.html・画像つき)</button><button class="btn sub" onclick="doExport('${kind}','${id}','txt')">テキスト(.txt)</button><button class="btn sub" onclick="doExport('${kind}','${id}','json')">JSON(.json・バックアップ向け)</button></div>
   <label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input id="exim" type="checkbox" checked style="width:auto">HTMLには画像を埋め込む(ファイルが大きくなります)</label>
   <p class="mut" style="margin:8px 0 0">テキスト・JSONには画像は含まれません(テキストでは画像の行を取り除きます)。ルビ・傍点の書き方はそのまま残ります。</p>
   <div class="row"><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`);
+}
+/* ---- 全文コピー: そのまま / 文字装飾を省く ----
+   省く解析は画面表示と同じ deco() を通して、タグを外した文字だけ取り出す(表示とズレないように) */
+function exPlainLine(s,keepRuby){
+  s=String(s).replace(/\[\^[^\]\s]+\]/g,'').replace(/\[([^\[\]]+?)\]\((https?:\/\/[^\s)]+)\)/g,'$1');
+  const d=document.createElement('div');d.innerHTML=deco(s,0,[])[0];
+  d.querySelectorAll('ruby').forEach(r=>{
+    const rt=r.querySelector('rt'),rr=rt?rt.textContent:'';if(rt)rt.remove();
+    r.replaceWith(document.createTextNode(keepRuby&&rr?`｜${r.textContent}《${rr}》`:r.textContent));
+  });
+  return d.textContent;
+}
+function exPlain(t,keepRuby){
+  return String(t||'').split('\n').map(line=>{
+    if(/^\[\^[^\]\s]+\]:/.test(line))return null; /* 脚注の本文行 */
+    let s=line,ind=0;
+    for(let g=0;g<30;g++){ /* 字下げ(::)と引用(>)は、入れ子でも外す */
+      const m=INDM.exec(s);if(m){ind+=m[1].length/2;s=s.slice(m[0].length);continue}
+      const q=/^> ?/.exec(s);if(q){s=s.slice(q[0].length);continue}
+      break;
+    }
+    const fm=FOLD.exec(s);
+    if(fm){if(fm[1]||(fm[2]||'').trim())s=(fm[2]||'').trim();else return null} /* 折りたたみ: 開始行はタイトルだけ残し、閉じる行は消す */
+    else if(/^```\s*$/.test(s))return null; /* カードの囲み */
+    const h=/^(#{1,3}) (.*)$/.exec(s);if(h)s=h[2];
+    s=exPlainLine(s,keepRuby);
+    return s?'\u3000'.repeat(ind)+s:'';
+  }).filter(l=>l!==null).join('\n');
+}
+function exCopyText(kind,id,plain,keepRuby){
+  const f=exFind(kind,id);if(!f)return'';
+  const x=f.x,one=kind=='gal'||kind=='memo'||(kind=='note'&&!isF(x)&&!isT(x));
+  const t=one?exClean(x.body):exText(kind,id).replace(/\s+$/,'');
+  return plain?exPlain(t,keepRuby).replace(/\s+$/,''):t;
+}
+async function doCopy(kind,id,plain){
+  const kr=!!($('#excr')&&$('#excr').checked),out=exCopyText(kind,id,plain,kr);
+  if(!out.trim()){status('コピーする本文がありません',1);return}
+  let ok=false;
+  try{await navigator.clipboard.writeText(out);ok=true}catch(e){}
+  if(!ok){
+    const t=document.createElement('textarea'),d=$('#dlg');t.value=out;t.style.cssText='position:fixed;left:-9999px;top:0;opacity:0';
+    (d&&d.open?d:document.body).appendChild(t);t.select();
+    try{ok=document.execCommand('copy')}catch(e){}t.remove();
+  }
+  if(!ok){status('コピーできませんでした',1);return}
+  $('#dlg').close();status(`${plain?'装飾を省いて':''}コピーしました(${out.length.toLocaleString()}文字)`);
 }
 function doExport(kind,id,fmt){
   const f=exFind(kind,id);if(!f)return;
