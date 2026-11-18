@@ -13,6 +13,15 @@
 <meta name="apple-mobile-web-app-title" content="創作まとめ">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script>try{document.documentElement.dataset.theme=localStorage.getItem('sm_theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light')}catch(e){}</script>
+<script>
+/* 入力欄の自動入力・入力履歴(ブラウザが覚える候補)を止める。あとから作られる入力欄にも効く。ログインのユーザー名/パスワードだけは除く */
+(function(){
+  var fix=function(n){if(n.tagName!=='INPUT'&&n.tagName!=='TEXTAREA'&&n.tagName!=='SELECT')return;if(n.type==='password'||n.getAttribute('autocomplete')==='username'||n.getAttribute('autocomplete')==='current-password'||n.getAttribute('autocomplete')==='new-password')return;n.setAttribute('autocomplete','off')};
+  var all=function(el){if(!el||el.nodeType!==1)return;fix(el);var l=el.querySelectorAll?el.querySelectorAll('input,textarea,select'):[];for(var i=0;i<l.length;i++)fix(l[i])};
+  new MutationObserver(function(ms){for(var i=0;i<ms.length;i++){var a=ms[i].addedNodes;for(var j=0;j<a.length;j++)all(a[j])}}).observe(document.documentElement,{childList:true,subtree:true});
+  document.addEventListener('DOMContentLoaded',function(){all(document.documentElement)});
+})();
+</script>
 <style>
 :root,[data-theme=light]{--bg:#f3f4f8;--fg:#1f2230;--mut:#767b8f;--card:#fff;--line:#dcdfe8;--ink:#2d3350;color-scheme:light}
 [data-theme=dark]{--bg:#171923;--fg:#eceef6;--mut:#979cb3;--card:#222534;--line:#33374b;--ink:#aab3e8;color-scheme:dark}
@@ -360,6 +369,9 @@ details.cdet{margin-top:12px}
 .cpl{display:flex;flex-wrap:wrap;gap:6px;max-height:32vh;overflow-y:auto}
 .cpl .btn{display:inline-flex;align-items:center;gap:6px;text-align:left}
 .cpl .sw{flex:none}
+.cpq{width:100%;margin:0}
+.cpc{max-height:20vh}
+.cpc small{opacity:.7}
 
 /* ---- ギャラリー ---- */
 .gg{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
@@ -3651,10 +3663,40 @@ const cPick=()=>{try{return new Set(JSON.parse(localStorage.getItem('sm_cpick')|
 const cSavePick=s=>cSet('sm_cpick',JSON.stringify([...s]));
 function cmpOnlyToggle(){cSet('sm_conly',cOnly()?'0':'1');S.csel=null;render()}
 function cmpToggle(id){const s=cPick();s.has(id)?s.delete(id):s.add(id);cSavePick(s);S.csel=null;cmpPickRefresh()}
-function cmpAll(on){const s=cPick();cmpBase().forEach(c=>on?s.add(c.id):s.delete(c.id));cSavePick(s);S.csel=null;cmpPickRefresh()}
+/* 絞り込み: 検索(名前・ふりがな)とカテゴリごとの一括チェック */
+const cqNorm=t=>String(t||'').normalize('NFKC').toLowerCase().replace(/[\u30a1-\u30f6]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-96)).replace(/\s+/g,'');
+const cmpQ=()=>cqNorm(S.cq||'');
+function cmpVisible(){const q=cmpQ();return q?cmpBase().filter(c=>cqNorm(c.name+' '+(c.ruby||'')).includes(q)):cmpBase()}
+function cmpGroups(base){
+  const wk=cmpWk(),m=new Map(),ord=[];
+  base.forEach(c=>{
+    const w=S.works.find(x=>x.id==c.workId)||{id:'',title:'',cats:[]},cats=w.cats||[],ci=cats.findIndex(x=>x.id==c.cat),k=ci>=0?cats[ci]:null,key=w.id+'|'+(k?k.id:'');
+    if(!m.has(key)){m.set(key,{key,label:(wk=='all'&&w.title?w.title+' / ':'')+(k?k.title:'カテゴリなし'),real:!!k,list:[]});ord.push(key)}
+    m.get(key).list.push(c);
+  });
+  return ord.map(k=>m.get(k));
+}
+function cmpCatHtml(base,p){
+  const gs=cmpGroups(base);
+  if(!gs.some(g=>g.real))return '';
+  return gs.map(g=>{
+    const n=g.list.filter(c=>p.has(c.id)).length,all=n==g.list.length;
+    return `<button class="btn chip${all?'':' sub'}" data-g="${esc(g.key)}" onclick="cmpCat(this.dataset.g)">${all?'☑ ':n?'◪ ':'☐ '}${esc(g.label)} <small>${n}/${g.list.length}</small></button>`;
+  }).join('');
+}
+function cmpCat(key){
+  const g=cmpGroups(cmpBase()).find(x=>x.key==key);if(!g)return;
+  const s=cPick(),all=g.list.every(c=>s.has(c.id));
+  g.list.forEach(c=>all?s.delete(c.id):s.add(c.id));
+  cSavePick(s);S.csel=null;cmpPickRefresh();
+}
+function cmpAll(on){const s=cPick();cmpVisible().forEach(c=>on?s.add(c.id):s.delete(c.id));cSavePick(s);S.csel=null;cmpPickRefresh()}
+function cmpSearch(v){S.cq=v;const p=cPick(),l=$('#cpl');if(l)l.innerHTML=cmpChipsHtml(p);const a=$('#cpa'),b=$('#cpd');if(a)a.textContent=cmpQ()?'表示中を選ぶ':'全員選ぶ';if(b)b.textContent=cmpQ()?'表示中を外す':'全員外す'}
+function cmpChipsHtml(p){const v=cmpVisible();return v.length?v.map(c=>cChip(c,p)).join(''):'<span class="mut">見つかりません</span>'}
 function cmpPickRefresh(){
   const p=cPick();
   document.querySelectorAll('#cpl [data-id]').forEach(b=>b.classList.toggle('sub',!p.has(b.dataset.id)));
+  const g=$('#cpc');if(g)g.innerHTML=cmpCatHtml(cmpBase(),p);
   const n=$('#cpn');if(n)n.textContent=`(${cmpBase().filter(c=>p.has(c.id)).length}人)`;
   cmpRefresh();
 }
@@ -3828,7 +3870,7 @@ function cmpView(){
   const sortOpt=m=='h'?[['reg','登録順'],['asc','低い順'],['desc','高い順']]:m=='age'?[['reg','登録順'],['asc','若い順'],['desc','年上順']]:null;
   const body=cmpBody(base);
   const onBar=`<div class="bar" style="flex-wrap:wrap;margin-bottom:10px"><button class="btn${on?'':' sub'}" onclick="cmpOnlyToggle()">${on?'☑':'☐'} 選んだキャラだけ表示 <span id="cpn">${on?`(${base.filter(c=>p.has(c.id)).length}人)`:''}</span></button>${on?'':'<span class="mut">ONにして、一覧の名前を押して選びます</span>'}</div>
-  ${on&&base.length?`<div class="cpp"><div class="bar" style="margin-bottom:8px"><span class="mut">名前を押して選ぶ / 外す</span><button class="btn sub chip" style="margin-left:auto" onclick="cmpAll(1)">全員選ぶ</button><button class="btn sub chip" onclick="cmpAll(0)">全員外す</button></div><div class="cpl" id="cpl">${base.map(c=>cChip(c,p)).join('')}</div></div>`:''}`;
+  ${on&&base.length?`<div class="cpp"><input id="cpq" type="search" class="cpq" placeholder="名前・ふりがなで検索" value="${esc(S.cq||'')}" oninput="cmpSearch(this.value)" autocomplete="off" aria-label="キャラを検索">${cmpCatHtml(base,p)?`<div class="mut" style="margin:8px 0 4px">カテゴリごとに選ぶ / 外す</div><div class="cpl cpc" id="cpc">${cmpCatHtml(base,p)}</div>`:''}<div class="bar" style="margin:10px 0 8px"><span class="mut">名前を押して選ぶ / 外す</span><button class="btn sub chip" style="margin-left:auto" id="cpa" onclick="cmpAll(1)">${cmpQ()?'表示中を選ぶ':'全員選ぶ'}</button><button class="btn sub chip" id="cpd" onclick="cmpAll(0)">${cmpQ()?'表示中を外す':'全員外す'}</button></div><div class="cpl" id="cpl">${cmpChipsHtml(p)}</div></div>`:''}`;
   app.innerHTML=`<div class="csel"><select aria-label="作品" onchange="setCmpW(this.value)"><option value="all"${wk=='all'?' selected':''}>全ての作品</option>${S.works.map(w=>`<option value="${w.id}"${w.id==wk?' selected':''}>${esc(w.title)}</option>`).join('')}</select></div>
   <div class="ctabs">${CMODES.map(([k,l])=>`<button class="btn ${k==m?'':'sub'}" onclick="setCmpM('${k}')">${l}</button>`).join('')}</div>
   ${onBar}
