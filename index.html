@@ -244,6 +244,7 @@ input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);b
 select{-webkit-appearance:none;appearance:none;padding-right:34px;background:linear-gradient(45deg,transparent 50%,var(--mut) 50%) calc(100% - 20px) 55%/5px 5px no-repeat,linear-gradient(135deg,var(--mut) 50%,transparent 50%) calc(100% - 15px) 55%/5px 5px no-repeat,var(--card)}
 input[type=color]{padding:2px;height:40px}
 label{display:block;font-size:13px;color:var(--mut);margin:12px 0 4px}
+.dsel{display:flex;gap:6px;align-items:center}.dsel select{width:auto;flex:1;min-width:0;padding-left:8px}.dsel .dy{flex:1.3}.dsel .chip{flex:none}
 .bar{display:flex;gap:8px;align-items:center;margin-bottom:16px}
 .mut{color:var(--mut);font-size:13px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:22px 14px}
@@ -844,7 +845,32 @@ const cTime=x=>x.ts||idTime(x.id);
 const cOrd=(p,q)=>(cTime(p.x)||0)-(cTime(q.x)||0)||p.i-q.i;
 const fD=t=>{const d=new Date(t);return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`};
 const isoD=t=>{if(!t)return'';const d=new Date(t),p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`};
-const dateIn=(id,t)=>`<label for="${id}">作成日</label><input id="${id}" type="date" value="${isoD(t)}">`;
+/* 作成日の入力: ブラウザのカレンダーは選びにくいので、年・月・日を別々のプルダウンで選ぶ。値は隠し欄(id)に YYYY-MM-DD で入れる(dateTs はこれまでどおり読める) */
+const dateIn=(id,t)=>{
+  const iso=isoD(t),[y,m,d]=iso?iso.split('-').map(Number):[0,0,0],cy=new Date().getFullYear(),y0=Math.min(2000,y||2000),y1=Math.max(cy+1,y||0);
+  const op=(v,l,cur)=>`<option value="${v}"${v==cur?' selected':''}>${l}</option>`;
+  let ys='',ms='',ds='';
+  for(let i=y1;i>=y0;i--)ys+=op(i,i+'年',y);
+  for(let i=1;i<=12;i++)ms+=op(i,i+'月',m);
+  for(let i=1;i<=(y&&m?new Date(y,m,0).getDate():31);i++)ds+=op(i,i+'日',d);
+  return `<label>作成日</label><div class="dsel" data-d="${id}"><select class="dy" aria-label="年"><option value="">年</option>${ys}</select><select class="dm" aria-label="月"><option value="">月</option>${ms}</select><select class="dd" aria-label="日"><option value="">日</option>${ds}</select><button type="button" class="btn sub chip dtd">今日</button></div><input id="${id}" type="hidden" value="${iso}">`;
+};
+function dSync(box){
+  const sy=box.querySelector('.dy'),sm=box.querySelector('.dm'),sd=box.querySelector('.dd'),y=+sy.value,m=+sm.value;
+  if(y&&m){
+    const n=new Date(y,m,0).getDate();
+    if(sd.options.length-1!=n){const cur=Math.min(+sd.value||0,n);let h='<option value="">日</option>';for(let i=1;i<=n;i++)h+=`<option value="${i}"${i==cur?' selected':''}>${i}日</option>`;sd.innerHTML=h}
+  }
+  const dd=+sd.value,p=n=>String(n).padStart(2,'0'),h=document.getElementById(box.dataset.d);
+  if(h)h.value=y&&m&&dd?`${y}-${p(m)}-${p(dd)}`:''
+}
+document.addEventListener('change',e=>{const b=e.target.closest&&e.target.closest('.dsel');if(b)dSync(b)});
+document.addEventListener('click',e=>{
+  const bt=e.target.closest&&e.target.closest('.dtd');if(!bt)return;
+  const b=bt.closest('.dsel'),n=new Date(),sy=b.querySelector('.dy');
+  if(![...sy.options].some(o=>o.value==n.getFullYear())){const o=document.createElement('option');o.value=n.getFullYear();o.textContent=n.getFullYear()+'年';sy.insertBefore(o,sy.options[1])}
+  sy.value=n.getFullYear();b.querySelector('.dm').value=n.getMonth()+1;dSync(b);b.querySelector('.dd').value=n.getDate();dSync(b)
+});
 /* 作成日の入力欄 → 時刻。日付が変わっていなければ元の時刻のまま(変更なしなら何も起きない) */
 const dateTs=(id,base)=>{const e=$('#'+id),v=e&&e.value;if(!v||isoD(base)==v)return base;const t=new Date(v+'T12:00:00').getTime();return isNaN(t)?base:t};
 const dCre=x=>{const t=cTime(x);return t?`<span class="dt">作成 ${fD(t)}</span>`:''};
