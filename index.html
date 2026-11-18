@@ -14,12 +14,26 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script>try{document.documentElement.dataset.theme=localStorage.getItem('sm_theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light')}catch(e){}</script>
 <script>
-/* 入力欄の自動入力・入力履歴(ブラウザが覚える候補)を止める。あとから作られる入力欄にも効く。ログインのユーザー名/パスワードだけは除く */
+/* 入力欄の自動入力(名前・住所などの候補)や入力履歴・パスワードマネージャの候補を止める。あとから作られる入力欄にも効く。ログインのユーザー名/パスワードだけは除く。
+   ChromeはautocompleteがoffでもアドレスのAutofillを出すことがあるため、Chrome系では認識されない値にして候補を出させない */
 (function(){
-  var fix=function(n){if(n.tagName!=='INPUT'&&n.tagName!=='TEXTAREA'&&n.tagName!=='SELECT')return;if(n.type==='password'||n.getAttribute('autocomplete')==='username'||n.getAttribute('autocomplete')==='current-password'||n.getAttribute('autocomplete')==='new-password')return;n.setAttribute('autocomplete','off')};
+  var ua=navigator.userAgent||'';
+  var AC=/Chrome\/|CriOS|EdgA|Edg\/|SamsungBrowser/.test(ua)?'nope':'off';
+  var KEEP={'username':1,'current-password':1,'new-password':1};
+  var SKIP={checkbox:1,radio:1,range:1,file:1,button:1,submit:1,reset:1,image:1,hidden:1,color:1};
+  var fix=function(n){
+    var t=n.tagName;
+    if(t!=='INPUT'&&t!=='TEXTAREA'&&t!=='SELECT')return;
+    if(n.type==='password'||KEEP[n.getAttribute('autocomplete')])return;
+    if(t==='INPUT'&&SKIP[n.type])return;
+    if(n.getAttribute('autocomplete')!==AC)n.setAttribute('autocomplete',AC);
+    if(!n.hasAttribute('data-lpignore')){n.setAttribute('data-lpignore','true');n.setAttribute('data-1p-ignore','');n.setAttribute('data-bwignore','true');n.setAttribute('data-form-type','other')}
+  };
   var all=function(el){if(!el||el.nodeType!==1)return;fix(el);var l=el.querySelectorAll?el.querySelectorAll('input,textarea,select'):[];for(var i=0;i<l.length;i++)fix(l[i])};
   new MutationObserver(function(ms){for(var i=0;i<ms.length;i++){var a=ms[i].addedNodes;for(var j=0;j<a.length;j++)all(a[j])}}).observe(document.documentElement,{childList:true,subtree:true});
   document.addEventListener('DOMContentLoaded',function(){all(document.documentElement)});
+  /* フォーカスした瞬間にも念のためもう一度かける(ブラウザは候補をフォーカス時に決めるため) */
+  document.addEventListener('focusin',function(e){fix(e.target)},true);
 })();
 </script>
 <style>
@@ -3143,6 +3157,16 @@ function gsub(id){
 /* 作品で絞り込み中は、その作品に紐づくフォルダだけ(いまの場所は常に残す) */
 const galWkNow=()=>galWk()=='all'?null:galWk();
 const gVis=(cur,ex)=>{const wk=galWkNow();return gFolders().filter(f=>!(ex&&ex.has(f.id))&&(!wk||f.workId==wk||f.id==cur))};
+/* 作品で絞り込み中に表示するフォルダ: その作品に紐づくフォルダ、またはその作品に紐づくもの(作品・フォルダ)を中に持つフォルダ(外側のフォルダもたどって残す) */
+function gWkF(wk){
+  const s=new Set();
+  S.gal.forEach(x=>{
+    if(x.workId!=wk)return;
+    let c=gIsF(x)?x:gFolder(par(x)),n=0;
+    while(c&&n++<50&&!s.has(c.id)){s.add(c.id);c=gFolder(par(c))}
+  });
+  return s;
+}
 function gFolderSel(sid,cur,ex){
   const fs=gVis(cur,ex);
   return `<select id="${sid}"><option value="">いちばん上(フォルダの外)</option>${fs.map(f=>`<option value="${f.id}"${cur==f.id?' selected':''}>${esc(gpath(f.id))}</option>`).join('')}</select>`;
@@ -3480,14 +3504,14 @@ function galShow(x){
 }
 function galView(){
   if(S.nf&&!gFolder(S.nf))S.nf=null;
-  if(S.nf&&!S.rd){const wk0=galWk(),f0=gFolder(S.nf);if(wk0!='all'&&f0.workId!=wk0)S.nf=null}
+  if(S.nf&&!S.rd){const wk0=galWk(),f0=gFolder(S.nf);if(wk0!='all'&&!gWkF(wk0).has(f0.id))S.nf=null}
   if(S.rd){const x=S.gal.find(g=>g.id==S.rd&&!gIsF(g));if(x){if(x.type!='novel'){S.ed=null;return galShow(x)}return S.ed==x.id?editView(galW(x),x):galRead(x)}S.rd=S.ed=null}
   const app=$('#app'),wk=galWk(),ty=galTy(),so=galSo();
   const inWk=galHere().filter(g=>wk=='all'||g.workId==wk);
   const cids=new Set(inWk.flatMap(g=>g.chars||[])),copts=S.chars.filter(c=>cids.has(c.id));
   if(S.gch&&!cids.has(S.gch))S.gch=null;
   const cnt=k=>inWk.filter(g=>k=='all'||g.type==k).length,a=galItems();
-  const fl=galSortBy(S.gal.filter(x=>gIsF(x)&&par(x)==(S.nf||null)&&(wk=='all'||x.workId==wk)),so);
+  const wf=wk=='all'?null:gWkF(wk),fl=galSortBy(S.gal.filter(x=>gIsF(x)&&par(x)==(S.nf||null)&&(!wf||wf.has(x.id))),so);
   const top=S.nf?`<div class="bar"><button class="ic bk" aria-label="上へ" onclick="upGF()">${ico(P_BACK)}</button><b>${esc(gpath(S.nf))}</b></div>`:'';
   const pk=S.nf?[]:galPick();
   app.innerHTML=`${top}${pk.length?`<div class="gpk">本日のピックアップ</div><div class="gg" style="margin-bottom:16px">${pk.map(g=>galCard(g)).join('')}</div>`:''}<div class="csel"><select aria-label="作品" onchange="setGalW(this.value)"><option value="all"${wk=='all'?' selected':''}>全ての作品</option>${S.works.map(w=>`<option value="${w.id}"${w.id==wk?' selected':''}>${esc(w.title)}</option>`).join('')}</select></div>
