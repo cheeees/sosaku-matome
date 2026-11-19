@@ -3817,15 +3817,18 @@ function pasteReveal(t){
       const d=a.scrollTop-b0;bot-=d;top-=d;
     }
   }
-  const vv=window.visualViewport,vb=vv?vv.height:innerHeight;
+  /* 見える範囲: スマホでキーボードが出ている時は visualViewport の上下(ずれ込み含む)と、編集ツールバーの下まで */
+  const vv=window.visualViewport,vt=vv?vv.offsetTop:0,vb=vt+(vv?vv.height:innerHeight),e=document.querySelector('.edh'),tl=Math.max(vt,e?e.getBoundingClientRect().bottom:0)+4;
   if(bot>vb-pad)scrollBy(0,bot-vb+pad);
-  else if(top<pad)scrollBy(0,top-pad);
+  else if(top<tl)scrollBy(0,top-tl);
 }
 document.addEventListener('paste',e=>{
   const t=e.target;
   if(!t||t.tagName!=='TEXTAREA')return;
   const go=()=>{pasteReveal(t);if(t.id==='gbo')galBoCount()};
-  setTimeout(go,0);setTimeout(go,150);
+  /* 貼り付けの反映や高さの再計算、キーボードの動きが落ち着くまで数回合わせる */
+  setTimeout(go,0);setTimeout(go,150);setTimeout(go,450);
+  t.addEventListener('input',()=>{requestAnimationFrame(go);setTimeout(go,120)},{once:true});
 },true);
 function galBoCount(){const b=$('#gbo'),n=$('#gtn');if(b&&n&&S.gd&&!S.gd.id)n.textContent=b.value?`${b.value.length.toLocaleString()}文字`:'txtを読み込むこともできます'}
 function galType(v){
