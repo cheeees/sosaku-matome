@@ -3775,7 +3775,7 @@ function galEdit(id){
   ${!id&&gVis(cur.p||null).length?`<label>フォルダ</label>${gFolderSel('gfd',cur.p||null)}`:''}
   <div id="g-image"><label>画像</label><div class="faces2" id="gim"></div>
     <div class="row" style="margin-top:10px"><button class="btn sub" onclick="galSrc()">画像を追加</button></div></div>
-  <div id="g-novel">${id?`<textarea id="gbo" hidden>${esc(cur.body)}</textarea>`:`<label for="gbo">本文</label><textarea id="gbo" placeholder="ここに貼り付け・入力できます(あとからでも書けます)" oninput="galBoCount()" onpaste="galBoPaste(this)" style="height:220px;resize:none;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;line-height:1.7">${esc(cur.body)}</textarea>`}
+  <div id="g-novel">${id?`<textarea id="gbo" hidden>${esc(cur.body)}</textarea>`:`<label for="gbo">本文</label><textarea id="gbo" placeholder="ここに貼り付け・入力できます(あとからでも書けます)" oninput="galBoCount()" style="height:220px;resize:none;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;line-height:1.7">${esc(cur.body)}</textarea>`}
     <div class="row" style="margin-top:10px"><button class="btn sub" style="white-space:nowrap;flex:none" onclick="$('#gtf').click()">txtを読み込む</button></div>
     <p class="mut" id="gtn" style="margin:6px 0 0">${id?'本文は、小説を開いて✎から書き換えられます':'txtを読み込むこともできます'}</p>
     <input id="gtf" type="file" accept=".txt,text/plain" hidden onchange="galTxt(this.files[0]);this.value=''"></div>
@@ -3785,19 +3785,42 @@ function galEdit(id){
   <div class="row">${id?`<button class="btn del" onclick="galDel('${id}')">削除</button>`:''}<span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="galSave()">保存</button></div>`);
   galType(cur.type);galChips();galImgPaint();
 }
-/* 貼り付け後、入力欄を貼り付けた末尾(カーソル位置)までスクロールする */
-function galBoPaste(t){
-  const go=()=>{
-    const pos=t.selectionEnd;
-    if(pos>=t.value.length-1){t.scrollTop=t.scrollHeight}
-    else{const pre=t.value.slice(0,pos),lh=parseFloat(getComputedStyle(t).lineHeight)||24,m=document.createElement('div');
-      m.style.cssText='position:absolute;visibility:hidden;white-space:pre-wrap;word-wrap:break-word;width:'+t.clientWidth+'px;font:'+getComputedStyle(t).font+';line-height:'+lh+'px;padding:0';
-      m.textContent=pre+'\u200b';document.body.appendChild(m);const y=m.offsetHeight;m.remove();
-      if(y>t.scrollTop+t.clientHeight-lh||y<t.scrollTop)t.scrollTop=Math.max(0,y-t.clientHeight+lh*2)}
-    galBoCount();
-  };
-  setTimeout(go,0);setTimeout(go,120);
+/* どの入力欄(textarea)でも、貼り付けた後は貼り付けた末尾(カーソル位置)が見えるところまで自動スクロールする */
+function pasteReveal(t){
+  if(!t||!t.isConnected)return;
+  const cs=getComputedStyle(t),lh=parseFloat(cs.lineHeight)||(parseFloat(cs.fontSize)||16)*1.6,
+    pl=parseFloat(cs.paddingLeft)||0,pr=parseFloat(cs.paddingRight)||0,pt=parseFloat(cs.paddingTop)||0;
+  const m=document.createElement('div');
+  m.style.cssText='position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre-wrap;overflow-wrap:break-word;word-break:'+cs.wordBreak+';box-sizing:content-box;padding:0;border:0;width:'+Math.max(10,t.clientWidth-pl-pr)+'px;font:'+cs.font+';letter-spacing:'+cs.letterSpacing+';line-height:'+lh+'px;tab-size:'+(cs.tabSize||8);
+  m.textContent=t.value.slice(0,t.selectionEnd)+'\u200b';
+  document.body.appendChild(m);const y=m.offsetHeight+pt;m.remove(); /* y = カーソル行の下端(入力欄の内側基準) */
+  /* 1) 入力欄の中でスクロールする場合は、その中でカーソル行へ */
+  const oy=cs.overflowY;
+  if((oy==='auto'||oy==='scroll')&&t.scrollHeight>t.clientHeight+1){
+    if(y>t.scrollTop+t.clientHeight-lh||y-lh<t.scrollTop)t.scrollTop=Math.max(0,y-t.clientHeight+lh*2);
+  }
+  /* 2) 外側(ダイアログやページ)がスクロールする場合は、カーソル行が画面内に入るように */
+  const pad=Math.round(lh*2),r=t.getBoundingClientRect();
+  let bot=r.top+y-t.scrollTop,top=bot-lh;
+  for(let a=t.parentElement;a&&a!==document.body&&a!==document.documentElement;a=a.parentElement){
+    const o=getComputedStyle(a).overflowY;
+    if((o==='auto'||o==='scroll')&&a.scrollHeight>a.clientHeight+1){
+      const ar=a.getBoundingClientRect(),b0=a.scrollTop;
+      if(bot>ar.bottom-pad)a.scrollTop+=bot-ar.bottom+pad;
+      else if(top<ar.top+pad)a.scrollTop-=ar.top+pad-top;
+      const d=a.scrollTop-b0;bot-=d;top-=d;
+    }
+  }
+  const vv=window.visualViewport,vb=vv?vv.height:innerHeight;
+  if(bot>vb-pad)scrollBy(0,bot-vb+pad);
+  else if(top<pad)scrollBy(0,top-pad);
 }
+document.addEventListener('paste',e=>{
+  const t=e.target;
+  if(!t||t.tagName!=='TEXTAREA')return;
+  const go=()=>{pasteReveal(t);if(t.id==='gbo')galBoCount()};
+  setTimeout(go,0);setTimeout(go,150);
+},true);
 function galBoCount(){const b=$('#gbo'),n=$('#gtn');if(b&&n&&S.gd&&!S.gd.id)n.textContent=b.value?`${b.value.length.toLocaleString()}文字`:'txtを読み込むこともできます'}
 function galType(v){
   if(!S.gd)return;S.gd.d.type=v;
