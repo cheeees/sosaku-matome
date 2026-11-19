@@ -1317,6 +1317,7 @@ function edDirty(){
     return t.value!=x.name||!!(rt&&rt.value.trim()!=(x.ruby||''))||b.value!=(x.body||'')||!!(m&&m.value.trim()!=(x.memo||''))||!!(g&&g.value.trim()!=(x.tags||[]).join(' '))||!!(S.ic&&S.ic.col.toLowerCase()!=String(x.color).toLowerCase())||[['#ev1','one'],['#ev2','two'],['#ev3','three'],['#evo','text']].some(([i,k])=>{const e=$(i),v=(x.voice||{})[k]||'';return !!e&&(k=='text'?e.value:e.value.trim())!=v})||!!(S.ic&&S.ic.cur!=(x.icon||null))||!!(S.ic&&(JSON.stringify(S.ic.stands)!=JSON.stringify(x.stands||[])||JSON.stringify(infoOut(S.ic.info))!=JSON.stringify(infoOut(infoRows(x.info)))))||!!(window.CSW&&CSW.changed());
   }
   if(S.tab=='gal'&&$('#gtg')&&JSON.stringify(tagParse($('#gtg').value))!=JSON.stringify(x.tags||[]))return true;
+  if(S.tab=='gal'&&$('#gclw')&&(fcolVal('gcl')||'').toLowerCase()!=String(/^#[0-9a-f]{6}$/i.test(x.color||'')?x.color:'').toLowerCase())return true;
   return t.value!=x.title||b.value!=(x.body||'');
 }
 function navTo(fn){
@@ -2595,6 +2596,7 @@ function editView(w,x){
   ${C?'<div class="bar" style="margin:0 0 4px"><button class="btn sub" onclick="impDlg()">文章から入力</button><button class="btn sub" style="margin-left:8px" onclick="qzStart(\'edit\')">質問から作る</button></div>':''}<label for="et" style="margin-top:0">${C?'名前':'項目名'}</label><input id="et" class="et" value="${esc(C?x.name:x.title)}" placeholder="${C?'キャラの名前':'例:魔法のしくみ'}">
   ${dateIn('ecd',cTime(x))}
   ${S.tab=='gal'&&!C?galTagIn(x.tags):''}
+  ${S.tab=='gal'&&!C?fcolHTML('gcl',x.color,'カードの色','いまは色なし(既定の表示)です。色を選ぶと上の縁に色がつきます'):''}
   ${C?`<label for="ert">ふりがな</label><input id="ert" value="${esc(x.ruby||'')}"><label for="emm">一言メモ</label><input id="emm" value="${esc(x.memo||'')}" placeholder="一言でどうぞ">
   <div class="bar" style="margin:14px 0 0"><span class="dot l" id="eip" style="--c:${esc(x.color)}"></span><button class="btn sub ibtn" aria-label="イメージカラー" title="イメージカラー" onclick="colDlg()">${ico(P_PALETTE)}</button><button class="btn sub ibtn" aria-label="アイコン画像" title="アイコン画像" onclick="icDlg()">${ico(P_IMG)}</button></div>
   <label for="etg">タグ(空白かカンマ区切り)</label><input id="etg" value="${esc((x.tags||[]).join(' '))}" oninput="tagSug()" onfocus="tagSug()"><div id="tsg" class="tsg"></div>
@@ -2611,6 +2613,7 @@ function editView(w,x){
   </div></details>
   ${C?'<div id="cswh" class="shed"><div class="hw"></div></div>':''}`;
   grow($('#eb'));fhl();
+  if($('#gclw'))mountPickers(fcolCb,'#app');
   if(C){
     if(!S.ic)S.ic={cur:x.icon||null,add:[],col:x.color,stands:JSON.parse(JSON.stringify(x.stands||[])),info:infoRows(x.info)};
     icPaint();colPaint();tagSug();edSt();edInf();{const vo=$('#evo');if(vo)grow(vo)}
@@ -2841,6 +2844,7 @@ function saveEdit(){
   }else{
     x.title=title;x.body=body;
     if(S.tab=='gal'&&$('#gtg')){const tg=tagParse($('#gtg').value);if(tg.length)x.tags=tg;else delete x.tags}
+    if(S.tab=='gal'&&$('#gclw'))fcolSet(x,'gcl');
   }
   rmImgs((S.upl||[]).filter(i=>!keep.includes(i)));S.upl=[];
   S.ed=null;save(S.tab=='gal'?'gallery.json':C?'characters.json':'works.json');goBack(()=>{});
