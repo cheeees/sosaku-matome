@@ -3822,14 +3822,27 @@ function pasteReveal(t){
   if(bot>vb-pad)scrollBy(0,bot-vb+pad);
   else if(top<tl)scrollBy(0,top-tl);
 }
+/* 入力欄に文字がまとめて入った後(貼り付け・キーボードのクリップボード・変換候補バー・ドラッグ等)、貼り付けの反映や高さの再計算、キーボードの動きが落ち着くまで数回合わせる */
+function revealSoon(t){
+  const go=()=>{pasteReveal(t);if(t.id==='gbo')galBoCount()};
+  setTimeout(go,0);requestAnimationFrame(go);setTimeout(go,150);setTimeout(go,450);setTimeout(go,900);
+}
 document.addEventListener('paste',e=>{
   const t=e.target;
   if(!t||t.tagName!=='TEXTAREA')return;
-  const go=()=>{pasteReveal(t);if(t.id==='gbo')galBoCount()};
-  /* 貼り付けの反映や高さの再計算、キーボードの動きが落ち着くまで数回合わせる */
-  setTimeout(go,0);setTimeout(go,150);setTimeout(go,450);
-  t.addEventListener('input',()=>{requestAnimationFrame(go);setTimeout(go,120)},{once:true});
+  revealSoon(t);
+  t.addEventListener('input',()=>{requestAnimationFrame(()=>pasteReveal(t));setTimeout(()=>pasteReveal(t),120)},{once:true});
 },true);
+/* pasteイベントが出ない入力(Androidのキーボードのクリップボード、iOSの予測変換バー、ドラッグ&ドロップなど)にも対応: 一度に2文字以上増えたら貼り付けと同じ扱いにする */
+const TXLEN=new WeakMap();
+document.addEventListener('focusin',e=>{const t=e.target;if(t&&t.tagName==='TEXTAREA')TXLEN.set(t,t.value.length)},true);
+document.addEventListener('input',e=>{
+  const t=e.target;if(!t||t.tagName!=='TEXTAREA')return;
+  const p=TXLEN.has(t)?TXLEN.get(t):t.value.length,d=t.value.length-p;TXLEN.set(t,t.value.length);
+  if(e.isComposing||e.inputType==='insertFromPaste')return;
+  if(d>=2||/^insert(FromDrop|Replacement)/.test(e.inputType||''))revealSoon(t);
+},true);
+addEventListener('compositionend',e=>{const t=e.target;if(t&&t.tagName==='TEXTAREA')revealSoon(t)},true);
 function galBoCount(){const b=$('#gbo'),n=$('#gtn');if(b&&n&&S.gd&&!S.gd.id)n.textContent=b.value?`${b.value.length.toLocaleString()}文字`:'txtを読み込むこともできます'}
 function galType(v){
   if(!S.gd)return;S.gd.d.type=v;
