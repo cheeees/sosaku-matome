@@ -394,7 +394,8 @@ details.cdet{margin-top:12px}
 
 /* ---- ギャラリー ---- */
 .gg{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
-.gc{display:block;width:100%;padding:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card);cursor:pointer;text-align:left;color:inherit}
+.gc{display:block;width:100%;padding:4px 0 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card);cursor:pointer;text-align:left;color:inherit}
+.gc.cl{padding-top:0;border-top:5px solid var(--c)}
 .gt{position:relative;aspect-ratio:16/9;background:var(--bg);overflow:hidden;display:grid;place-items:center}
 .gt img{width:100%;height:100%;object-fit:cover;display:block}
 .gt.tx{display:block;padding:10px;font-size:12px;line-height:1.6;color:var(--mut);word-break:break-all}
@@ -2083,11 +2084,11 @@ const wCls=x=>wCol(x)?' wk':'';
 const wSty=x=>{const c=wCol(x);return c?` style="--wc:${esc(c)}"`:''};
 const fcSt=(x,wk)=>{const a=[];if(x&&/^#[0-9a-f]{6}$/i.test(x.color||''))a.push('--c:'+x.color);const c=wk?wCol(x):'';if(c)a.push('--wc:'+esc(c));return a.length?` style="${a.join(';')}"`:''};
 function setWcol(v){try{localStorage.setItem('sm_wcol',v?'1':'0')}catch(e){}render();themeDlg()}
-function fcolHTML(id,v){
-  const ok=/^#[0-9a-f]{6}$/i.test(v||'');
-  return `<label>フォルダの色</label><div class="fcw${ok?'':' def'}" id="${id}w" data-def="${ok?0:1}">${pickerHTML(id,ok?v:'#8fb8de')}<div class="row" style="margin-top:8px;align-items:center"><span class="mut" id="${id}t">${ok?'選んだ色にします':'いまは既定の色(グレー)です。色を選ぶと変わります'}</span><span class="sp"></span><button class="btn sub" onclick="fcolDef('${id}')">既定の色に戻す</button></div></div>`;
+function fcolHTML(id,v,lb,dt){
+  const ok=/^#[0-9a-f]{6}$/i.test(v||''),d0=dt||'いまは既定の色(グレー)です。色を選ぶと変わります';
+  return `<label>${lb||'フォルダの色'}</label><div class="fcw${ok?'':' def'}" id="${id}w" data-def="${ok?0:1}" data-dt="${esc(d0)}">${pickerHTML(id,ok?v:'#8fb8de')}<div class="row" style="margin-top:8px;align-items:center"><span class="mut" id="${id}t">${ok?'選んだ色にします':d0}</span><span class="sp"></span><button class="btn sub" onclick="fcolDef('${id}')">既定の色に戻す</button></div></div>`;
 }
-function fcolSync(id){const w=$('#'+id+'w'),t=$('#'+id+'t');if(!w||!t)return;const d=w.dataset.def=='1';w.classList.toggle('def',d);t.textContent=d?'いまは既定の色(グレー)です。色を選ぶと変わります':'選んだ色にします'}
+function fcolSync(id){const w=$('#'+id+'w'),t=$('#'+id+'t');if(!w||!t)return;const d=w.dataset.def=='1';w.classList.toggle('def',d);t.textContent=d?(w.dataset.dt||'いまは既定の色(グレー)です。色を選ぶと変わります'):'選んだ色にします'}
 function fcolDef(id){const w=$('#'+id+'w');if(!w)return;w.dataset.def='1';fcolSync(id)}
 const fcolCb=el=>{const w=el.closest('.fcw');if(!w)return;w.dataset.def='0';fcolSync(el.id)};
 function fcolVal(id){const w=$('#'+id+'w'),p=$('#'+id);return w&&p&&w.dataset.def=='0'?p.dataset.v:null}
@@ -3533,7 +3534,7 @@ function galCard(g,cust){
   if(g.type=='image')t=`<div class="gt">${n?`<img data-p="${esc(g.imgs[0].t||g.imgs[0].p)}" alt="">`:''}${n>1?`<span class="gbadge gcnt">${n}枚</span>`:''}</div>`;
   else if(g.type=='novel')t=`<div class="gt tx">${esc(String(g.body||'').replace(/\s+/g,' ').slice(0,140))}<span class="gbadge gcnt">${galLen(g).toLocaleString()}文字</span></div>`;
   else{const v=galVid(g.url);t=`<div class="gt">${v&&v.thumb?`<img src="${esc(v.thumb)}" alt="" loading="lazy">`:''}<span class="gplay">▶</span></div>`}
-  const c=`<div class="gc${wCls(g)}"${wSty(g)}><div class="gh">${cust?galGrip:''}<div class="gm"><button class="gl" onclick="galRd('${g.id}')">${esc(g.title)}</button>${dCre(g)}</div><button class="ic" aria-label="メニュー" onclick="galMenu('${g.id}')">${ico(DOTS)}</button></div><button class="gth" aria-label="${esc(g.title)}を開く" onclick="galRd('${g.id}')">${t}</button>${galTagLine(g)}</div>`;
+  const c=`<div class="gc${wCls(g)}${/^#[0-9a-f]{6}$/i.test(g.color||'')?' cl':''}"${fcSt(g,1)}><div class="gh">${cust?galGrip:''}<div class="gm"><button class="gl" onclick="galRd('${g.id}')">${esc(g.title)}</button>${dCre(g)}</div><button class="ic" aria-label="メニュー" onclick="galMenu('${g.id}')">${ico(DOTS)}</button></div><button class="gth" aria-label="${esc(g.title)}を開く" onclick="galRd('${g.id}')">${t}</button>${galTagLine(g)}</div>`;
   return cust==null?c:`<div class="item" data-id="${g.id}" data-t="gi">${c}</div>`;
 }
 const galW=x=>S.works.find(w=>w.id==x.workId)||{title:'ギャラリー',color:'#9aa0a6'};
@@ -3773,6 +3774,7 @@ function galEdit(id){
   <label>タイトル</label><input id="gti" value="${esc(cur.title)}">
   ${dateIn('gcd',cur.ts||Date.now())}
   ${!id&&gVis(cur.p||null).length?`<label>フォルダ</label>${gFolderSel('gfd',cur.p||null)}`:''}
+  ${fcolHTML('gcl',cur.color,'カードの色','いまは色なし(既定の表示)です。色を選ぶと上の縁に色がつきます')}
   <div id="g-image"><label>画像</label><div class="faces2" id="gim"></div>
     <div class="row" style="margin-top:10px"><button class="btn sub" onclick="galSrc()">画像を追加</button></div></div>
   <div id="g-novel">${id?`<textarea id="gbo" hidden>${esc(cur.body)}</textarea>`:`<label for="gbo">本文</label><textarea id="gbo" placeholder="ここに貼り付け・入力できます(あとからでも書けます)" oninput="galBoCount()" style="height:220px;resize:none;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;line-height:1.7">${esc(cur.body)}</textarea>`}
@@ -3782,7 +3784,7 @@ function galEdit(id){
   <div id="g-video"><label>動画のURL</label><input id="gur" placeholder="https://www.youtube.com/watch?v=..." value="${esc(cur.url)}"><p class="mut" style="margin:6px 0 0">YouTube・Vimeo・ニコニコ・mp4 などのURLを貼ると、開いたときにそのまま再生できます。</p></div>
   ${id?'':`<div id="g-link">${galLinkHtml(cur)}</div>`}
   ${galTagIn(cur.tags)}
-  <div class="row">${id?`<button class="btn del" onclick="galDel('${id}')">削除</button>`:''}<span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="galSave()">保存</button></div>`);
+  <div class="row">${id?`<button class="btn del" onclick="galDel('${id}')">削除</button>`:''}<span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="galSave()">保存</button></div>`,fcolCb);
   galType(cur.type);galChips();galImgPaint();
 }
 /* どの入力欄(textarea)でも、貼り付けた後は貼り付けた末尾(カーソル位置)が見えるところまで自動スクロールする */
@@ -3891,6 +3893,7 @@ function galSave(){
   d.chars=d.chars.filter(i=>S.chars.some(c=>c.id==i&&(!d.workId||c.workId==d.workId)));
   const out={id:g.id||uid('g'),type:d.type,title:d.title,workId:d.workId,chars:d.chars,ts:dateTs('gcd',d.ts||Date.now())};
   const tg=tagParse($('#gtg')?$('#gtg').value:(d.tags||[]).join(' '));if(tg.length)out.tags=tg;
+  fcolSet(out,'gcl');
   if(d.p&&gFolder(d.p))out.p=d.p;
   if(d.type=='image')out.imgs=d.imgs;else if(d.type=='novel')out.body=d.body;else out.url=d.url;
   const keep=new Set(d.type=='image'?d.imgs.flatMap(m=>[m.p,m.t]):[]);
