@@ -3425,6 +3425,8 @@ function galPick(){
 }
 /* いま開いているフォルダ(S.nf)直下の作品だけ。フォルダ自体は含めない */
 const galHere=()=>S.gal.filter(g=>!gIsF(g)&&par(g)==(S.nf||null));
+/* フォルダの中(サブフォルダ含む)にある、作品の絞り込み・種類に合う作品の数 */
+const galSubN=(id,wk,ty)=>{const ids=gsub(id);return S.gal.filter(g=>!gIsF(g)&&ids.has(par(g))&&galWkOk(g,wk)&&(ty=='all'||g.type==ty)).length};
 /* ギャラリーの検索: タイトル・タグ・紐づけたキャラ(名前・ふりがな)。#を付けてもOK、空白区切りは全部含むものだけ */
 const GK=[g=>g.title,g=>(g.tags||[]).join(' '),g=>(g.chars||[]).map(i=>{const c=S.chars.find(x=>x.id==i);return c?c.name+' '+(c.ruby||''):''}).join(' ')];
 const galQOk=q=>{const ts=norm(q).split(/\s+/).map(t=>t.replace(/^#/,'')).filter(Boolean);return g=>{const h=hay(g,GK);return ts.every(t=>h.includes(t))}};
@@ -3459,7 +3461,7 @@ const galGrip=`<span class="grip" role="button" aria-label="ドラッグで並�
 function galFolderRow(x,cust){
   const wk=galWk();
   /* 作品で絞り込み中は、中(サブフォルダ含む)にある、その作品に合う作品の数を出す */
-  const n=wk=='all'?S.gal.filter(g=>par(g)==x.id).length:(ids=>S.gal.filter(g=>!gIsF(g)&&ids.has(par(g))&&galWkOk(g,wk)).length)(gsub(x.id));
+  const n=galSubN(x.id,wk,galTy());
   return `<div class="item" data-id="${x.id}" data-t="gf">${cust?galGrip:''}<div class="folder wide${wCls(x)}"${fcSt(x,1)}><button class="fo" onclick="openF('${x.id}')"><b>${esc(x.title)}</b><span class="mut">${n} 件</span>${dCre(x)}</button><button class="ic" aria-label="フォルダのメニュー" onclick="galFolderMenu('${x.id}')">${ico(DOTS)}</button></div></div>`;
 }
 function upGF(){goBack(()=>{const c=gFolder(S.nf);S.nf=c?par(c):null})}
@@ -3720,9 +3722,13 @@ function galBody(){
   const inWk=base.filter(g=>galWkOk(g,wk));
   const cids=new Set(inWk.flatMap(g=>g.chars||[])),copts=S.chars.filter(c=>cids.has(c.id));
   if(S.gch&&!cids.has(S.gch))S.gch=null;
-  const cnt=k=>inWk.filter(g=>k=='all'||g.type==k).length,a=galItems(),cust=so=='custom'&&!q;
+  /* 件数は、いまの場所のフォルダの中身(サブフォルダ含む)も含めた総数。検索中は検索結果の数 */
+  const scope=q?base:(S.nf?(ids=>S.gal.filter(g=>!gIsF(g)&&ids.has(par(g))))(gsub(S.nf)):S.gal.filter(g=>!gIsF(g)));
+  const scWk=scope.filter(g=>galWkOk(g,wk));
+  const cnt=k=>scWk.filter(g=>k=='all'||g.type==k).length,a=galItems(),cust=so=='custom'&&!q;
   const wf=wk=='all'?null:gWkF(wk);
-  const fl=q?galSortBy(S.gal.filter(x=>gIsF(x)&&ok(x)&&(!wf||wf.has(x.id))),so):galSortBy(S.gal.filter(x=>gIsF(x)&&par(x)==(S.nf||null)&&(!wf||wf.has(x.id))),so);
+  const tyOk=x=>ty=='all'||galSubN(x.id,wk,ty)>0; /* 種類で絞り込み中は、その種類の作品が中にないフォルダは出さない */
+  const fl=q?galSortBy(S.gal.filter(x=>gIsF(x)&&ok(x)&&(!wf||wf.has(x.id))&&tyOk(x)),so):galSortBy(S.gal.filter(x=>gIsF(x)&&par(x)==(S.nf||null)&&(!wf||wf.has(x.id))&&tyOk(x)),so);
   const pk=(S.nf||q)?[]:galPick();
   return `${pk.length?`<div class="gpk">本日のピックアップ</div><div class="gg" style="margin-bottom:16px">${pk.map(g=>galCard(g)).join('')}</div>`:''}<div class="csel"><select aria-label="作品" onchange="setGalW(this.value)"><option value="all"${wk=='all'?' selected':''}>全ての作品</option><option value="none"${wk=='none'?' selected':''}>作品なし</option>${S.works.map(w=>`<option value="${w.id}"${w.id==wk?' selected':''}>${esc(w.title)}</option>`).join('')}</select></div>
   ${copts.length?`<div class="csel"><select aria-label="キャラ" onchange="setGalC(this.value)"><option value="">全てのキャラ</option>${copts.map(c=>`<option value="${c.id}"${c.id==S.gch?' selected':''}>${esc(c.name)}</option>`).join('')}</select></div>`:''}
@@ -3964,7 +3970,7 @@ function cmpGroups(base){
   const wk=cmpWk(),m=new Map(),ord=[];
   base.forEach(c=>{
     const w=S.works.find(x=>x.id==c.workId)||{id:'',title:'',cats:[]},cats=w.cats||[],ci=cats.findIndex(x=>x.id==c.cat),k=ci>=0?cats[ci]:null,key=w.id+'|'+(k?k.id:'');
-    if(!m.has(key)){m.set(key,{key,label:(wk=='all'&&w.title?w.title+' / ':'')+(k?k.title:'カテゴリなし'),real:!!k,list:[]});ord.push(key)}
+    if(!m.has(key)){m.set(key,{key,color:(wk=='all'&&w.title&&/^#[0-9a-f]{6}$/i.test(w.color||''))?w.color:'',label:(wk=='all'&&w.title?w.title+' / ':'')+(k?k.title:'カテゴリなし'),real:!!k,list:[]});ord.push(key)}
     m.get(key).list.push(c);
   });
   return ord.map(k=>m.get(k));
@@ -3974,7 +3980,7 @@ function cmpCatHtml(base,p){
   if(!gs.some(g=>g.real))return '';
   return gs.map(g=>{
     const n=g.list.filter(c=>p.has(c.id)).length,all=n==g.list.length;
-    return `<button class="btn chip${all?'':' sub'}" data-g="${esc(g.key)}" onclick="cmpCat(this.dataset.g)">${all?'☑ ':n?'◪ ':'☐ '}${esc(g.label)} <small>${n}/${g.list.length}</small></button>`;
+    return `<button class="btn chip${all?'':' sub'}" data-g="${esc(g.key)}" onclick="cmpCat(this.dataset.g)">${all?'☑ ':n?'◪ ':'☐ '}${g.color?`<i class="sw" style="background:${esc(g.color)}"></i> `:''}${esc(g.label)} <small>${n}/${g.list.length}</small></button>`;
   }).join('');
 }
 /* タグごとの一括選択(カテゴリと同じ操作) */
