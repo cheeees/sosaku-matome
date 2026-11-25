@@ -59,6 +59,12 @@ nav svg{width:24px;height:24px}
 .hh,.hs{position:absolute;border-radius:50%;background:transparent;border:3px solid #fff;box-shadow:0 0 0 1.5px #000a,0 1px 5px #0008;pointer-events:none}
 .hh{width:26px;height:26px;margin:-13px 0 0 -13px}
 .hs{width:22px;height:22px;margin:-11px 0 0 -11px}
+.cpstep{display:grid;gap:6px;width:100%;max-width:260px}
+.cpstep .r{display:flex;align-items:center;gap:8px}
+.cpstep .r>span{flex:1;font-size:13px;color:var(--mut)}
+.cpstep b{display:inline-block;min-width:2.2em;text-align:center;color:var(--fg);font-variant-numeric:tabular-nums}
+.cpstep button{width:44px;height:36px;padding:0;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg);font-size:20px;line-height:1;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.cpstep button:active{filter:brightness(.92)}
 .cpbar{width:100%;max-width:260px;height:18px;border-radius:9px;border:1px solid rgba(128,128,128,.5);box-shadow:0 0 0 1px var(--bg)}
 .chips{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .chips .btn{display:flex;align-items:center;justify-content:center;gap:8px}
@@ -331,9 +337,6 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .fadd svg{width:22px;height:22px}
 .eli2{display:flex;gap:6px;align-items:center;margin-bottom:6px}
 .eli2 input:first-child{flex:0 0 38%}
-details.cdet{margin-top:12px}
-.cdet summary{cursor:pointer;color:var(--mut);font-size:13px}
-.cdet .sw{vertical-align:-3px;margin-left:6px}
 
 /* ---- 比較タブ ---- */
 .csel{margin-bottom:10px}
@@ -420,7 +423,6 @@ details.cdet{margin-top:12px}
 .gh .gl{width:100%;min-width:0;background:none;border:0;padding:3px 0 0;text-align:left;color:inherit;font:inherit;font-size:13px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
 .gh .ic{padding:4px}
 .gth{display:block;width:100%;padding:0;border:0;background:none;cursor:pointer;color:inherit;text-align:left}
-.gn{padding:6px 8px;font-size:13px;line-height:1.4;word-break:break-all;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 dialog:has(.gv){width:min(900px,96vw)}
 .gv a{color:var(--ink)}
 .gimgs img{display:block;max-width:100%;height:auto;margin:0 auto 10px;border-radius:6px;cursor:zoom-in}
@@ -1110,7 +1112,15 @@ function save(f){
   if(S.off){S.pend[f]=1;lsave();paintOff();status('オフラインで保存しました(つながると自動で送ります)');return}
   dirty[f]=1;status('保存待ち…');clearTimeout(timer);timer=setTimeout(flush,1200);
 }
+/* 保存の送信は一度に1つだけ。送信中にもう一度保存が来たら、終わってから続けて送る(古いsha同士がぶつかって失敗するのを防ぐ) */
+let flushing=false;
 async function flush(){
+  if(flushing)return;
+  flushing=true;
+  try{await flush1()}finally{flushing=false}
+  if(Object.keys(dirty).length){clearTimeout(timer);timer=setTimeout(flush,0)}
+}
+async function flush1(){
   const done=[];let cur;
   try{status('保存中…');
     for(const f of Object.keys(dirty)){cur=f;delete dirty[f];await put(f,S[FK[f]]);done.push(f);cur=null}
@@ -1949,10 +1959,10 @@ function hsv2rgb(h,s,v){const f=n=>{const k=(n+h/60)%6;return v-v*s*Math.max(0,M
 function rgb2hsv(a,ph){const[r,g,b]=a.map(x=>x/255),mx=Math.max(r,g,b),d=mx-Math.min(r,g,b);let h=ph;if(d>0)h=mx==r?60*(((g-b)/d+6)%6):mx==g?60*((b-r)/d+2):60*((r-g)/d+4);return[h,mx?d/mx:0,mx]}
 const toHex=a=>'#'+a.map(n=>n.toString(16).padStart(2,'0')).join('');
 const fromHex=t=>{t=t.trim().replace(/^#/,'');if(/^[0-9a-f]{3}$/i.test(t))t=t.replace(/./g,'$&$&');return/^[0-9a-f]{6}$/i.test(t)?[0,2,4].map(i=>parseInt(t.substr(i,2),16)):null};
-function pickerHTML(id,v,k){return `<div class="cpk" id="${id}" data-v="${esc(v)}"${k?` data-k="${k}"`:''}><div class="wheel"><div class="ring"></div><div class="sv"><div class="hs" tabindex="0" aria-label="彩度と明るさ(矢印キーで調整)"></div></div><div class="hh" tabindex="0" aria-label="色相(左右の矢印キーで調整)"></div></div><div class="cpbar" style="background:${esc(v)}" aria-label="いま選んでいる色"></div><input class="hex" maxlength="7" spellcheck="false" autocomplete="off" aria-label="16進数のカラーコード"></div>`}
+function pickerHTML(id,v,k){return `<div class="cpk" id="${id}" data-v="${esc(v)}"${k?` data-k="${k}"`:''}><div class="wheel"><div class="ring"></div><div class="sv"><div class="hs" tabindex="0" aria-label="彩度と明るさ(矢印キーで調整)"></div></div><div class="hh" tabindex="0" aria-label="色相(左右の矢印キーで調整)"></div></div><div class="cpbar" style="background:${esc(v)}" aria-label="いま選んでいる色"></div><div class="cpstep"><div class="r"><span>彩度</span><button type="button" data-s="-1" aria-label="彩度を1下げる">−</button><b class="vs">0</b><button type="button" data-s="1" aria-label="彩度を1上げる">＋</button></div><div class="r"><span>明度</span><button type="button" data-v="-1" aria-label="明度を1下げる">−</button><b class="vv">0</b><button type="button" data-v="1" aria-label="明度を1上げる">＋</button></div></div><input class="hex" maxlength="7" spellcheck="false" autocomplete="off" aria-label="16進数のカラーコード"></div>`}
 function mountPickers(cb,root='#dlg'){
   document.querySelectorAll(root+' .cpk').forEach(el=>{
-    const wheel=el.querySelector('.wheel'),sv=el.querySelector('.sv'),hs=el.querySelector('.hs'),hh=el.querySelector('.hh'),hx=el.querySelector('.hex'),pn=el.querySelector('.cpbar');
+    const wheel=el.querySelector('.wheel'),sv=el.querySelector('.sv'),hs=el.querySelector('.hs'),hh=el.querySelector('.hh'),hx=el.querySelector('.hex'),pn=el.querySelector('.cpbar'),vs=el.querySelector('.vs'),vv=el.querySelector('.vv');
     const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
     let c=fromHex(el.dataset.v)||[255,255,255],[H,Sa,V]=rgb2hsv(c,0),mode=null;
     const paint=(emit,keep)=>{
@@ -1961,17 +1971,30 @@ function mountPickers(cb,root='#dlg'){
       hh.style.left=(50+41.5*Math.sin(a))+'%';hh.style.top=(50-41.5*Math.cos(a))+'%';
       hs.style.left=Sa*100+'%';hs.style.top=(1-V)*100+'%';
       hh.style.background='hsl('+H.toFixed(1)+',100%,50%)';hs.style.background=v;if(pn)pn.style.background=v; /* 目印と見本を、いま選んでいる色で塗る */
+      if(vs)vs.textContent=Math.round(Sa*100);if(vv)vv.textContent=Math.round(V*100);
       if(!keep)hx.value=v.toUpperCase();
       if(emit&&cb)cb(el);
     };
+    /* キーボードだけ閉じて入力欄にカーソルが残っていると、タップでその欄が反応してキーボードが開くので、先にフォーカスを外す */
+    const blurEd=()=>{const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))a.blur()};
     const hsv=()=>{H=(H%360+360)%360;Sa=clamp(Sa,0,1);V=clamp(V,0,1);c=hsv2rgb(H,Sa,V);paint(1)};
     const pos=e=>{const r=wheel.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width-.5,y:(e.clientY-r.top)/r.height-.5}};
     const apply=e=>{const p=pos(e);if(mode=='h')H=Math.atan2(p.x,-p.y)*180/Math.PI;else{Sa=clamp((p.x+.225)/.45,0,1);V=1-clamp((p.y+.225)/.45,0,1)}hsv()};
-    wheel.addEventListener('pointerdown',e=>{if(e.button)return;const p=pos(e),d=Math.hypot(p.x,p.y);if(d>.5)return;mode=d>=.33?'h':'s';try{wheel.setPointerCapture(e.pointerId)}catch(x){}e.preventDefault();apply(e)});
+    wheel.addEventListener('pointerdown',e=>{if(e.button)return;const p=pos(e),d=Math.hypot(p.x,p.y);if(d>.5)return;blurEd();mode=d>=.33?'h':'s';try{wheel.setPointerCapture(e.pointerId)}catch(x){}e.preventDefault();apply(e)});
     wheel.addEventListener('pointermove',e=>{if(mode)apply(e)});
     ['pointerup','pointercancel'].forEach(t=>wheel.addEventListener(t,()=>{mode=null}));
     hh.addEventListener('keydown',e=>{const st=e.shiftKey?10:1,d={ArrowRight:st,ArrowUp:st,ArrowLeft:-st,ArrowDown:-st}[e.key];if(!d)return;e.preventDefault();H+=d;hsv()});
     hs.addEventListener('keydown',e=>{const st=e.shiftKey?.1:.01;if(e.key=='ArrowRight')Sa+=st;else if(e.key=='ArrowLeft')Sa-=st;else if(e.key=='ArrowUp')V+=st;else if(e.key=='ArrowDown')V-=st;else return;e.preventDefault();hsv()});
+    /* 彩度・明度を1ポイントずつ増減(押し続けると連続) */
+    el.querySelectorAll('.cpstep button').forEach(b=>{
+      const ds=+b.dataset.s||0,dv=+b.dataset.v||0;let t1=0,t2=0;
+      const step=()=>{if(ds)Sa=Math.round(Sa*100+ds)/100;if(dv)V=Math.round(V*100+dv)/100;hsv()};
+      const stop=()=>{clearTimeout(t1);clearInterval(t2)};
+      b.addEventListener('pointerdown',e=>{if(e.button)return;e.preventDefault();blurEd();step();stop();t1=setTimeout(()=>{t2=setInterval(step,60)},400)});
+      ['pointerup','pointercancel','pointerleave'].forEach(t=>b.addEventListener(t,stop));
+      b.addEventListener('keydown',e=>{if(e.key=='Enter'||e.key==' '){e.preventDefault();step()}});
+      b.addEventListener('contextmenu',e=>e.preventDefault());
+    });
     hx.addEventListener('input',()=>{const q=fromHex(hx.value);hx.style.borderColor=(q||!hx.value)?'':'#d2455a';if(q){c=q;[H,Sa,V]=rgb2hsv(c,H);paint(1,1)}});
     hx.addEventListener('blur',()=>{hx.value=toHex(c).toUpperCase();hx.style.borderColor=''});
     paint(0);
@@ -2082,7 +2105,6 @@ const DOTS='<circle cx="12" cy="5" r="1.7" fill="currentColor"/><circle cx="12" 
 const wcolOn=()=>{try{return localStorage.getItem('sm_wcol')!=='0'}catch(e){return true}};
 const wCol=x=>{if(!x||!x.workId||!wcolOn())return '';const w=S.works.find(v=>v.id==x.workId);return w&&w.color?w.color:''};
 const wCls=x=>wCol(x)?' wk':'';
-const wSty=x=>{const c=wCol(x);return c?` style="--wc:${esc(c)}"`:''};
 const fcSt=(x,wk)=>{const a=[];if(x&&/^#[0-9a-f]{6}$/i.test(x.color||''))a.push('--c:'+x.color);const c=wk?wCol(x):'';if(c)a.push('--wc:'+esc(c));return a.length?` style="${a.join(';')}"`:''};
 function setWcol(v){try{localStorage.setItem('sm_wcol',v?'1':'0')}catch(e){}render();themeDlg()}
 function fcolHTML(id,v,lb,dt){
@@ -3033,13 +3055,6 @@ async function delCover(id){
     w.covers=w.covers.filter(x=>x.id!=id);IMG.delete(c.path);save('works.json');coverDlg();render();
   }catch(e){status(e.message,1)}
 }
-function editNote(id){
-  const w=S.works.find(x=>x.id==S.workId),x=(w.notes||[]).find(n=>n.id==id)||{title:'',body:''};
-  open(`<h3 style="margin:0">${id?'設定を編集':'設定を追加'}</h3>
-  <label>項目名</label><input id="nt" value="${esc(x.title)}" placeholder="例:魔法のしくみ">
-  <label>内容</label><textarea id="nb" rows="9">${esc(x.body)}</textarea>
-  <div class="row">${id?'<button class="btn del" onclick="delNote(\''+id+'\')">削除</button>':''}<span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="saveNote('${id||''}')">保存</button></div>`);
-}
 function saveNote(id){
   const title=$('#nt').value.trim();if(!title){$('#nt').focus();return}
   const w=S.works.find(x=>x.id==S.workId),body=$('#nb').value;w.notes=w.notes||[];
@@ -3737,18 +3752,6 @@ function galBody(){
   ${fl.length?`<div class="list" style="margin-top:4px;margin-bottom:14px">${fl.map(x=>galFolderRow(x,cust)).join('')}</div>`:''}
   ${a.length?`<div class="gg">${a.map(g=>galCard(g,cust)).join('')}</div>`:fl.length?'':`<div class="empty">${q?'見つかりませんでした':inWk.length?'条件に合うものがありません':S.nf?'このフォルダはまだ空です':galHere().length||S.gal.length?'条件に合うものがありません':'まだありません。<br>＋からイラスト・小説・動画を追加できます'}</div>`}`;
 }
-function galOpen(id){
-  const g=S.gal.find(x=>x.id==id);if(!g)return;
-  const w=S.works.find(x=>x.id==g.workId),cs=(g.chars||[]).map(i=>S.chars.find(c=>c.id==i)).filter(Boolean);
-  const body=g.type=='image'?`<div class="gimgs">${(g.imgs||[]).map(i=>`<img data-p="${esc(i.p)}" alt="" onclick="coverZoom(this)">`).join('')}</div>`
-    :g.type=='novel'?`<div class="rd">${g.body?rich(g.body,false):'<span class="mut">本文がありません</span>'}</div>`
-    :galVideoHtml(g.url);
-  open(`<div class="gv"><h3 style="margin:0;word-break:break-all">${esc(g.title)}</h3>
-  <div class="mut" style="margin:4px 0 10px">${GT[g.type]||''}${w?' ・ '+esc(w.title):''}</div>${body}
-  ${cs.length?`<div class="tsg" style="margin-top:12px">${cs.map(c=>`<button class="btn sub chip" onclick="galChar('${c.id}')">${esc(c.name)}</button>`).join('')}</div>`:''}
-  <div class="row"><button class="btn sub" onclick="galEdit('${g.id}')">編集</button><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div></div>`);
-  hydrate($('#dlg'));
-}
 function galChar(id){openChar(id);const d=$('#dlg');if(d.open)d.close()}
 const galLinkHtml=cur=>`<label>作品</label><select id="gwk" onchange="galWorkPick(this.value)"><option value="">作品なし</option>${S.works.map(w=>`<option value="${w.id}"${w.id==cur.workId?' selected':''}>${esc(w.title)}</option>`).join('')}</select>
   <label>キャラ(押して選ぶ / 外す)</label><div id="gcs" class="tsg gcs"></div>`;
@@ -4154,9 +4157,18 @@ function cmpBd(list){
   return `<div class="bdg">${sec}</div>`+cmpUn('誕生日が未入力',rows.filter(r=>!r.b).map(r=>r.c));
 }
 
+/* 年齢の表示: 入力どおりに出す。「20代」「二十代後半」はそのまま、数字だけなら「歳」を補い、「16?」は「16歳?」にする */
+function ageTxt(raw,a){
+  const t=String(raw||'').trim();
+  if(a.rough){const m=t.match(/^([\s\S]*?)(代[\s\S]*)$/);return m?`${esc(m[1])}<small>${esc(m[2])}</small>`:esc(t)}
+  const m=t.match(/^([^0-9０-９]*)([0-9０-９]+)([\s\S]*)$/);
+  if(!m)return `${a.v}<small>歳</small>`;
+  const post=m[3];
+  return `${esc(m[1])}${esc(m[2])}<small>${/^\s*歳/.test(post)?'':'歳'}${esc(post)}</small>`;
+}
 /* 年齢: 10歳ごと */
 function cmpAge(list){
-  const rows=list.map(c=>{const t=cInfo(c,'年齢'),a=pAge(t);return{c,a,unk:!a&&isAgeUnk(t)}}),ok=rows.filter(r=>r.a),so=cmpSo();
+  const rows=list.map(c=>{const t=cInfo(c,'年齢'),a=pAge(t);return{c,a,t,unk:!a&&isAgeUnk(t)}}),ok=rows.filter(r=>r.a),so=cmpSo();
   const uk=rows.filter(r=>r.unk);
   const un=cmpUn('年齢が未入力',rows.filter(r=>!r.a&&!r.unk).map(r=>r.c));
   const ukH=uk.length?`<section class="bdm"><h4 class="bdh"><b>年齢不詳</b><i>(${uk.length}人)</i></h4><div class="bdl">${uk.map(r=>cTile(r.c,`<span class="bdd">不詳</span>`)).join('')}</div></section>`:'';
@@ -4166,7 +4178,7 @@ function cmpAge(list){
   const ks=[...g.keys()].sort((a,b)=>a-b);if(so=='desc')ks.reverse();
   return `<div class="bdg one">${ks.map(k=>{
     const a=g.get(k);if(so=='asc')a.sort((p,q)=>p.a.v-q.a.v);else if(so=='desc')a.sort((p,q)=>q.a.v-p.a.v);
-    return `<section class="bdm"><h4 class="bdh"><b>${k?k:10}</b><i>${k?'代':'歳未満'}</i></h4><div class="bdl">${a.map(r=>cTile(r.c,`<span class="bdd">${r.a.rough?`${r.a.b}<small>代${r.a.sub}</small>`:`${r.a.v}<small>歳</small>`}</span>`)).join('')}</div></section>`;
+    return `<section class="bdm"><h4 class="bdh"><b>${k?k:10}</b><i>${k?'代':'歳未満'}</i></h4><div class="bdl">${a.map(r=>cTile(r.c,`<span class="bdd">${ageTxt(r.t,r.a)}</span>`)).join('')}</div></section>`;
   }).join('')}${ukH}</div>`+un;
 }
 
