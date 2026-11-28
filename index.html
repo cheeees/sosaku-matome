@@ -4266,12 +4266,14 @@ function cmpView(){
 /* ===== 関係図(データタブの一番下) =====
    works.json の各作品に rels:[{id,title,sz,nodes:[{id,cid,x,y}],edges:[{id,a,b,d,l,s,w,c}]}] を持つ。
    cid=キャラid、x・y=盤面の幅・高さに対する%、a→b が矢印の向き(d:'f'=a→b / 'both'=↔ / 'none'=線だけ)、l=関係の名前、
-   s='dash'=点線(なければ実線)、w=太さ1〜3(なければ2)、c=色の名前(なければメインカラー)
-   groups:[{id,title,c(色の名前),s('dash'=点線で囲む / 'both'=塗りつぶし+点線 / なければ塗りつぶし),n:[まとめるノードid]}] */
+   s='dash'=点線(なければ実線)、w=太さ1〜3(なければ2)、c=色の名前(なければ文字カラー)
+   groups:[{id,title,c(色の名前または#rrggbb),s('dash'=点線で囲む / 'both'=塗りつぶし+点線 / なければ塗りつぶし),n:[まとめるノードid]}] */
 const REL_R=26; /* 矢印をアイコンの縁で止める距離(px) */
-const REL_G=46; /* グループの囲みが、キャラの外側にとる幅(px) */
+const REL_G=58; /* グループの囲みが、キャラの外側にとる幅(px) */
 const REL_W={1:1.5,2:2.5,3:4.5};
-const REL_C=[['','メイン','var(--ink)'],['red','赤','#e88a8a'],['blue','青','#7aa8de'],['yellow','黄','#ebcc66'],['green','緑','#82c294'],['pink','桃','#f2a3c0']];
+const REL_C=[['','文字','var(--ink)'],['red','赤','#d65a5a'],['blue','青','#4a86cc'],['yellow','黄','#d4a82a'],['green','緑','#4fa86a'],['pink','桃','#f2a3c0']];
+/* グループの色: '#rrggbb'(自由選択)か、上の色の名前(旧データ)。なければ文字カラー */
+const relCv=c=>/^#[0-9a-f]{6}$/i.test(c||'')?c:(REL_C.find(x=>x[0]==(c||''))||REL_C[0])[2];
 let rdrag=null,radd=new Set();
 function relList(){
   const w=S.works.find(x=>x.id==S.workId);
@@ -4327,7 +4329,7 @@ function relBarHtml(){
       if(!ed)return `<b>${esc(g.title||'グループ')}</b><span class="mut">${g.n.length}人</span>`;
       const sy=g.s||'fill';
       return `<div class="rtr"><b>グループ</b><span class="mut">${g.n.length}人</span></div><input id="rgl" value="${esc(g.title||'')}" placeholder="グループの名前(空でもOK)" oninput="relGTitle(this.value)" autocomplete="off">`
-        +row('色',REL_C.map(([k,t,h])=>`<button class="btn chip${(g.c||'')==k?'':' sub'}" onclick="relGCol('${k}')"><i class="rdt" style="background:${h}"></i>${t}</button>`).join(''))
+        +row('色',`<button class="btn chip" onclick="relGColDlg()"><i class="rdt" style="background:${relCv(g.c)}"></i>色を選ぶ</button>`+(g.c?`<button class="btn chip sub" onclick="relGCol('')">文字カラーに戻す</button>`:''))
         +row('表示',[['fill','塗りつぶし'],['dash','点線で囲む'],['both','両方']].map(([k,t])=>`<button class="btn chip${sy==k?'':' sub'}" onclick="relGSty('${k}')">${t}</button>`).join(''))
         +`<div class="rtr"><button class="btn chip sub" onclick="relGrpDlg('${g.id}')">メンバーを選ぶ</button><button class="btn chip del" onclick="relGDel()">グループを削除</button></div>`;
     }
@@ -4368,10 +4370,10 @@ function relEdges(){
   (f.m.groups||[]).forEach(g=>{
     const ms=g.n.map(i=>nm.get(i)).filter(Boolean);if(!ms.length)return;
     const pts=[];
-    ms.forEach(n=>{const x0=n.x/100*W,y0=n.y/100*H+8;for(let k=0;k<20;k++){const a=k/20*Math.PI*2;pts.push([x0+Math.cos(a)*REL_G,y0+Math.sin(a)*REL_G])}});
+    ms.forEach(n=>{const x0=n.x/100*W,y0=n.y/100*H+8;for(let k=0;k<40;k++){const a=k/40*Math.PI*2;pts.push([x0+Math.cos(a)*REL_G,y0+Math.sin(a)*REL_G])}});
     const hp=hull(pts),d='M'+hp.map(q=>p1(q[0])+' '+p1(q[1])).join('L')+'Z';
-    const cd=REL_C.find(x=>x[0]==(g.c||''))||REL_C[0],col=cd[2],sty=g.s||'fill';
-    const fl=sty!='dash'?`fill:${col};fill-opacity:.16;`:'fill:none;',st=sty!='fill'?`stroke:${col};stroke-width:2;stroke-dasharray:7 6;stroke-opacity:.9;`:'stroke:none;';
+    const col=relCv(g.c),sty=g.s||'fill';
+    const fl=sty!='dash'?`fill:${col};fill-opacity:.16;`:'fill:none;',st=sty!='fill'?`stroke:${col};stroke-width:2;stroke-dasharray:7 3.5;stroke-opacity:.9;`:'stroke:none;';
     const xs=hp.map(q=>q[0]),top=Math.min(...hp.map(q=>q[1])),lx=(Math.min(...xs)+Math.max(...xs))/2,on=sel&&sel.t=='g'&&sel.id==g.id;
     h+=`<g class="rg" data-g="${g.id}">${on?`<path class="rgs" d="${d}"/>`:''}<path class="rgp" d="${d}" style="${fl}${st}"/>${g.title?`<text class="rgt" x="${p1(lx)}" y="${p1(top+12)}" text-anchor="middle">${esc(g.title)}</text>`:''}</g>`;
   });
@@ -4390,7 +4392,7 @@ function relEdges(){
     if(ae){ex-=t2x*hn*.7;ey-=t2y*hn*.7}
     if(as){sx-=t1x*hn*.7;sy-=t1y*hn*.7}
     const d=`M${p1(sx)} ${p1(sy)}Q${p1(cx)} ${p1(cy)} ${p1(ex)} ${p1(ey)}`;
-    const dash=e.s=='dash'?`stroke-dasharray:${p1(wd*2.6+5)} ${p1(wd*2+6)};stroke-linecap:butt;`:'';
+    const dash=e.s=='dash'?`stroke-dasharray:${p1(wd*2.6+5)} ${p1(wd*1.1+3)};stroke-linecap:butt;`:'';
     const on=sel&&sel.t=='e'&&sel.id==e.id,cls='re'+(hl&&e.a!=hl&&e.b!=hl?' dim':'');
     h+=`<g class="${cls}" data-e="${e.id}">${on?`<path class="rs" d="${d}" style="stroke-width:${p1(wd+8)}"/>`:''}<path class="rh" d="${d}"/><path class="rl" d="${d}" style="stroke:${col};stroke-width:${wd};${dash}"/>${ae?head(hx,hy,t2x,t2y):''}${as?head(gx,gy,t1x,t1y):''}${e.l?`<text class="rt" x="${p1(mx)}" y="${p1(my)}" text-anchor="middle" dominant-baseline="central">${esc(e.l)}</text>`:''}</g>`;
   });
@@ -4492,6 +4494,13 @@ let rgm=new Set();
 function relGrp(){const f=relCur(),s=S.rsel;return f&&s&&s.t=='g'?(f.m.groups||[]).find(x=>x.id==s.id)||null:null}
 function relGTitle(v){const g=relGrp();if(!g)return;g.title=v;relEdges();relSave()}
 function relGCol(k){const g=relGrp();if(!g)return;if(k)g.c=k;else delete g.c;relSave();relUi()}
+function relGColDlg(){
+  const g=relGrp();if(!g)return;
+  const cur=relCv(g.c);
+  open(`<h3 style="margin:0">グループの色</h3>${pickerHTML('rgc',/^#[0-9a-f]{6}$/i.test(cur)?cur:'#8fb8de')}
+  <div class="row"><button class="btn sub" onclick="relGCol('');$('#dlg').close()">文字カラーに戻す</button><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`,el=>{const g2=relGrp();if(!g2)return;g2.c=el.dataset.v;relEdges()});
+  $('#dlg').addEventListener('close',()=>{relSave();relUi()},{once:true});
+}
 function relGSty(k){const g=relGrp();if(!g)return;if(k!='fill')g.s=k;else delete g.s;relSave();relUi()}
 function relGDel(){
   const f=relCur(),g=relGrp();if(!f||!g)return;
