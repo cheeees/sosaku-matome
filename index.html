@@ -357,8 +357,8 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .rzb{position:absolute;right:8px;bottom:8px;z-index:5;display:flex;gap:6px;align-items:center}
 .rzb button{height:36px;min-width:36px;padding:0 6px;border-radius:18px;border:1px solid var(--line);background:var(--card);color:var(--fg);display:grid;place-items:center;font-size:11px;cursor:pointer;opacity:.94;box-shadow:0 1px 4px rgba(0,0,0,.25)}
 .rzb button svg{width:20px;height:20px;display:block}
-.rwrap{touch-action:none;overflow:auto;max-height:78vh;border:1px solid var(--line);border-radius:10px;background:var(--card);-webkit-overflow-scrolling:touch}
-.rcv{position:relative;margin:0 auto;aspect-ratio:4/3;background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:24px 24px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.rwrap{position:relative;overflow:hidden;width:100%;aspect-ratio:4/3;max-height:78vh;touch-action:none;border:1px solid var(--line);border-radius:10px;background:rgba(128,128,128,.14)}
+.rcv{position:absolute;left:0;top:0;transform-origin:0 0;aspect-ratio:4/3;background-color:var(--card);box-shadow:0 0 0 1px var(--line),0 2px 10px rgba(0,0,0,.18);background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:24px 24px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .rsvg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
 .rsvg .rh{fill:none;stroke:transparent;stroke-width:26;pointer-events:stroke}
 .rsvg .rs{fill:none;stroke:var(--ink);opacity:.22;stroke-linecap:round}
@@ -4333,7 +4333,7 @@ function relBody(){
     return `<div class="rn${S.rsel&&S.rsel.t=='n'&&S.rsel.id==n.id?' on':''}${S.rcon==n.id?' src':''}" data-n="${n.id}" style="left:${n.x}%;top:${n.y}%"><span class="dot" style="--c:${esc(c.color)}"${c.icon?` data-ic="${esc(c.icon)}"`:''}></span><span class="rnm">${esc(c.name)}</span></div>`;
   }).join('');
   return top+`<div class="rtop"><button class="btn chip${ed?'':' sub'}" onclick="relEditTog()">${ed?'✎ 編集中':'✎ 編集'}</button>${ed?`<button class="btn chip sub" onclick="relAddDlg()">＋ キャラを追加</button><button class="btn chip sub" onclick="relGrpDlg('')">＋ グループ</button>`:''}${ed||S.rDirty?`<button class="btn chip${S.rDirty?'':' sub'}" id="rsv" onclick="relCommit()"${S.rDirty?'':' disabled'}>${S.rDirty?'💾 保存':'保存済み'}</button><button class="btn chip sub" id="rrv" onclick="relDiscard()"${S.rDirty?'':' hidden'}>変更を破棄</button>`:''}<button class="btn chip sub ml" onclick="relMapDlg('${f.m.id}')">名前・設定</button></div>
-  <div class="rzw"><div class="rwrap" ontouchstart="relTouch(event)" ontouchmove="relTouch(event)" ontouchend="relTouch(event)" ontouchcancel="relTouch(event)" onwheel="relWheel(event)"><div class="rcv${ed?' edit':''}" id="rcv" style="width:${sz*(S.rz||1)*100}%" onpointerdown="relDown(event)" onpointermove="relMove(event)" onpointerup="relUp(event)" onpointercancel="relUp(event)"><svg class="rsvg" id="rsvg"></svg>${nodes}</div></div><div class="rzb"><button type="button" onclick="relZoomBy(1.25)" aria-label="拡大"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M8 10.5h5M10.5 8v5"/></svg></button><button type="button" onclick="relZoomBy(0.8)" aria-label="縮小"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M8 10.5h5"/></svg></button><button type="button" onclick="relZoomReset()" aria-label="元の大きさに戻す"><span id="rzl">${Math.round((S.rz||1)*100)}%</span></button></div></div>
+  <div class="rzw"><div class="rwrap" ontouchstart="relTouch(event)" ontouchmove="relTouch(event)" ontouchend="relTouch(event)" ontouchcancel="relTouch(event)" onwheel="relWheel(event)"><div class="rcv${ed?' edit':''}" id="rcv" style="width:${sz*100}%" onpointerdown="relDown(event)" onpointermove="relMove(event)" onpointerup="relUp(event)" onpointercancel="relUp(event)"><svg class="rsvg" id="rsvg"></svg>${nodes}</div></div><div class="rzb"><button type="button" onclick="relZoomBy(1.25)" aria-label="拡大"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M8 10.5h5M10.5 8v5"/></svg></button><button type="button" onclick="relZoomBy(0.8)" aria-label="縮小"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M8 10.5h5"/></svg></button><button type="button" onclick="relZoomFit()" aria-label="全体を表示"><span id="rzl">${S.rv?Math.round(S.rv.z*100):100}%</span></button></div></div>
   ${f.m.nodes.length?'':`<p class="mut" style="margin:8px 0 0">${ed?'「＋ キャラを追加」で、盤面にキャラを置けます':'上の「✎ 編集」から、キャラを置いたり矢印をつないだりできます'}</p>`}
   <div class="rtb" id="rtb">${relBarHtml()}</div>`;
 }
@@ -4377,6 +4377,7 @@ function relBarHtml(){
 function relEdges(){
   const cv=$('#rcv'),sv=$('#rsvg'),f=cv&&relCur();if(!f||!sv)return;
   const W=cv.clientWidth,H=cv.clientHeight;if(!W||!H)return;
+  relApply();
   const cs=relChars(f.w),nm=new Map(f.m.nodes.filter(n=>cs.has(n.cid)).map(n=>[n.id,n]));
   const es=f.m.edges.filter(e=>nm.has(e.a)&&nm.has(e.b)&&e.a!=e.b),gp=new Map();
   es.forEach(e=>{const k=[e.a,e.b].sort().join('|');if(!gp.has(k))gp.set(k,[]);gp.get(k).push(e)});
@@ -4429,7 +4430,7 @@ function relUi(){
 function relDown(e){
   if(e.button>0||!relCur()||S.rpinch)return;
   const nd=e.target.closest('.rn'),eg=e.target.closest('.re'),gp=e.target.closest('.rg'),f=relCur(),n=nd&&f.m.nodes.find(x=>x.id==nd.dataset.n);
-  rdrag={k:nd?'n':eg?'e':gp?'g':'b',id:nd?nd.dataset.n:eg?eg.dataset.e:gp?gp.dataset.g:'',el:nd,sx:e.clientX,sy:e.clientY,moved:false,pan:false,ox:n?n.x:0,oy:n?n.y:0,sl:($('.rwrap')||{}).scrollLeft||0,st:($('.rwrap')||{}).scrollTop||0};
+  rdrag={k:nd?'n':eg?'e':gp?'g':'b',id:nd?nd.dataset.n:eg?eg.dataset.e:gp?gp.dataset.g:'',el:nd,sx:e.clientX,sy:e.clientY,moved:false,pan:false,ox:n?n.x:0,oy:n?n.y:0,vx:S.rv?S.rv.x:0,vy:S.rv?S.rv.y:0};
   try{e.currentTarget.setPointerCapture(e.pointerId)}catch(_){}
 }
 function relMove(e){
@@ -4437,8 +4438,8 @@ function relMove(e){
   const dx=e.clientX-d.sx,dy=e.clientY-d.sy;
   if(!(d.k=='n'&&S.rEdit&&!S.rcon)){ /* キャラを動かす場面以外のドラッグは、盤面の移動 */
     if(!d.moved&&Math.hypot(dx,dy)<6)return;
-    const wr=$('.rwrap');if(!wr)return;
-    d.moved=d.pan=true;wr.scrollLeft=d.sl-dx;wr.scrollTop=d.st-dy;return;
+    if(!S.rv)return;
+    d.moved=d.pan=true;S.rv.x=d.vx+dx;S.rv.y=d.vy+dy;relApply();return;
   }
   if(!d.moved&&Math.hypot(dx,dy)<6)return;
   const f=relCur(),cv=$('#rcv'),n=f&&f.m.nodes.find(x=>x.id==d.id);if(!n||!cv)return;
@@ -4469,21 +4470,30 @@ function relLink(f,a,b){
   S.rsel={t:'e',id:e.id};relUi();
   setTimeout(()=>{const i=$('#rtl');if(i)i.focus()},0);
 }
-/* 拡大・縮小・移動: ＋/−ボタン、ピンチ(2本指)、Ctrl+ホイールで拡大縮小。ドラッグか2本指で移動 */
-const REL_ZMIN=.4,REL_ZMAX=4;
-function relZoomTo(z,cx,cy){
-  const wr=$('.rwrap'),cv=$('#rcv'),f=relCur();if(!wr||!cv||!f)return;
-  z=Math.min(REL_ZMAX,Math.max(REL_ZMIN,z));
-  const r=wr.getBoundingClientRect();
-  if(cx==null){cx=r.left+r.width/2;cy=r.top+r.height/2}
-  const ox=cx-r.left,oy=cy-r.top,fx=(wr.scrollLeft+ox)/cv.offsetWidth,fy=(wr.scrollTop+oy)/cv.offsetHeight;
-  S.rz=z;cv.style.width=(f.m.sz||1)*z*100+'%';
-  wr.scrollLeft=fx*cv.offsetWidth-ox;wr.scrollTop=fy*cv.offsetHeight-oy;
-  relEdges();const l=$('#rzl');if(l)l.textContent=Math.round(z*100)+'%';
+/* 表示枠(.rwrap)は固定で、中の大きな紙(#rcv)を移動・拡大縮小する。S.rv={id,sz,z,x,y,fit}: 紙の左上の位置(x,y)と倍率z */
+function relFrame(){const wr=$('.rwrap'),cv=$('#rcv');return wr&&cv?{wr,cv,fw:wr.clientWidth,fh:wr.clientHeight,pw:cv.offsetWidth,ph:cv.offsetHeight}:null}
+function relApply(){
+  const o=relFrame(),f=relCur();if(!o||!f||!o.pw||!o.ph)return;
+  const sz=f.m.sz||1;
+  if(!S.rv||S.rv.id!=f.m.id||S.rv.sz!=sz){ /* はじめは紙全体が枠に収まる表示 */
+    const z=Math.min(o.fw/o.pw,o.fh/o.ph);
+    S.rv={id:f.m.id,sz,z,fit:z,x:(o.fw-o.pw*z)/2,y:(o.fh-o.ph*z)/2};
+  }
+  const v=S.rv,m=60; /* 紙が枠の外へ消えてしまわないよう、最低60pxは枠内に残す */
+  v.x=Math.min(o.fw-m,Math.max(m-o.pw*v.z,v.x));v.y=Math.min(o.fh-m,Math.max(m-o.ph*v.z,v.y));
+  o.cv.style.transform=`translate(${v.x.toFixed(1)}px,${v.y.toFixed(1)}px) scale(${v.z.toFixed(4)})`;
+  const l=$('#rzl');if(l)l.textContent=Math.round(v.z*100)+'%';
 }
-function relZoomBy(k){relZoomTo((S.rz||1)*k)}
-function relZoomReset(){relZoomTo(1);const wr=$('.rwrap');if(wr){wr.scrollLeft=0;wr.scrollTop=0}}
-function relWheel(e){if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();relZoomTo((S.rz||1)*Math.exp(-e.deltaY*.01),e.clientX,e.clientY)}
+function relZoomTo(z,cx,cy){ /* cx,cy: 拡大縮小の中心(画面上の座標)。なければ枠の中央 */
+  relApply();const o=relFrame(),v=S.rv;if(!o||!v)return;
+  z=Math.min(Math.max(5,v.fit*2),Math.max(v.fit*.5,z));
+  const r=o.wr.getBoundingClientRect(),px=cx==null?o.fw/2:cx-r.left,py=cy==null?o.fh/2:cy-r.top,k=z/v.z;
+  v.x=px-(px-v.x)*k;v.y=py-(py-v.y)*k;v.z=z;relApply();
+}
+function relZoomBy(k){relApply();if(S.rv)relZoomTo(S.rv.z*k)}
+function relZoomFit(){S.rv=null;relApply()}
+function relWheel(e){if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();relApply();if(S.rv)relZoomTo(S.rv.z*Math.exp(-e.deltaY*.01),e.clientX,e.clientY)}
+addEventListener('resize',()=>{if($('#rcv')){S.rv=null;relApply()}});
 let rpz=null;
 function relTouch(e){
   const t=e.touches;
@@ -4493,11 +4503,11 @@ function relTouch(e){
     return;
   }
   if(t.length!=2)return;
-  e.preventDefault();
+  e.preventDefault();relApply();if(!S.rv)return;
   const d=Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY)||1,mx=(t[0].clientX+t[1].clientX)/2,my=(t[0].clientY+t[1].clientY)/2;
-  if(!rpz){S.rpinch=true;rdrag=null;rpz={d,z:S.rz||1,mx,my};return}
-  relZoomTo(rpz.z*d/rpz.d,rpz.mx,rpz.my); /* 前の中心を支点に拡大縮小し、中心が動いた分だけ移動する */
-  const wr=$('.rwrap');if(wr){wr.scrollLeft+=rpz.mx-mx;wr.scrollTop+=rpz.my-my}
+  if(!rpz){S.rpinch=true;rdrag=null;rpz={d,z:S.rv.z,mx,my};return}
+  relZoomTo(rpz.z*d/rpz.d,rpz.mx,rpz.my); /* 前の中心を支点に拡大縮小し、中心が動いた分だけ紙をずらす */
+  S.rv.x+=mx-rpz.mx;S.rv.y+=my-rpz.my;relApply();
   rpz.mx=mx;rpz.my=my;
 }
 function relEditTog(){
