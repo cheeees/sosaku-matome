@@ -340,6 +340,8 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .fadd svg{width:22px;height:22px}
 .eli2{display:flex;gap:6px;align-items:center;margin-bottom:6px}
 .eli2 input:first-child{flex:0 0 38%}
+.eli2 label.fuk{flex:none;display:flex;align-items:center;gap:4px;font-size:13px;white-space:nowrap;cursor:pointer}
+.eli2 label.fuk input{flex:none;width:18px;height:18px;margin:0;padding:0}
 
 /* ---- 比較タブ ---- */
 .csel{margin-bottom:10px}
@@ -1688,14 +1690,14 @@ function faceDel(i,j){if(S.ic&&S.ic.stands[i]){S.ic.stands[i].faces.splice(j,1);
 const INFO_T=['性別','年齢','職業','国籍','誕生日','身長','体重','目色','髪色','服装'];
 function infoRows(a){
   a=a||[];
-  const rows=INFO_T.map(k=>({k,v:(a.find(r=>r.k==k)||{}).v||'',t:1}));
+  const rows=INFO_T.map(k=>{const f=a.find(r=>r.k==k)||{};return{k,v:f.v||'',t:1,u:k=='年齢'&&f.u?1:0}});
   a.forEach(r=>{if(!INFO_T.includes(r.k))rows.push({k:r.k,v:r.v})});
   return rows;
 }
-function infoOut(rows){return rows.filter(r=>r.t?r.v.trim():(r.k.trim()||r.v.trim())).map(r=>({k:r.k.trim(),v:r.v.trim()}))}
+function infoOut(rows){return rows.filter(r=>r.t?(r.v.trim()||r.u):(r.k.trim()||r.v.trim())).map(r=>r.u?{k:r.k.trim(),v:r.v.trim(),u:1}:{k:r.k.trim(),v:r.v.trim()})}
 function edInf(){
   const b=$('#einf');if(!b||!S.ic)return;
-  b.innerHTML=S.ic.info.map((r,i)=>r.t?`<div class="eli2"><span class="tl">${esc(r.k)}</span><input value="${esc(r.v)}" oninput="S.ic.info[${i}].v=this.value"></div>`:`<div class="eli2"><input value="${esc(r.k)}" placeholder="項目" oninput="S.ic.info[${i}].k=this.value"><input value="${esc(r.v)}" placeholder="内容" oninput="S.ic.info[${i}].v=this.value"><button class="ic" aria-label="削除" onclick="infDel(${i})">${ico(P_X)}</button></div>`).join('');
+  b.innerHTML=S.ic.info.map((r,i)=>r.t?`<div class="eli2"><span class="tl">${esc(r.k)}</span><input value="${esc(r.v)}" oninput="S.ic.info[${i}].v=this.value"${r.k=='年齢'?' placeholder="例:20代 / 20〜40代？"':''}>${r.k=='年齢'?`<label class="fuk"><input type="checkbox"${r.u?' checked':''} onchange="S.ic.info[${i}].u=this.checked?1:0"><span>不詳</span></label>`:''}</div>`:`<div class="eli2"><input value="${esc(r.k)}" placeholder="項目" oninput="S.ic.info[${i}].k=this.value"><input value="${esc(r.v)}" placeholder="内容" oninput="S.ic.info[${i}].v=this.value"><button class="ic" aria-label="削除" onclick="infDel(${i})">${ico(P_X)}</button></div>`).join('');
 }
 function infAdd(){
   if(!S.ic)return;
@@ -4041,6 +4043,7 @@ function cmpPickRefresh(){
 function cmpRefresh(){const b=$('#cbody');if(!b){render();return}b.innerHTML=cmpBody(cmpBase());hydrate(b);hFit()}
 
 const cInfo=(c,k)=>String(((c.info||[]).find(r=>r.k==k)||{}).v||'');
+const cFlag=(c,k)=>!!((c.info||[]).find(r=>r.k==k)||{}).u;
 function pHeight(v){
   const t=String(v||'').normalize('NFKC');
   let m=t.match(/(\d)\s*m\s*(\d{1,2})(?!\d)/i),n;
@@ -4188,10 +4191,10 @@ function ageTxt(raw,a){
 }
 /* 年齢: 10歳ごと */
 function cmpAge(list){
-  const rows=list.map(c=>{const t=cInfo(c,'年齢'),a=pAge(t);return{c,a,t,unk:!a&&isAgeUnk(t)}}),ok=rows.filter(r=>r.a),so=cmpSo();
+  const rows=list.map(c=>{const t=cInfo(c,'年齢'),a=pAge(t),f=cFlag(c,'年齢');return{c,a,t,unk:f||(!a&&isAgeUnk(t))}}),ok=rows.filter(r=>r.a&&!r.unk),so=cmpSo();
   const uk=rows.filter(r=>r.unk);
   const un=cmpUn('年齢が未入力',rows.filter(r=>!r.a&&!r.unk).map(r=>r.c));
-  const ukH=uk.length?`<section class="bdm"><h4 class="bdh"><b>年齢不詳</b><i>(${uk.length}人)</i></h4><div class="bdl">${uk.map(r=>cTile(r.c,`<span class="bdd">不詳</span>`)).join('')}</div></section>`:'';
+  const ukH=uk.length?`<section class="bdm"><h4 class="bdh"><b>年齢不詳</b><i>(${uk.length}人)</i></h4><div class="bdl">${uk.map(r=>cTile(r.c,`<span class="bdd">${r.t.trim()?(r.a?ageTxt(r.t,r.a):esc(r.t.trim())):'不詳'}</span>`)).join('')}</div></section>`:'';
   if(!ok.length)return (ukH?`<div class="bdg one">${ukH}</div>`:`<div class="empty">年齢が入力されたキャラがいません</div>`)+un;
   const g=new Map();
   ok.forEach(r=>{const k=r.a.v<10?0:Math.floor(r.a.v/10)*10;if(!g.has(k))g.set(k,[]);g.get(k).push(r)});
