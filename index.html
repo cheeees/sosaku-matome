@@ -362,6 +362,9 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .rsvg .ra{opacity:.9}
 .rsvg .rt{font-size:12px;font-weight:600;fill:var(--fg);paint-order:stroke;stroke:var(--card);stroke-width:4px;stroke-linejoin:round;pointer-events:all}
 .rsvg .re.dim{opacity:.22}
+.rsvg .rgp{pointer-events:all}
+.rsvg .rgs{fill:none;stroke:var(--ink);stroke-width:6;stroke-linejoin:round;opacity:.2}
+.rsvg .rgt{font-size:11px;font-weight:700;fill:var(--fg);opacity:.8;paint-order:stroke;stroke:var(--card);stroke-width:3px;stroke-linejoin:round;pointer-events:none}
 .rn{position:absolute;width:0;height:0;z-index:2;cursor:pointer}
 .rcv.edit .rn{touch-action:none;cursor:grab}
 .rn .dot{position:absolute;left:-22px;top:-22px;width:44px;height:44px;background-size:cover;background-position:center;box-shadow:0 1px 4px rgba(0,0,0,.3)}
@@ -1016,7 +1019,7 @@ function deq(a,b){if(a===b)return true;if(!a||!b||typeof a!='object'||typeof b!=
 const isObj=x=>!!x&&typeof x=='object'&&!Array.isArray(x);
 const idArr=a=>Array.isArray(a)&&a.every(x=>isObj(x)&&x.id!=null);
 const FLAB={'works.json':'作品','characters.json':'キャラクター','gallery.json':'ギャラリー'};
-const KLAB={title:'タイトル',name:'名前',body:'本文',ruby:'ふりがな',memo:'メモ',tags:'タグ',color:'色',nocol:'カラー未定',icon:'アイコン',info:'情報',voice:'セリフ',stands:'立ち絵',ts:'作成日',o:'並び順',p:'フォルダ',workId:'作品',chars:'キャラ',url:'動画URL',imgs:'画像',type:'種類',notes:'設定',memos:'メモ',covers:'カバー',rels:'関係図',nodes:'キャラの配置',edges:'矢印',sz:'盤面の広さ'};
+const KLAB={title:'タイトル',name:'名前',body:'本文',ruby:'ふりがな',memo:'メモ',tags:'タグ',color:'色',nocol:'カラー未定',icon:'アイコン',info:'情報',voice:'セリフ',stands:'立ち絵',ts:'作成日',o:'並び順',p:'フォルダ',workId:'作品',chars:'キャラ',url:'動画URL',imgs:'画像',type:'種類',notes:'設定',memos:'メモ',covers:'カバー',rels:'関係図',groups:'グループ',nodes:'キャラの配置',edges:'矢印',sz:'盤面の広さ'};
 /* 競合を1件記録する。選択済みなら true(GitHub側を採用)/false(この端末を採用)を返す。未選択のあいだは仮に端末側 */
 function cf(st,key,item,field,lv,rv){
   st.c++;
@@ -4263,8 +4266,10 @@ function cmpView(){
 /* ===== 関係図(データタブの一番下) =====
    works.json の各作品に rels:[{id,title,sz,nodes:[{id,cid,x,y}],edges:[{id,a,b,d,l,s,w,c}]}] を持つ。
    cid=キャラid、x・y=盤面の幅・高さに対する%、a→b が矢印の向き(d:'f'=a→b / 'both'=↔ / 'none'=線だけ)、l=関係の名前、
-   s='dash'=点線(なければ実線)、w=太さ1〜3(なければ2)、c=色の名前(なければメインカラー) */
+   s='dash'=点線(なければ実線)、w=太さ1〜3(なければ2)、c=色の名前(なければメインカラー)
+   groups:[{id,title,c(色の名前),s('dash'=点線で囲む / 'both'=塗りつぶし+点線 / なければ塗りつぶし),n:[まとめるノードid]}] */
 const REL_R=26; /* 矢印をアイコンの縁で止める距離(px) */
+const REL_G=46; /* グループの囲みが、キャラの外側にとる幅(px) */
 const REL_W={1:1.5,2:2.5,3:4.5};
 const REL_C=[['','メイン','var(--ink)'],['red','赤','#e88a8a'],['blue','青','#7aa8de'],['yellow','黄','#ebcc66'],['green','緑','#82c294'],['pink','桃','#f2a3c0']];
 let rdrag=null,radd=new Set();
@@ -4302,7 +4307,7 @@ function relBody(){
     const c=cs.get(n.cid);
     return `<div class="rn${S.rsel&&S.rsel.t=='n'&&S.rsel.id==n.id?' on':''}${S.rcon==n.id?' src':''}" data-n="${n.id}" style="left:${n.x}%;top:${n.y}%"><span class="dot" style="--c:${esc(c.color)}"${c.icon?` data-ic="${esc(c.icon)}"`:''}></span><span class="rnm">${esc(c.name)}</span></div>`;
   }).join('');
-  return top+`<div class="rtop"><button class="btn chip${ed?'':' sub'}" onclick="relEditTog()">${ed?'✎ 編集中':'✎ 編集'}</button>${ed?`<button class="btn chip sub" onclick="relAddDlg()">＋ キャラを追加</button>`:''}<button class="btn chip sub ml" onclick="relMapDlg('${f.m.id}')">名前・設定</button></div>
+  return top+`<div class="rtop"><button class="btn chip${ed?'':' sub'}" onclick="relEditTog()">${ed?'✎ 編集中':'✎ 編集'}</button>${ed?`<button class="btn chip sub" onclick="relAddDlg()">＋ キャラを追加</button><button class="btn chip sub" onclick="relGrpDlg('')">＋ グループ</button>`:''}<button class="btn chip sub ml" onclick="relMapDlg('${f.m.id}')">名前・設定</button></div>
   <div class="rwrap"><div class="rcv${ed?' edit':''}" id="rcv" style="width:${sz*100}%" onpointerdown="relDown(event)" onpointermove="relMove(event)" onpointerup="relUp(event)" onpointercancel="relUp(event)"><svg class="rsvg" id="rsvg"></svg>${nodes}</div></div>
   ${f.m.nodes.length?'':`<p class="mut" style="margin:8px 0 0">${ed?'「＋ キャラを追加」で、盤面にキャラを置けます':'上の「✎ 編集」から、キャラを置いたり矢印をつないだりできます'}</p>`}
   <div class="rtb" id="rtb">${relBarHtml()}</div>`;
@@ -4310,18 +4315,29 @@ function relBody(){
 /* 盤面の下のバー: 選んだキャラ・矢印の操作 */
 function relBarHtml(){
   const f=relCur();if(!f)return '';
-  const ed=!!S.rEdit,sel=S.rsel,AR={f:'→',both:'↔',none:'―'};
+  const ed=!!S.rEdit,sel=S.rsel,AR={f:'→',both:'↔',none:'―'},row=(t,h)=>`<div class="rtr"><span class="mut rrl">${t}</span>${h}</div>`;
   if(S.rcon)return `<span><b>${esc(relName(f,S.rcon))}</b> からつなぐ先を、盤面のキャラをタップで選んでください</span><button class="btn chip sub" onclick="relConEnd()">やめる</button>`;
   if(sel&&sel.t=='n'){
     const n=f.m.nodes.find(x=>x.id==sel.id);
     if(n)return `<b>${esc(relName(f,n.id))}</b><button class="btn chip sub" onclick="openChar('${n.cid}')">詳細 ›</button>${ed?`<button class="btn chip" onclick="relConBegin()">矢印をつなぐ</button><button class="btn chip sub" onclick="relNodeDel()">盤面から外す</button>`:''}`;
+  }
+  if(sel&&sel.t=='g'){
+    const g=(f.m.groups||[]).find(x=>x.id==sel.id);
+    if(g){
+      if(!ed)return `<b>${esc(g.title||'グループ')}</b><span class="mut">${g.n.length}人</span>`;
+      const sy=g.s||'fill';
+      return `<div class="rtr"><b>グループ</b><span class="mut">${g.n.length}人</span></div><input id="rgl" value="${esc(g.title||'')}" placeholder="グループの名前(空でもOK)" oninput="relGTitle(this.value)" autocomplete="off">`
+        +row('色',REL_C.map(([k,t,h])=>`<button class="btn chip${(g.c||'')==k?'':' sub'}" onclick="relGCol('${k}')"><i class="rdt" style="background:${h}"></i>${t}</button>`).join(''))
+        +row('表示',[['fill','塗りつぶし'],['dash','点線で囲む'],['both','両方']].map(([k,t])=>`<button class="btn chip${sy==k?'':' sub'}" onclick="relGSty('${k}')">${t}</button>`).join(''))
+        +`<div class="rtr"><button class="btn chip sub" onclick="relGrpDlg('${g.id}')">メンバーを選ぶ</button><button class="btn chip del" onclick="relGDel()">グループを削除</button></div>`;
+    }
   }
   if(sel&&sel.t=='e'){
     const e=f.m.edges.find(x=>x.id==sel.id);
     if(e){
       const hd=`<b>${esc(relName(f,e.a))}</b><span>${AR[e.d]||'→'}</span><b>${esc(relName(f,e.b))}</b>`;
       if(!ed)return hd+(e.l?`<span>:${esc(e.l)}</span>`:'');
-      const w=e.w||2,row=(t,h)=>`<div class="rtr"><span class="mut rrl">${t}</span>${h}</div>`;
+      const w=e.w||2;
       return `<div class="rtr">${hd}</div><input id="rtl" value="${esc(e.l||'')}" placeholder="関係(例:親友 / 片思い / 師匠)" oninput="relLbl(this.value)" autocomplete="off">`
         +row('向き',[['f','→'],['both','↔'],['none','―']].map(([k,t])=>`<button class="btn chip${e.d==k?'':' sub'}" onclick="relDir('${k}')">${t}</button>`).join('')+`<button class="btn chip sub" onclick="relSwap()">⇄ 逆向き</button>`)
         +row('線',[['','実線'],['dash','点線']].map(([k,t])=>`<button class="btn chip${(e.s||'')==k?'':' sub'}" onclick="relLine('${k}')">${t}</button>`).join(''))
@@ -4341,6 +4357,24 @@ function relEdges(){
   es.forEach(e=>{const k=[e.a,e.b].sort().join('|');if(!gp.has(k))gp.set(k,[]);gp.get(k).push(e)});
   const sel=S.rsel,hl=sel&&sel.t=='n'?sel.id:null,u=(x,y)=>{const l=Math.hypot(x,y)||1;return[x/l,y/l]},p1=v=>v.toFixed(1);
   let h='';
+  /* グループ: 選んだキャラの外側をぐるっと囲む(いちばん奥に描く) */
+  const hull=pts=>{
+    pts=pts.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+    const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]),lo=[],up=[];
+    for(const p of pts){while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p)}
+    for(let i=pts.length-1;i>=0;i--){const p=pts[i];while(up.length>=2&&cr(up[up.length-2],up[up.length-1],p)<=0)up.pop();up.push(p)}
+    up.pop();lo.pop();return lo.concat(up);
+  };
+  (f.m.groups||[]).forEach(g=>{
+    const ms=g.n.map(i=>nm.get(i)).filter(Boolean);if(!ms.length)return;
+    const pts=[];
+    ms.forEach(n=>{const x0=n.x/100*W,y0=n.y/100*H+8;for(let k=0;k<20;k++){const a=k/20*Math.PI*2;pts.push([x0+Math.cos(a)*REL_G,y0+Math.sin(a)*REL_G])}});
+    const hp=hull(pts),d='M'+hp.map(q=>p1(q[0])+' '+p1(q[1])).join('L')+'Z';
+    const cd=REL_C.find(x=>x[0]==(g.c||''))||REL_C[0],col=cd[2],sty=g.s||'fill';
+    const fl=sty!='dash'?`fill:${col};fill-opacity:.16;`:'fill:none;',st=sty!='fill'?`stroke:${col};stroke-width:2;stroke-dasharray:7 6;stroke-opacity:.9;`:'stroke:none;';
+    const xs=hp.map(q=>q[0]),top=Math.min(...hp.map(q=>q[1])),lx=(Math.min(...xs)+Math.max(...xs))/2,on=sel&&sel.t=='g'&&sel.id==g.id;
+    h+=`<g class="rg" data-g="${g.id}">${on?`<path class="rgs" d="${d}"/>`:''}<path class="rgp" d="${d}" style="${fl}${st}"/>${g.title?`<text class="rgt" x="${p1(lx)}" y="${p1(top+12)}" text-anchor="middle">${esc(g.title)}</text>`:''}</g>`;
+  });
   es.forEach(e=>{
     const A=nm.get(e.a),B=nm.get(e.b),g=gp.get([e.a,e.b].sort().join('|')),i=g.indexOf(e);
     const ax=A.x/100*W,ay=A.y/100*H,bx=B.x/100*W,by=B.y/100*H,dx=bx-ax,dy=by-ay,L=Math.hypot(dx,dy);
@@ -4369,8 +4403,8 @@ function relUi(){
 /* ドラッグ(編集中のキャラを動かす)とタップ(選ぶ・つなぐ) */
 function relDown(e){
   if(e.button>0||!relCur())return;
-  const nd=e.target.closest('.rn'),eg=e.target.closest('.re'),f=relCur(),n=nd&&f.m.nodes.find(x=>x.id==nd.dataset.n);
-  rdrag={k:nd?'n':eg?'e':'b',id:nd?nd.dataset.n:eg?eg.dataset.e:'',el:nd,sx:e.clientX,sy:e.clientY,moved:false,ox:n?n.x:0,oy:n?n.y:0};
+  const nd=e.target.closest('.rn'),eg=e.target.closest('.re'),gp=e.target.closest('.rg'),f=relCur(),n=nd&&f.m.nodes.find(x=>x.id==nd.dataset.n);
+  rdrag={k:nd?'n':eg?'e':gp?'g':'b',id:nd?nd.dataset.n:eg?eg.dataset.e:gp?gp.dataset.g:'',el:nd,sx:e.clientX,sy:e.clientY,moved:false,ox:n?n.x:0,oy:n?n.y:0};
   if(nd&&S.rEdit&&!S.rcon)try{e.currentTarget.setPointerCapture(e.pointerId)}catch(_){}
 }
 function relMove(e){
@@ -4424,6 +4458,7 @@ function relNodeDel(){
   const f=relCur(),s=S.rsel;if(!f||!s||s.t!='n')return;
   if(!confirm(`「${relName(f,s.id)}」を関係図から外します。つないだ矢印も消えます(キャラ自体は消えません)。よろしいですか?`))return;
   f.m.nodes=f.m.nodes.filter(n=>n.id!=s.id);f.m.edges=f.m.edges.filter(x=>x.a!=s.id&&x.b!=s.id);
+  if(f.m.groups){f.m.groups.forEach(g=>{g.n=g.n.filter(i=>i!=s.id)});f.m.groups=f.m.groups.filter(g=>g.n.length)}
   S.rsel=null;relSave();relRefresh();
 }
 /* 関係図の追加・名前や広さの変更・削除 */
@@ -4450,6 +4485,42 @@ function relDelMap(id){
   if(!confirm(`関係図「${f.m.title||'無題'}」を削除します。よろしいですか?`))return;
   f.w.rels=f.w.rels.filter(m=>m.id!=id);
   S.rid=null;cSet('sm_rid','');S.rsel=null;S.rcon=null;
+  relSave();$('#dlg').close();relRefresh();
+}
+/* グループ(背景色でまとめる): 選んだキャラをまとめて囲む。キャラを動かすと一緒について来る */
+let rgm=new Set();
+function relGrp(){const f=relCur(),s=S.rsel;return f&&s&&s.t=='g'?(f.m.groups||[]).find(x=>x.id==s.id)||null:null}
+function relGTitle(v){const g=relGrp();if(!g)return;g.title=v;relEdges();relSave()}
+function relGCol(k){const g=relGrp();if(!g)return;if(k)g.c=k;else delete g.c;relSave();relUi()}
+function relGSty(k){const g=relGrp();if(!g)return;if(k!='fill')g.s=k;else delete g.s;relSave();relUi()}
+function relGDel(){
+  const f=relCur(),g=relGrp();if(!f||!g)return;
+  f.m.groups=f.m.groups.filter(x=>x.id!=g.id);S.rsel=null;relSave();relUi();
+}
+function relGrpDlg(id){
+  const f=relCur();if(!f)return;
+  const cs=relChars(f.w),ns=f.m.nodes.filter(n=>cs.has(n.cid)),g=id?(f.m.groups||[]).find(x=>x.id==id):null;
+  if(!ns.length){status('先に「＋ キャラを追加」で、盤面にキャラを置いてください',1);return}
+  rgm=new Set(g?g.n:[]);
+  open(`<h3 style="margin:0">${g?'メンバーを選ぶ':'グループを作る'}</h3>
+  ${g?'':`<label for="rgt">名前(空でもOK)</label><input id="rgt" placeholder="例:騎士団 / 王家" autocomplete="off">`}
+  <p class="mut" style="margin:8px 0 6px">まとめるキャラを選んでください(複数選べます)</p>
+  <div class="rpk" id="rgk">${ns.map(n=>{const c=cs.get(n.cid);return `<button class="btn chip${rgm.has(n.id)?'':' sub'}" data-id="${n.id}" onclick="relGrpTog('${n.id}')">${cAv(c,'s')}<span>${esc(c.name)}</span></button>`}).join('')}</div>
+  <div class="row"><button class="btn sub" onclick="relGrpAll()">全員</button><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="relGrpOk('${id||''}')">${g?'決定':'作る'}</button></div>`);
+  hydrate($('#dlg'));
+}
+function relGrpPaint(){document.querySelectorAll('#rgk [data-id]').forEach(b=>b.classList.toggle('sub',!rgm.has(b.dataset.id)))}
+function relGrpTog(id){rgm.has(id)?rgm.delete(id):rgm.add(id);relGrpPaint()}
+function relGrpAll(){const a=[...document.querySelectorAll('#rgk [data-id]')].map(b=>b.dataset.id);if(a.every(i=>rgm.has(i)))rgm.clear();else a.forEach(i=>rgm.add(i));relGrpPaint()}
+function relGrpOk(id){
+  const f=relCur();if(!f)return;
+  if(!rgm.size){status('キャラを1人以上選んでください',1);return}
+  const ids=f.m.nodes.filter(n=>rgm.has(n.id)).map(n=>n.id);
+  if(id){const g=(f.m.groups||[]).find(x=>x.id==id);if(!g)return;g.n=ids}
+  else{
+    const g={id:uid('g'),title:(($('#rgt')||{}).value||'').trim(),c:'blue',n:ids};
+    (f.m.groups=f.m.groups||[]).push(g);S.rsel={t:'g',id:g.id};
+  }
   relSave();$('#dlg').close();relRefresh();
 }
 /* キャラを盤面に追加 */
@@ -4492,6 +4563,10 @@ function relPrune(){
       if(k.length!=m.nodes.length){m.nodes=k;ch=1}
       const ids=new Set(k.map(n=>n.id)),e=m.edges.filter(x=>ids.has(x.a)&&ids.has(x.b));
       if(e.length!=m.edges.length){m.edges=e;ch=1}
+      if(m.groups){
+        const gs=m.groups.map(g=>({...g,n:g.n.filter(i=>ids.has(i))})).filter(g=>g.n.length);
+        if(JSON.stringify(gs)!=JSON.stringify(m.groups)){m.groups=gs;ch=1}
+      }
     });
   });
   if(ch)save('works.json');
