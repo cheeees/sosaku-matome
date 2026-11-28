@@ -4291,7 +4291,25 @@ function relCur(){
 }
 function relChars(w){return new Map(S.chars.filter(c=>c.workId==w.id).map(c=>[c.id,c]))}
 function relName(f,id){const n=f.m.nodes.find(x=>x.id==id),c=n&&relChars(f.w).get(n.cid);return c?c.name:'?'}
-function relSave(){save('works.json')}
+/* 関係図は自動では保存しない。変更したら「保存」ボタンで保存する(S.rDirty=未保存の変更あり) */
+function relSave(){S.rDirty=true;relDirtyUi()}
+function relCommit(){
+  const f=relCur();S.rDirty=false;
+  if(f)S.rsnap={id:f.m.id,j:JSON.stringify(f.m)};
+  save('works.json');relDirtyUi();
+}
+function relDiscard(){
+  if(!S.rsnap||!confirm('保存していない変更を破棄して、最後に保存した状態に戻します。よろしいですか?'))return;
+  const f=relFind(S.rsnap.id);
+  if(f){const i=f.w.rels.findIndex(m=>m.id==f.m.id);if(i>=0)f.w.rels[i]=JSON.parse(S.rsnap.j)}
+  S.rDirty=false;S.rsel=null;S.rcon=null;relRefresh();
+}
+function relDirtyUi(){
+  const b=$('#rsv'),r=$('#rrv');
+  if(b){b.textContent=S.rDirty?'💾 保存':'保存済み';b.classList.toggle('sub',!S.rDirty);b.disabled=!S.rDirty}
+  if(r)r.hidden=!S.rDirty;
+}
+addEventListener('beforeunload',e=>{if(S.rDirty){e.preventDefault();e.returnValue=''}});
 function relEdge(){const f=relCur(),s=S.rsel;return f&&s&&s.t=='e'?f.m.edges.find(x=>x.id==s.id)||null:null}
 /* データタブの一番下に置く欄 */
 function relSec(){return `<hr class="div"><div id="relsec">${relBody()}</div>`}
@@ -4304,12 +4322,13 @@ function relBody(){
   const l=relList(),f=relCur(),ed=!!S.rEdit&&!!f;
   const top=`<div class="rtop"><h3 class="rhd">関係図</h3><select aria-label="関係図" onchange="relPick(this.value)">${l.length?l.map(x=>`<option value="${x.m.id}"${f&&x.m.id==f.m.id?' selected':''}>${esc(x.m.title||'無題')}</option>`).join(''):'<option value="">(関係図がありません)</option>'}</select><button class="btn chip" onclick="relMapDlg('')">＋ 新規</button></div>`;
   if(!f)return top+`<div class="empty">関係図がまだありません。「＋ 新規」から作れます</div>`;
+  if(!S.rsnap||S.rsnap.id!=f.m.id)S.rsnap={id:f.m.id,j:JSON.stringify(f.m)};
   const cs=relChars(f.w),sz=f.m.sz||1;
   const nodes=f.m.nodes.filter(n=>cs.has(n.cid)).map(n=>{
     const c=cs.get(n.cid);
     return `<div class="rn${S.rsel&&S.rsel.t=='n'&&S.rsel.id==n.id?' on':''}${S.rcon==n.id?' src':''}" data-n="${n.id}" style="left:${n.x}%;top:${n.y}%"><span class="dot" style="--c:${esc(c.color)}"${c.icon?` data-ic="${esc(c.icon)}"`:''}></span><span class="rnm">${esc(c.name)}</span></div>`;
   }).join('');
-  return top+`<div class="rtop"><button class="btn chip${ed?'':' sub'}" onclick="relEditTog()">${ed?'✎ 編集中':'✎ 編集'}</button>${ed?`<button class="btn chip sub" onclick="relAddDlg()">＋ キャラを追加</button><button class="btn chip sub" onclick="relGrpDlg('')">＋ グループ</button>`:''}<button class="btn chip sub ml" onclick="relMapDlg('${f.m.id}')">名前・設定</button></div>
+  return top+`<div class="rtop"><button class="btn chip${ed?'':' sub'}" onclick="relEditTog()">${ed?'✎ 編集中':'✎ 編集'}</button>${ed?`<button class="btn chip sub" onclick="relAddDlg()">＋ キャラを追加</button><button class="btn chip sub" onclick="relGrpDlg('')">＋ グループ</button>`:''}${ed||S.rDirty?`<button class="btn chip${S.rDirty?'':' sub'}" id="rsv" onclick="relCommit()"${S.rDirty?'':' disabled'}>${S.rDirty?'💾 保存':'保存済み'}</button><button class="btn chip sub" id="rrv" onclick="relDiscard()"${S.rDirty?'':' hidden'}>変更を破棄</button>`:''}<button class="btn chip sub ml" onclick="relMapDlg('${f.m.id}')">名前・設定</button></div>
   <div class="rwrap"><div class="rcv${ed?' edit':''}" id="rcv" style="width:${sz*100}%" onpointerdown="relDown(event)" onpointermove="relMove(event)" onpointerup="relUp(event)" onpointercancel="relUp(event)"><svg class="rsvg" id="rsvg"></svg>${nodes}</div></div>
   ${f.m.nodes.length?'':`<p class="mut" style="margin:8px 0 0">${ed?'「＋ キャラを追加」で、盤面にキャラを置けます':'上の「✎ 編集」から、キャラを置いたり矢印をつないだりできます'}</p>`}
   <div class="rtb" id="rtb">${relBarHtml()}</div>`;
@@ -4441,8 +4460,12 @@ function relLink(f,a,b){
   S.rsel={t:'e',id:e.id};relUi();
   setTimeout(()=>{const i=$('#rtl');if(i)i.focus()},0);
 }
-function relEditTog(){S.rEdit=!S.rEdit;S.rcon=null;relRefresh()}
-function relPick(v){S.rid=v;cSet('sm_rid',v);S.rsel=null;S.rcon=null;relRefresh()}
+function relEditTog(){
+  if(S.rEdit&&S.rDirty){if(!confirm('保存していない変更があります。保存して編集を終わりますか?\n(キャンセルで編集を続けます)'))return;relCommit()}
+  S.rEdit=!S.rEdit;S.rcon=null;relRefresh()}
+function relPick(v){
+  if(S.rDirty){if(!confirm('保存していない変更があります。保存して切り替えますか?\n(キャンセルで今の関係図に留まります)')){relRefresh();return}relCommit()}
+  S.rid=v;cSet('sm_rid',v);S.rsel=null;S.rcon=null;relRefresh()}
 function relConBegin(){S.rcon=S.rsel&&S.rsel.t=='n'?S.rsel.id:null;relUi()}
 function relConEnd(){S.rcon=null;relUi()}
 function relLbl(v){const e=relEdge();if(!e)return;e.l=v;relEdges();relSave()}
@@ -4480,14 +4503,14 @@ function relMapSave(id){
     (w.rels=w.rels||[]).push(m);
     S.rid=m.id;cSet('sm_rid',m.id);S.rEdit=true;S.rsel=null;S.rcon=null;
   }
-  relSave();$('#dlg').close();relRefresh();
+  relCommit();$('#dlg').close();relRefresh();
 }
 function relDelMap(id){
   const f=relFind(id);if(!f)return;
   if(!confirm(`関係図「${f.m.title||'無題'}」を削除します。よろしいですか?`))return;
   f.w.rels=f.w.rels.filter(m=>m.id!=id);
   S.rid=null;cSet('sm_rid','');S.rsel=null;S.rcon=null;
-  relSave();$('#dlg').close();relRefresh();
+  relCommit();$('#dlg').close();relRefresh();
 }
 /* グループ(背景色でまとめる): 選んだキャラをまとめて囲む。キャラを動かすと一緒について来る */
 let rgm=new Set();
@@ -4496,10 +4519,12 @@ function relGTitle(v){const g=relGrp();if(!g)return;g.title=v;relEdges();relSave
 function relGCol(k){const g=relGrp();if(!g)return;if(k)g.c=k;else delete g.c;relSave();relUi()}
 function relGColDlg(){
   const g=relGrp();if(!g)return;
-  const cur=relCv(g.c);
+  const had='c' in g,orig=g.c,cur=relCv(g.c);let ok=false;
   open(`<h3 style="margin:0">グループの色</h3>${pickerHTML('rgc',/^#[0-9a-f]{6}$/i.test(cur)?cur:'#8fb8de')}
-  <div class="row"><button class="btn sub" onclick="relGCol('');$('#dlg').close()">文字カラーに戻す</button><span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button></div>`,el=>{const g2=relGrp();if(!g2)return;g2.c=el.dataset.v;relEdges()});
-  $('#dlg').addEventListener('close',()=>{relSave();relUi()},{once:true});
+  <div class="row"><button class="btn sub" id="rgr" type="button">文字カラーに戻す</button><span class="sp"></span><button class="btn sub" type="button" onclick="$('#dlg').close()">キャンセル</button><button class="btn" id="rgs" type="button">決定</button></div>`,el=>{g.c=el.dataset.v;relEdges()}); /* 動かしている間は見た目だけ変える(保存はしない) */
+  $('#rgs').onclick=()=>{ok=true;relSave();$('#dlg').close()};
+  $('#rgr').onclick=()=>{delete g.c;ok=true;relSave();$('#dlg').close()};
+  $('#dlg').addEventListener('close',()=>{if(!ok){if(had)g.c=orig;else delete g.c}relUi()},{once:true});
 }
 function relGSty(k){const g=relGrp();if(!g)return;if(k!='fill')g.s=k;else delete g.s;relSave();relUi()}
 function relGDel(){
