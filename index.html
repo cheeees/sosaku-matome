@@ -346,8 +346,33 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 /* ---- 比較タブ ---- */
 .csel{margin-bottom:10px}
 .csel select{width:100%}
-.ctabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+.ctabs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:12px}
 .ctabs .btn{padding:6px 0;text-align:center;font-size:13px;border-radius:14px}
+/* ---- 関係図 ---- */
+.rtop{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.rtop select{flex:1;min-width:0;width:auto}
+.rtop .ml{margin-left:auto}
+.rwrap{overflow:auto;max-height:78vh;border:1px solid var(--line);border-radius:10px;background:var(--card);-webkit-overflow-scrolling:touch}
+.rcv{position:relative;aspect-ratio:4/3;background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:24px 24px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.rsvg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.rsvg .rh{fill:none;stroke:transparent;stroke-width:26;pointer-events:stroke}
+.rsvg .rl{fill:none;stroke:var(--fg);stroke-width:2;opacity:.65;stroke-linecap:round}
+.rsvg .ra{fill:var(--fg);opacity:.75}
+.rsvg .rt{font-size:12px;font-weight:600;fill:var(--fg);paint-order:stroke;stroke:var(--card);stroke-width:4px;stroke-linejoin:round;pointer-events:all}
+.rsvg .re.dim{opacity:.22}
+.rsvg .re.sel .rl{stroke:var(--ink);stroke-width:3.5;opacity:1}
+.rsvg .re.sel .ra{fill:var(--ink);opacity:1}
+.rn{position:absolute;width:0;height:0;z-index:2;cursor:pointer}
+.rcv.edit .rn{touch-action:none;cursor:grab}
+.rn .dot{position:absolute;left:-22px;top:-22px;width:44px;height:44px;background-size:cover;background-position:center;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.rn .rnm{position:absolute;left:0;top:25px;transform:translateX(-50%);max-width:7.5em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;line-height:1.35;padding:0 5px;border-radius:6px;background:var(--card);border:1px solid var(--line)}
+.rn.on .dot{box-shadow:0 0 0 3px var(--card),0 0 0 5px var(--ink)}
+.rn.src .dot{box-shadow:0 0 0 3px var(--card),0 0 0 5px #e0a43a}
+.rtb{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;min-height:34px}
+.rtb input{flex:1 1 100%}
+.rtb .rtr{display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%}
+.rpk{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;max-height:50vh;overflow:auto}
+.rpk .btn{display:inline-flex;align-items:center;gap:6px}
 .cstage{position:relative;width:100%;max-width:520px;margin:4px auto 0;aspect-ratio:1;-webkit-user-select:none;user-select:none}
 .cbar{position:absolute;left:92.5%;width:3%;top:10%;height:80%;border-radius:99px;background:linear-gradient(#fff,#000);border:1px solid var(--line);pointer-events:none}
 .cring{position:absolute;left:44%;top:50%;width:30%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:conic-gradient(hsl(0 85% 60%),hsl(60 85% 55%),hsl(120 70% 48%),hsl(180 75% 48%),hsl(240 80% 64%),hsl(300 75% 60%),hsl(360 85% 60%));-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 8px),#000 calc(100% - 7px));mask:radial-gradient(farthest-side,transparent calc(100% - 8px),#000 calc(100% - 7px))}
@@ -989,7 +1014,7 @@ function deq(a,b){if(a===b)return true;if(!a||!b||typeof a!='object'||typeof b!=
 const isObj=x=>!!x&&typeof x=='object'&&!Array.isArray(x);
 const idArr=a=>Array.isArray(a)&&a.every(x=>isObj(x)&&x.id!=null);
 const FLAB={'works.json':'作品','characters.json':'キャラクター','gallery.json':'ギャラリー'};
-const KLAB={title:'タイトル',name:'名前',body:'本文',ruby:'ふりがな',memo:'メモ',tags:'タグ',color:'色',nocol:'カラー未定',icon:'アイコン',info:'情報',voice:'セリフ',stands:'立ち絵',ts:'作成日',o:'並び順',p:'フォルダ',workId:'作品',chars:'キャラ',url:'動画URL',imgs:'画像',type:'種類',notes:'設定',memos:'メモ',covers:'カバー'};
+const KLAB={title:'タイトル',name:'名前',body:'本文',ruby:'ふりがな',memo:'メモ',tags:'タグ',color:'色',nocol:'カラー未定',icon:'アイコン',info:'情報',voice:'セリフ',stands:'立ち絵',ts:'作成日',o:'並び順',p:'フォルダ',workId:'作品',chars:'キャラ',url:'動画URL',imgs:'画像',type:'種類',notes:'設定',memos:'メモ',covers:'カバー',rels:'関係図',nodes:'キャラの配置',edges:'矢印',sz:'盤面の広さ'};
 /* 競合を1件記録する。選択済みなら true(GitHub側を採用)/false(この端末を採用)を返す。未選択のあいだは仮に端末側 */
 function cf(st,key,item,field,lv,rv){
   st.c++;
@@ -1947,7 +1972,7 @@ function doMoveChar(id){
 function delChar(id){
   if(!confirm('このキャラを削除します。よろしいですか?'))return;
   const c=S.chars.find(x=>x.id==id);if(c){rmImgs(imgIds(c.body));charFiles(c).forEach(rmIcon)}
-  S.chars=S.chars.filter(x=>x.id!=id);galPrune();
+  S.chars=S.chars.filter(x=>x.id!=id);galPrune();relPrune();
   const wasRd=S.rd==id;if(wasRd)S.rd=null;
   save('characters.json');
   if(wasRd&&dlgOn&&hi()>=2){dlgOn=false;$('#dlg').close();history.go(-2);return}
@@ -3966,14 +3991,14 @@ function galCleanup(){const g=S.gd;S.gd=null;if(g&&!g.saved&&g.added.length)galR
 $('#dlg').addEventListener('close',()=>{const d=$('#dlg');if(d.querySelector('.gv iframe,.gv video'))d.innerHTML='';galCleanup()});
 
 /* ===== 比較タブ(色相環・身長・誕生日・年齢) ===== */
-const CMODES=[['ring','色相環'],['h','身長'],['bd','誕生日'],['age','年齢']];
+const CMODES=[['ring','色相環'],['h','身長'],['bd','誕生日'],['age','年齢'],['rel','関係図']];
 const cGet=(k,d)=>{try{return localStorage.getItem(k)||d}catch(e){return d}};
 const cSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
 const cmpM=()=>{const m=cGet('sm_cmpm','ring');return CMODES.some(x=>x[0]==m)?m:'ring'};
 const cmpWk=()=>{const v=cGet('sm_cmpw','all');return v=='all'||S.works.some(w=>w.id==v)?v:'all'};
 const cmpSo=()=>{const v=cGet('sm_cmps','reg');return v=='asc'||v=='desc'?v:'reg'};
 function setCmpW(v){cSet('sm_cmpw',v);S.csel=null;if(S.workId&&v!='all')S.workId=v;render()}
-function setCmpM(v){cSet('sm_cmpm',v);S.csel=null;render()}
+function setCmpM(v){cSet('sm_cmpm',v);S.csel=null;S.rsel=null;S.rcon=null;render()}
 function setCmpS(v){cSet('sm_cmps',v);render()}
 function cmpSel(id){S.csel=S.csel==id?null:id;cmpRefresh()}
 /* 作品の中から開いたときは、その作品を選んだ状態で比較を開く(データ/キャラのタブも残す) */
@@ -4151,6 +4176,7 @@ function cmpHeight(list){
 
 /* 人数と画面幅に合わせて高さ(--ch)と列の最小幅(--mw)を決める。全員が収まる最大の高さにする */
 function hFit(){
+  relEdges();
   const sc=document.querySelector('.hscroll'),hin=sc&&sc.querySelector('.hin');
   if(!hin)return;
   const cols=[...hin.querySelectorAll('.hcol')],n=cols.length;
@@ -4211,6 +4237,7 @@ function cmpBase(){
 }
 function cmpBody(base){
   const m=cmpM();
+  if(m=='rel')return relBody();
   if(!base.length)return `<div class="empty">キャラがまだいません</div>`;
   let list=base;
   if(cOnly()){const p=cPick();list=base.filter(c=>p.has(c.id))}
@@ -4226,10 +4253,227 @@ function cmpView(){
   ${on&&base.length?`<div class="cpp"><input id="cpq" type="search" class="cpq" placeholder="名前・ふりがなで検索" value="${esc(S.cq||'')}" oninput="cmpSearch(this.value)" autocomplete="off" aria-label="キャラを検索">${cmpCatHtml(base,p)?`<div class="mut" style="margin:8px 0 4px">カテゴリごとに選ぶ / 外す</div><div class="cpl cpc" id="cpc">${cmpCatHtml(base,p)}</div>`:''}${cmpTagMap(base).size?`<div class="mut" style="margin:8px 0 4px">タグごとに選ぶ / 外す</div><div class="cpl cpc" id="cpt">${cmpTagHtml(base,p)}</div>`:''}<div class="bar" style="margin:10px 0 8px"><span class="mut">名前を押して選ぶ / 外す</span><button class="btn sub chip" style="margin-left:auto" id="cpa" onclick="cmpAll(1)">${cmpQ()?'表示中を選ぶ':'全員選ぶ'}</button><button class="btn sub chip" id="cpd" onclick="cmpAll(0)">${cmpQ()?'表示中を外す':'全員外す'}</button></div><div class="cpl" id="cpl">${cmpChipsHtml(p)}</div></div>`:''}`;
   app.innerHTML=`<div class="csel"><select aria-label="作品" onchange="setCmpW(this.value)"><option value="all"${wk=='all'?' selected':''}>全ての作品</option>${S.works.map(w=>`<option value="${w.id}"${w.id==wk?' selected':''}>${esc(w.title)}</option>`).join('')}</select></div>
   <div class="ctabs">${CMODES.map(([k,l])=>`<button class="btn ${k==m?'':'sub'}" onclick="setCmpM('${k}')">${l}</button>`).join('')}</div>
-  ${onBar}
+  ${m=='rel'?'':onBar}
   ${sortOpt?`<div class="bar"><span class="mut">並び替え</span><select aria-label="並び替え" onchange="setCmpS(this.value)">${sortOpt.map(([k,l])=>`<option value="${k}"${k==so?' selected':''}>${l}</option>`).join('')}</select></div>`:''}
   <div id="cbody">${body}</div>`;
   hydrate(app);hFit();
+}
+
+/* ===== 関係図(比較タブの「関係図」) =====
+   works.json の各作品に rels:[{id,title,sz,nodes:[{id,cid,x,y}],edges:[{id,a,b,d:'f'|'both'|'none',l}]}] を持つ。
+   cid=キャラid、x・y=盤面の幅・高さに対する%、a→b が矢印の向き(d:'f'=a→b / 'both'=↔ / 'none'=線だけ)、l=関係の名前 */
+const REL_R=26; /* 矢印をアイコンの縁で止める距離(px) */
+let rdrag=null,radd=new Set();
+function relList(){
+  const wk=cmpWk(),r=[];
+  S.works.forEach(w=>{if(wk=='all'||w.id==wk)(w.rels||[]).forEach(m=>r.push({m,w}))});
+  return r;
+}
+function relFind(id){
+  for(const w of S.works)for(const m of (w.rels||[]))if(m.id==id)return{m,w};
+  return null;
+}
+function relCur(){
+  const l=relList();
+  const f=l.find(x=>x.m.id==S.rid)||l.find(x=>x.m.id==cGet('sm_rid',''))||l[0]||null;
+  if(f)S.rid=f.m.id;
+  return f;
+}
+const relChars=w=>new Map(S.chars.filter(c=>c.workId==w.id).map(c=>[c.id,c]));
+const relName=(f,id)=>{const n=f.m.nodes.find(x=>x.id==id),c=n&&relChars(f.w).get(n.cid);return c?c.name:'?'};
+const relSave=()=>save('works.json');
+const relEdge=()=>{const f=relCur(),s=S.rsel;return f&&s&&s.t=='e'?f.m.edges.find(x=>x.id==s.id)||null:null};
+
+function relBody(){
+  const l=relList(),f=relCur(),wk=cmpWk(),ed=!!S.rEdit&&!!f;
+  const top=`<div class="rtop"><select aria-label="関係図" onchange="relPick(this.value)">${l.length?l.map(x=>`<option value="${x.m.id}"${f&&x.m.id==f.m.id?' selected':''}>${esc(x.m.title||'無題')}${wk=='all'?' / '+esc(x.w.title):''}</option>`).join(''):'<option value="">(関係図がありません)</option>'}</select><button class="btn chip" onclick="relMapDlg('')">＋ 新規</button></div>`;
+  if(!f)return top+`<div class="empty">関係図がまだありません。「＋ 新規」から作れます</div>`;
+  const cs=relChars(f.w),sz=f.m.sz||1;
+  const nodes=f.m.nodes.filter(n=>cs.has(n.cid)).map(n=>{
+    const c=cs.get(n.cid);
+    return `<div class="rn${S.rsel&&S.rsel.t=='n'&&S.rsel.id==n.id?' on':''}${S.rcon==n.id?' src':''}" data-n="${n.id}" style="left:${n.x}%;top:${n.y}%"><span class="dot" style="--c:${esc(c.color)}"${c.icon?` data-ic="${esc(c.icon)}"`:''}></span><span class="rnm">${esc(c.name)}</span></div>`;
+  }).join('');
+  return top+`<div class="rtop"><button class="btn chip${ed?'':' sub'}" onclick="relEditTog()">${ed?'✎ 編集中':'✎ 編集'}</button>${ed?`<button class="btn chip sub" onclick="relAddDlg()">＋ キャラを追加</button>`:''}<button class="btn chip sub ml" onclick="relMapDlg('${f.m.id}')">名前・設定</button></div>
+  <div class="rwrap"><div class="rcv${ed?' edit':''}" id="rcv" style="width:${sz*100}%" onpointerdown="relDown(event)" onpointermove="relMove(event)" onpointerup="relUp(event)" onpointercancel="relUp(event)"><svg class="rsvg" id="rsvg"></svg>${nodes}</div></div>
+  ${f.m.nodes.length?'':`<p class="mut" style="margin:8px 0 0">${ed?'「＋ キャラを追加」で、盤面にキャラを置けます':'上の「✎ 編集」から、キャラを置いたり矢印をつないだりできます'}</p>`}
+  <div class="rtb" id="rtb">${relBarHtml()}</div>`;
+}
+/* 盤面の下のバー: 選んだキャラ・矢印の操作 */
+function relBarHtml(){
+  const f=relCur();if(!f)return '';
+  const ed=!!S.rEdit,sel=S.rsel,AR={f:'→',both:'↔',none:'―'};
+  if(S.rcon)return `<span><b>${esc(relName(f,S.rcon))}</b> からつなぐ先を、盤面のキャラをタップで選んでください</span><button class="btn chip sub" onclick="relConEnd()">やめる</button>`;
+  if(sel&&sel.t=='n'){
+    const n=f.m.nodes.find(x=>x.id==sel.id);
+    if(n)return `<b>${esc(relName(f,n.id))}</b><button class="btn chip sub" onclick="openChar('${n.cid}')">詳細 ›</button>${ed?`<button class="btn chip" onclick="relConBegin()">矢印をつなぐ</button><button class="btn chip sub" onclick="relNodeDel()">盤面から外す</button>`:''}`;
+  }
+  if(sel&&sel.t=='e'){
+    const e=f.m.edges.find(x=>x.id==sel.id);
+    if(e){
+      const hd=`<b>${esc(relName(f,e.a))}</b><span>${AR[e.d]||'→'}</span><b>${esc(relName(f,e.b))}</b>`;
+      if(!ed)return hd+(e.l?`<span>:${esc(e.l)}</span>`:'');
+      return `<div class="rtr">${hd}</div><input id="rtl" value="${esc(e.l||'')}" placeholder="関係(例:親友 / 片思い / 師匠)" oninput="relLbl(this.value)" autocomplete="off"><div class="rtr">${[['f','→'],['both','↔'],['none','―']].map(([k,t])=>`<button class="btn chip${e.d==k?'':' sub'}" onclick="relDir('${k}')">${t}</button>`).join('')}<button class="btn chip sub" onclick="relSwap()">⇄ 向きを逆に</button><button class="btn chip del" onclick="relEdgeDel()">矢印を削除</button></div>`;
+    }
+  }
+  return `<span class="mut">${ed?'キャラはドラッグで動かせます。タップすると「矢印をつなぐ」が出ます':'キャラや矢印をタップすると、関係が表示されます'}</span>`;
+}
+/* 矢印を描く(盤面の実寸pxで計算。同じ2人の間に複数あるときは、少しずつ曲げて重ならないようにする) */
+function relEdges(){
+  const cv=$('#rcv'),sv=$('#rsvg'),f=cv&&relCur();if(!f||!sv)return;
+  const W=cv.clientWidth,H=cv.clientHeight;if(!W||!H)return;
+  const cs=relChars(f.w),nm=new Map(f.m.nodes.filter(n=>cs.has(n.cid)).map(n=>[n.id,n]));
+  const es=f.m.edges.filter(e=>nm.has(e.a)&&nm.has(e.b)&&e.a!=e.b),gp=new Map();
+  es.forEach(e=>{const k=[e.a,e.b].sort().join('|');if(!gp.has(k))gp.set(k,[]);gp.get(k).push(e)});
+  const sel=S.rsel,hl=sel&&sel.t=='n'?sel.id:null,u=(x,y)=>{const l=Math.hypot(x,y)||1;return[x/l,y/l]},p1=v=>v.toFixed(1);
+  const head=(px,py,tx,ty)=>{const nx=-ty,ny=tx;return `<polygon class="ra" points="${p1(px)},${p1(py)} ${p1(px-tx*13+nx*6)},${p1(py-ty*13+ny*6)} ${p1(px-tx*13-nx*6)},${p1(py-ty*13-ny*6)}"/>`};
+  let h='';
+  es.forEach(e=>{
+    const A=nm.get(e.a),B=nm.get(e.b),g=gp.get([e.a,e.b].sort().join('|')),i=g.indexOf(e);
+    const ax=A.x/100*W,ay=A.y/100*H,bx=B.x/100*W,by=B.y/100*H,dx=bx-ax,dy=by-ay,L=Math.hypot(dx,dy);
+    if(L<=REL_R*2+6)return;
+    const sg=e.a<e.b?1:-1,off=(i-(g.length-1)/2)*80,cx=(ax+bx)/2-dy/L*sg*off,cy=(ay+by)/2+dx/L*sg*off;
+    const [u1x,u1y]=u(cx-ax,cy-ay),[u2x,u2y]=u(cx-bx,cy-by);
+    const sx=ax+u1x*REL_R,sy=ay+u1y*REL_R,ex=bx+u2x*REL_R,ey=by+u2y*REL_R;
+    const d=`M${p1(sx)} ${p1(sy)}Q${p1(cx)} ${p1(cy)} ${p1(ex)} ${p1(ey)}`;
+    const mx=sx*.25+cx*.5+ex*.25,my=sy*.25+cy*.5+ey*.25,[t2x,t2y]=u(ex-cx,ey-cy),[t1x,t1y]=u(sx-cx,sy-cy);
+    const on=sel&&sel.t=='e'&&sel.id==e.id,cls='re'+(on?' sel':'')+(hl&&e.a!=hl&&e.b!=hl?' dim':'');
+    h+=`<g class="${cls}" data-e="${e.id}"><path class="rh" d="${d}"/><path class="rl" d="${d}"/>${e.d=='none'?'':head(ex,ey,t2x,t2y)}${e.d=='both'?head(sx,sy,t1x,t1y):''}${e.l?`<text class="rt" x="${p1(mx)}" y="${p1(my)}" text-anchor="middle" dominant-baseline="central">${esc(e.l)}</text>`:''}</g>`;
+  });
+  sv.innerHTML=h;
+}
+function relUi(){
+  document.querySelectorAll('#rcv .rn').forEach(el=>{const s=S.rsel;el.classList.toggle('on',!!s&&s.t=='n'&&s.id==el.dataset.n);el.classList.toggle('src',S.rcon==el.dataset.n)});
+  relEdges();const b=$('#rtb');if(b)b.innerHTML=relBarHtml();
+}
+/* ドラッグ(編集中のキャラを動かす)とタップ(選ぶ・つなぐ) */
+function relDown(e){
+  if(e.button>0||!relCur())return;
+  const nd=e.target.closest('.rn'),eg=e.target.closest('.re'),f=relCur(),n=nd&&f.m.nodes.find(x=>x.id==nd.dataset.n);
+  rdrag={k:nd?'n':eg?'e':'b',id:nd?nd.dataset.n:eg?eg.dataset.e:'',el:nd,sx:e.clientX,sy:e.clientY,moved:false,ox:n?n.x:0,oy:n?n.y:0};
+  if(nd&&S.rEdit&&!S.rcon)try{e.currentTarget.setPointerCapture(e.pointerId)}catch(_){}
+}
+function relMove(e){
+  const d=rdrag;if(!d||d.k!='n'||!S.rEdit||S.rcon)return;
+  const dx=e.clientX-d.sx,dy=e.clientY-d.sy;
+  if(!d.moved&&Math.hypot(dx,dy)<6)return;
+  const f=relCur(),cv=$('#rcv'),n=f&&f.m.nodes.find(x=>x.id==d.id);if(!n||!cv)return;
+  d.moved=true;
+  const r=cv.getBoundingClientRect();
+  n.x=+Math.min(97,Math.max(3,d.ox+dx/r.width*100)).toFixed(2);n.y=+Math.min(96,Math.max(4,d.oy+dy/r.height*100)).toFixed(2);
+  d.el.style.left=n.x+'%';d.el.style.top=n.y+'%';relEdges();
+}
+function relUp(e){
+  const d=rdrag;rdrag=null;if(!d)return;
+  if(d.moved){S.rsel={t:'n',id:d.id};relSave();relUi();return}
+  if(e.type=='pointercancel'||Math.hypot(e.clientX-d.sx,e.clientY-d.sy)>=8)return;
+  relTap(d.k,d.id);
+}
+function relTap(k,id){
+  const f=relCur();if(!f)return;
+  if(S.rcon){
+    if(k=='n'&&id!=S.rcon){relLink(f,S.rcon,id);return}
+    S.rcon=null; /* 空白・同じキャラ・矢印をタップしたら、つなぐのをやめる */
+  }
+  S.rsel=k=='b'?null:{t:k,id};
+  relUi();
+}
+function relLink(f,a,b){
+  S.rcon=null;
+  let e=f.m.edges.find(x=>x.a==a&&x.b==b);
+  if(!e){e={id:uid('e'),a,b,d:'f',l:''};f.m.edges.push(e);relSave()}
+  S.rsel={t:'e',id:e.id};relUi();
+  setTimeout(()=>{const i=$('#rtl');if(i)i.focus()},0);
+}
+function relEditTog(){S.rEdit=!S.rEdit;S.rcon=null;cmpRefresh()}
+function relPick(v){S.rid=v;cSet('sm_rid',v);S.rsel=null;S.rcon=null;cmpRefresh()}
+function relConBegin(){S.rcon=S.rsel&&S.rsel.t=='n'?S.rsel.id:null;relUi()}
+function relConEnd(){S.rcon=null;relUi()}
+function relLbl(v){const e=relEdge();if(!e)return;e.l=v;relEdges();relSave()}
+function relDir(k){const e=relEdge();if(!e)return;e.d=k;relSave();relUi()}
+function relSwap(){const e=relEdge();if(!e)return;const t=e.a;e.a=e.b;e.b=t;relSave();relUi()}
+function relEdgeDel(){
+  const f=relCur(),e=relEdge();if(!f||!e)return;
+  f.m.edges=f.m.edges.filter(x=>x.id!=e.id);S.rsel=null;relSave();relUi();
+}
+function relNodeDel(){
+  const f=relCur(),s=S.rsel;if(!f||!s||s.t!='n')return;
+  if(!confirm(`「${relName(f,s.id)}」を関係図から外します。つないだ矢印も消えます(キャラ自体は消えません)。よろしいですか?`))return;
+  f.m.nodes=f.m.nodes.filter(n=>n.id!=s.id);f.m.edges=f.m.edges.filter(x=>x.a!=s.id&&x.b!=s.id);
+  S.rsel=null;relSave();cmpRefresh();
+}
+/* 関係図の追加・名前や広さの変更・削除 */
+function relMapDlg(id){
+  const f=id?relFind(id):null,wk=cmpWk();
+  if(!f&&!S.works.length){status('先に作品を作ってください。関係図は作品ごとに作ります',1);return}
+  const w0=f?f.w.id:(wk!='all'?wk:(S.workId||S.works[0].id));
+  open(`<h3 style="margin:0">${f?'関係図の設定':'関係図を追加'}</h3>
+  <label for="rmt">名前</label><input id="rmt" value="${esc(f?f.m.title:'')}" placeholder="例:本編の人間関係 / 学園編" autocomplete="off">
+  ${f?'':`<label for="rmw">作品</label><select id="rmw">${S.works.map(w=>`<option value="${w.id}"${w.id==w0?' selected':''}>${esc(w.title)}</option>`).join('')}</select>`}
+  <label for="rmz">盤面の広さ</label><select id="rmz">${[[1,'標準(画面の幅)'],[2,'広め(2倍・スクロール)'],[3,'特大(3倍・スクロール)']].map(([v,t])=>`<option value="${v}"${(f?f.m.sz||1:1)==v?' selected':''}>${t}</option>`).join('')}</select>
+  <div class="row">${f?`<button class="btn del" onclick="relDelMap('${f.m.id}')">削除</button>`:''}<span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button><button class="btn" onclick="relMapSave('${id||''}')">保存</button></div>`);
+}
+function relMapSave(id){
+  const title=$('#rmt').value.trim()||'無題の関係図',sz=+$('#rmz').value||1;
+  if(id){const f=relFind(id);if(!f)return;f.m.title=title;f.m.sz=sz}
+  else{
+    const w=S.works.find(x=>x.id==$('#rmw').value);if(!w)return;
+    const m={id:uid('r'),title,sz,nodes:[],edges:[]};
+    (w.rels=w.rels||[]).push(m);
+    S.rid=m.id;cSet('sm_rid',m.id);S.rEdit=true;S.rsel=null;S.rcon=null;
+    if(cmpWk()!='all'&&cmpWk()!=w.id)cSet('sm_cmpw',w.id);
+  }
+  relSave();$('#dlg').close();render();
+}
+function relDelMap(id){
+  const f=relFind(id);if(!f)return;
+  if(!confirm(`関係図「${f.m.title||'無題'}」を削除します。よろしいですか?`))return;
+  f.w.rels=f.w.rels.filter(m=>m.id!=id);
+  S.rid=null;cSet('sm_rid','');S.rsel=null;S.rcon=null;
+  relSave();$('#dlg').close();render();
+}
+/* キャラを盤面に追加 */
+function relAddDlg(){
+  const f=relCur();if(!f)return;
+  const on=new Set(f.m.nodes.map(n=>n.cid)),pool=S.chars.filter(c=>c.workId==f.w.id&&!on.has(c.id));
+  radd=new Set();
+  open(`<h3 style="margin:0">キャラを追加</h3>
+  ${pool.length?`<p class="mut" style="margin:6px 0">盤面に置くキャラを選んでください(複数選べます)</p><div class="rpk" id="rpk">${pool.map(c=>`<button class="btn chip sub" data-id="${c.id}" onclick="relAddTog('${c.id}')">${cAv(c,'s')}<span>${esc(c.name)}</span></button>`).join('')}</div>`:'<p class="mut">追加できるキャラがいません(すべて置いてある、またはこの作品にキャラがいません)</p>'}
+  <div class="row">${pool.length?`<button class="btn sub" onclick="relAddAll()">全員</button>`:''}<span class="sp"></span><button class="btn sub" onclick="$('#dlg').close()">閉じる</button>${pool.length?`<button class="btn" onclick="relAddOk()">追加</button>`:''}</div>`);
+  hydrate($('#dlg'));
+}
+function relAddPaint(){document.querySelectorAll('#rpk [data-id]').forEach(b=>b.classList.toggle('sub',!radd.has(b.dataset.id)))}
+function relAddTog(id){radd.has(id)?radd.delete(id):radd.add(id);relAddPaint()}
+function relAddAll(){const a=[...document.querySelectorAll('#rpk [data-id]')].map(b=>b.dataset.id);if(a.every(i=>radd.has(i)))radd.clear();else a.forEach(i=>radd.add(i));relAddPaint()}
+function relFree(nodes,W,H){
+  const c=Math.max(2,Math.floor(W/72)),r=Math.max(2,Math.floor(H/72)),pts=[];
+  for(let j=0;j<r;j++)for(let i=0;i<c;i++)pts.push([(i+.5)/c*W,(j+.5)/r*H]);
+  pts.sort((p,q)=>Math.hypot(p[0]-W/2,p[1]-H/2)-Math.hypot(q[0]-W/2,q[1]-H/2));
+  const p=pts.find(q=>nodes.every(n=>Math.hypot(n.x/100*W-q[0],n.y/100*H-q[1])>=66))||[W*(.1+Math.random()*.8),H*(.1+Math.random()*.8)];
+  return{x:+(p[0]/W*100).toFixed(2),y:+(p[1]/H*100).toFixed(2)};
+}
+function relAddOk(){
+  const f=relCur();if(!f)return;
+  const cv=$('#rcv'),W=cv?cv.clientWidth:340,H=cv?cv.clientHeight:255;
+  radd.forEach(cid=>{
+    if(f.m.nodes.some(n=>n.cid==cid))return;
+    const p=relFree(f.m.nodes,W,H);f.m.nodes.push({id:uid('n')+f.m.nodes.length,cid,x:p.x,y:p.y});
+  });
+  if(radd.size)relSave();
+  radd=new Set();$('#dlg').close();cmpRefresh();
+}
+/* キャラを消したとき、関係図に残った印と矢印を片づける */
+function relPrune(){
+  let ch=0;
+  S.works.forEach(w=>{
+    const cs=relChars(w);
+    (w.rels||[]).forEach(m=>{
+      const k=m.nodes.filter(n=>cs.has(n.cid));
+      if(k.length!=m.nodes.length){m.nodes=k;ch=1}
+      const ids=new Set(k.map(n=>n.id)),e=m.edges.filter(x=>ids.has(x.a)&&ids.has(x.b));
+      if(e.length!=m.edges.length){m.edges=e;ch=1}
+    });
+  });
+  if(ch)save('works.json');
 }
 
 /* ===== 文章から入力(キャラ編集画面。ペーストした文章を読み取って各欄に振り分ける) ===== */
